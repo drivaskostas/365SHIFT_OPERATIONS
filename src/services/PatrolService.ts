@@ -4,6 +4,20 @@ import type { PatrolSession, GuardianSite, PatrolCheckpointVisit, GuardianCheckp
 
 export class PatrolService {
   static async startPatrol(siteId: string, guardId: string, teamId?: string): Promise<PatrolSession> {
+    // First verify the guard is assigned to this site
+    const { data: siteGuard, error: assignmentError } = await supabase
+      .from('site_guards')
+      .select('*')
+      .eq('guard_id', guardId)
+      .eq('site_id', siteId)
+      .maybeSingle()
+
+    if (assignmentError) throw assignmentError
+    
+    if (!siteGuard) {
+      throw new Error('You are not assigned to this site. Please contact your supervisor.')
+    }
+
     const { data, error } = await supabase
       .from('patrol_sessions')
       .insert({
@@ -51,11 +65,17 @@ export class PatrolService {
   }
 
   static async getAvailableSites(guardId: string): Promise<GuardianSite[]> {
-    // Get sites assigned to the guard's team
+    // Get only sites assigned to the guard
     const { data, error } = await supabase
       .from('guardian_sites')
       .select('*')
       .eq('active', true)
+      .in('id', 
+        supabase
+          .from('site_guards')
+          .select('site_id')
+          .eq('guard_id', guardId)
+      )
       .order('name')
 
     if (error) throw error

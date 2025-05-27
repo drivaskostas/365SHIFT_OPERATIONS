@@ -95,19 +95,21 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       // Get current location
       const location = await getCurrentLocation();
       
-      // In a real implementation, you would:
-      // 1. Parse the QR code to extract checkpoint ID
-      // 2. Validate the checkpoint exists and belongs to the patrol site
-      // 3. Record the visit
+      // Validate checkpoint belongs to the current patrol site
+      const checkpoint = await PatrolService.validateCheckpoint(simulatedCheckpointId, activePatrol.site_id);
       
-      // For demo, we'll simulate a successful scan
+      if (!checkpoint) {
+        throw new Error('Invalid checkpoint or checkpoint not found at this site');
+      }
+      
+      // Record the visit
       await PatrolService.recordCheckpointVisit(
         activePatrol.id,
         simulatedCheckpointId,
         location
       );
       
-      setScanResult('Checkpoint A1 - Lobby');
+      setScanResult(`${checkpoint.name} - ${checkpoint.location}`);
       
       toast({
         title: "Checkpoint Scanned",
@@ -156,8 +158,9 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       const track = streamRef.current.getVideoTracks()[0];
       if (track && 'applyConstraints' in track) {
         try {
-          await track.applyConstraints({
-            advanced: [{ torch: !flashlightOn }]
+          // Use proper MediaTrackConstraints type
+          await (track as any).applyConstraints({
+            advanced: [{ torch: !flashlightOn } as any]
           });
           setFlashlightOn(!flashlightOn);
         } catch (error) {

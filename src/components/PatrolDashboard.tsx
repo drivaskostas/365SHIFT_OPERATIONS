@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, Play, Square, Users, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -57,9 +56,20 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       setAvailableSites(sites);
       if (sites.length > 0 && !selectedSite) {
         setSelectedSite(sites[0].id);
+      } else if (sites.length === 0) {
+        toast({
+          title: "No Sites Assigned",
+          description: "You are not assigned to any sites. Please contact your supervisor.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error loading sites:', error);
+      toast({
+        title: "Error Loading Sites",
+        description: "Failed to load assigned sites.",
+        variant: "destructive",
+      });
     }
   };
 
