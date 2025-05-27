@@ -45,6 +45,23 @@ export class PatrolService {
       throw new Error('You are not assigned to this site. Please contact your supervisor.')
     }
 
+    // Get the guard's team assignment if teamId is not provided
+    let resolvedTeamId = teamId;
+    if (!resolvedTeamId) {
+      const { data: teamMember, error: teamError } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', guardId)
+        .maybeSingle()
+
+      if (teamError) {
+        console.error('Error fetching team assignment:', teamError)
+        // Continue without team_id rather than failing
+      } else if (teamMember) {
+        resolvedTeamId = teamMember.team_id
+      }
+    }
+
     // Get current location
     const location = await this.getCurrentLocation();
 
@@ -53,7 +70,7 @@ export class PatrolService {
       .insert({
         guard_id: guardId,
         site_id: siteId,
-        team_id: teamId,
+        team_id: resolvedTeamId,
         start_time: new Date().toISOString(),
         status: 'active',
         latitude: location?.latitude,

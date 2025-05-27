@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, Play, Square, Users, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { PatrolService } from '@/services/PatrolService';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 import type { PatrolSession, GuardianSite } from '@/types/database';
 
 interface PatrolDashboardProps {
@@ -23,11 +25,13 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const [backgroundTracking, setBackgroundTracking] = useState(false);
   const [patrolProgress, setPatrolProgress] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [userTeamId, setUserTeamId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       loadActivePatrol();
       loadAvailableSites();
+      loadUserTeam();
     }
   }, [user]);
 
@@ -36,6 +40,24 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       loadPatrolProgress();
     }
   }, [activePatrol]);
+
+  const loadUserTeam = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: teamMember } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', user.id)
+        .maybeSingle();
+      
+      if (teamMember) {
+        setUserTeamId(teamMember.team_id);
+      }
+    } catch (error) {
+      console.error('Error loading user team:', error);
+    }
+  };
 
   const loadActivePatrol = async () => {
     if (!user) return;
@@ -89,7 +111,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     
     setLoading(true);
     try {
-      const patrol = await PatrolService.startPatrol(selectedSite, user.id, profile?.Role === 'guard' ? undefined : user.id);
+      const patrol = await PatrolService.startPatrol(selectedSite, user.id, userTeamId || undefined);
       setActivePatrol(patrol);
       toast({
         title: "Patrol Started",
