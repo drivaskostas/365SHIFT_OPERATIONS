@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { PatrolService } from '@/services/PatrolService';
 import { useToast } from '@/hooks/use-toast';
 import type { PatrolSession } from '@/types/database';
+import jsQR from 'jsqr';
 
 interface QRScannerProps {
   onBack: () => void;
@@ -20,8 +21,11 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   const [isScanning, setIsScanning] = useState(true);
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -68,6 +72,11 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        
+        // Start scanning loop once video is ready
+        videoRef.current.onloadedmetadata = () => {
+          startScanningLoop();
+        };
       }
       setCameraError(null);
     } catch (error) {
@@ -76,27 +85,82 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     }
   };
 
+  const startScanningLoop = () => {
+    if (!canvasRef.current || !videoRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return;
+    
+    // Clear any previous interval
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+    }
+    
+    // Set up scanning loop
+    scanIntervalRef.current = window.setInterval(() => {
+      if (video.readyState !== video.HAVE_ENOUGH_DATA || !isScanning) {
+        return;
+      }
+      
+      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth;
+      
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      try {
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+        
+        if (code) {
+          console.log("QR code detected:", code.data);
+          handleScanSuccess(code.data);
+        }
+      } catch (err) {
+        console.error("QR scanning error:", err);
+      }
+    }, 200); // scan every 200ms
+  };
+
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
   };
 
-  const handleScan = async () => {
+  const handleScanSuccess = async (qrData: string) => {
     if (!activePatrol) return;
-
-    // Simulate QR scan for demo - in real app this would use jsQR library
-    const simulatedCheckpointId = 'checkpoint-' + Math.random().toString(36).substr(2, 9);
     
     setIsScanning(false);
     
     try {
+      // Attempt to parse QR data - could be JSON or plain text
+      let checkpointId = qrData;
+      try {
+        // Check if it's a JSON string with a checkpointId field
+        const parsedData = JSON.parse(qrData);
+        if (parsedData.checkpointId) {
+          checkpointId = parsedData.checkpointId;
+        }
+      } catch (e) {
+        // Not JSON, assume the string itself is the checkpoint ID
+      }
+      
       // Get current location
       const location = await getCurrentLocation();
       
       // Validate checkpoint belongs to the current patrol site
-      const checkpoint = await PatrolService.validateCheckpoint(simulatedCheckpointId, activePatrol.site_id);
+      const checkpoint = await PatrolService.validateCheckpoint(checkpointId, activePatrol.site_id);
       
       if (!checkpoint) {
         throw new Error('Invalid checkpoint or checkpoint not found at this site');
@@ -105,7 +169,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       // Record the visit
       await PatrolService.recordCheckpointVisit(
         activePatrol.id,
-        simulatedCheckpointId,
+        checkpointId,
         location
       );
       
@@ -116,6 +180,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         description: "Successfully recorded checkpoint visit.",
       });
       
+      // Reset after showing result
       setTimeout(() => {
         setScanResult(null);
         setIsScanning(true);
@@ -156,17 +221,36 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   const toggleFlashlight = async () => {
     if (streamRef.current) {
       const track = streamRef.current.getVideoTracks()[0];
-      if (track && 'applyConstraints' in track) {
+      if (track && track.getCapabilities && track.getCapabilities().torch) {
         try {
-          // Use proper MediaTrackConstraints type
-          await (track as any).applyConstraints({
+          await track.applyConstraints({
             advanced: [{ torch: !flashlightOn } as any]
           });
           setFlashlightOn(!flashlightOn);
         } catch (error) {
           console.error('Flashlight not supported:', error);
+          toast({
+            title: "Flashlight Error",
+            description: "Your device does not support controlling the flashlight.",
+            variant: "destructive",
+          });
         }
+      } else {
+        toast({
+          title: "Flashlight Not Available",
+          description: "Your device or browser doesn't support flashlight control.",
+          variant: "destructive",
+        });
       }
+    }
+  };
+
+  // Manual scan for testing
+  const handleManualScan = () => {
+    // Only use this for testing when no camera is available
+    const testCheckpointId = prompt('Enter checkpoint ID for testing:');
+    if (testCheckpointId) {
+      handleScanSuccess(testCheckpointId);
     }
   };
 
@@ -214,6 +298,12 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           className="w-full h-96 object-cover"
         />
         
+        {/* Hidden canvas for image processing */}
+        <canvas 
+          ref={canvasRef}
+          className="hidden"
+        />
+        
         {/* Scanning overlay */}
         <div className="absolute inset-4 border-2 border-white/50 rounded-lg">
           <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
@@ -255,15 +345,17 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           </ul>
         </div>
         
-        <Button 
-          onClick={handleScan} 
-          className="w-full bg-green-600 hover:bg-green-700" 
-          size="lg"
-          disabled={!isScanning || !activePatrol}
-        >
-          <Camera className="h-5 w-5 mr-2" />
-          Simulate Scan
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleManualScan} 
+            className="w-full bg-yellow-600 hover:bg-yellow-700" 
+            size="lg"
+            disabled={!isScanning || !activePatrol}
+          >
+            <Camera className="h-5 w-5 mr-2" />
+            Manual Test
+          </Button>
+        </div>
       </div>
     </div>
   );
