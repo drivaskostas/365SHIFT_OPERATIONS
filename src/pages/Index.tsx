@@ -1,29 +1,48 @@
 
-import { useState } from 'react';
-import { Shield, Camera, AlertTriangle, MapPin, Clock, User, Menu, Moon, Sun } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Shield, Camera, AlertTriangle, User, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import LoginScreen from '@/components/LoginScreen';
 import PatrolDashboard from '@/components/PatrolDashboard';
 import QRScanner from '@/components/QRScanner';
-import IncidentReport from '@/components/IncidentReport';
+import PatrolObservation from '@/components/PatrolObservation';
 import EmergencyReport from '@/components/EmergencyReport';
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { Toaster } from '@/components/ui/toaster';
 
-const Index = () => {
-  const [currentScreen, setCurrentScreen] = useState('login');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+function AppContent() {
+  const { user, profile, loading, signOut } = useAuth();
+  const [currentScreen, setCurrentScreen] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(true);
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    setCurrentScreen('dashboard');
+  useEffect(() => {
+    // Apply dark mode class to document
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   const renderScreen = () => {
-    if (!isAuthenticated) {
-      return <LoginScreen onLogin={handleLogin} />;
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        </div>
+      );
+    }
+
+    if (!user) {
+      return <LoginScreen />;
     }
 
     switch (currentScreen) {
@@ -31,8 +50,8 @@ const Index = () => {
         return <PatrolDashboard onNavigate={setCurrentScreen} />;
       case 'scanner':
         return <QRScanner onBack={() => setCurrentScreen('dashboard')} />;
-      case 'incident':
-        return <IncidentReport onBack={() => setCurrentScreen('dashboard')} />;
+      case 'observation':
+        return <PatrolObservation onBack={() => setCurrentScreen('dashboard')} />;
       case 'emergency':
         return <EmergencyReport onBack={() => setCurrentScreen('dashboard')} />;
       default:
@@ -44,7 +63,7 @@ const Index = () => {
     <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       <div className="min-h-screen flex flex-col">
         {/* Header */}
-        {isAuthenticated && (
+        {user && (
           <header className="bg-blue-900 text-white p-4 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Shield className="h-6 w-6" />
@@ -59,7 +78,14 @@ const Index = () => {
               >
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <User className="h-6 w-6" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSignOut}
+                className="text-white hover:bg-blue-800"
+              >
+                <User className="h-4 w-4" />
+              </Button>
             </div>
           </header>
         )}
@@ -70,7 +96,7 @@ const Index = () => {
         </main>
 
         {/* Bottom Navigation */}
-        {isAuthenticated && currentScreen === 'dashboard' && (
+        {user && currentScreen === 'dashboard' && (
           <nav className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
             <div className="flex justify-around">
               <Button
@@ -92,7 +118,7 @@ const Index = () => {
               <Button
                 variant="ghost"
                 className="flex flex-col items-center space-y-1"
-                onClick={() => setCurrentScreen('incident')}
+                onClick={() => setCurrentScreen('observation')}
               >
                 <AlertTriangle className="h-5 w-5" />
                 <span className="text-xs">Report</span>
@@ -101,7 +127,16 @@ const Index = () => {
           </nav>
         )}
       </div>
+      <Toaster />
     </div>
+  );
+}
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
