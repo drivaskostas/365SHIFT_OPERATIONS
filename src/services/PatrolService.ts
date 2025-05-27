@@ -1,7 +1,35 @@
+
 import { supabase } from '@/lib/supabase'
 import type { PatrolSession, GuardianSite, PatrolCheckpointVisit, GuardianCheckpoint } from '@/types/database'
 
 export class PatrolService {
+  static async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          resolve(null);
+        },
+        { 
+          timeout: 10000,
+          enableHighAccuracy: true,
+          maximumAge: 60000
+        }
+      );
+    });
+  }
+
   static async startPatrol(siteId: string, guardId: string, teamId?: string): Promise<PatrolSession> {
     // First verify the guard is assigned to this site
     const { data: siteGuard, error: assignmentError } = await supabase
@@ -17,6 +45,9 @@ export class PatrolService {
       throw new Error('You are not assigned to this site. Please contact your supervisor.')
     }
 
+    // Get current location
+    const location = await this.getCurrentLocation();
+
     const { data, error } = await supabase
       .from('patrol_sessions')
       .insert({
@@ -24,7 +55,9 @@ export class PatrolService {
         site_id: siteId,
         team_id: teamId,
         start_time: new Date().toISOString(),
-        status: 'active'
+        status: 'active',
+        latitude: location?.latitude,
+        longitude: location?.longitude
       })
       .select()
       .single()
@@ -34,12 +67,18 @@ export class PatrolService {
   }
 
   static async endPatrol(patrolId: string): Promise<PatrolSession> {
+    // Get current location for end patrol
+    const location = await this.getCurrentLocation();
+
     const { data, error } = await supabase
       .from('patrol_sessions')
       .update({
         end_time: new Date().toISOString(),
         status: 'completed',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        // Update location for end patrol (you might want separate end_latitude/end_longitude fields)
+        latitude: location?.latitude,
+        longitude: location?.longitude
       })
       .eq('id', patrolId)
       .select()
@@ -95,6 +134,9 @@ export class PatrolService {
     checkpointId: string,
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolCheckpointVisit> {
+    // Always get fresh location for checkpoint visits
+    const currentLocation = location || await this.getCurrentLocation();
+
     const { data, error } = await supabase
       .from('patrol_checkpoint_visits')
       .insert({
@@ -102,8 +144,8 @@ export class PatrolService {
         checkpoint_id: checkpointId,
         timestamp: new Date().toISOString(),
         status: 'completed',
-        latitude: location?.latitude,
-        longitude: location?.longitude
+        latitude: currentLocation?.latitude,
+        longitude: currentLocation?.longitude
       })
       .select()
       .single()

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Camera, MapPin, Clock, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -127,9 +126,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
 
     setIsSubmitting(true);
     try {
-      // Get current location
-      const location = await getCurrentLocation();
-      
+      // ObservationService will automatically get current location
       await ObservationService.createObservation(
         user.id,
         activePatrol?.id,
@@ -137,13 +134,13 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
         title,
         description,
         severity,
-        photo || undefined,
-        location
+        photo || undefined
+        // Location will be automatically captured by the service
       );
       
       toast({
         title: "Observation Reported",
-        description: "Your patrol observation has been submitted successfully.",
+        description: "Your patrol observation has been submitted with location data.",
       });
       
       onBack();
@@ -156,28 +153,6 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const getCurrentLocation = (): Promise<{ latitude: number; longitude: number } | undefined> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve(undefined);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        () => {
-          resolve(undefined);
-        },
-        { timeout: 10000 }
-      );
-    });
   };
 
   return (

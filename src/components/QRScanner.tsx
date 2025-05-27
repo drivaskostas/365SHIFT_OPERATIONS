@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Camera, ArrowLeft, Flashlight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -175,8 +174,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         // Not JSON, assume the string itself is the checkpoint ID
       }
       
-      // Get current location
-      const location = await getCurrentLocation();
+      // Get current location - PatrolService will handle this automatically
+      const location = await PatrolService.getCurrentLocation();
       
       // Validate checkpoint belongs to the current patrol site
       const checkpoint = await PatrolService.validateCheckpoint(checkpointId, activePatrol.site_id);
@@ -185,18 +184,18 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         throw new Error('Invalid checkpoint or checkpoint not found at this site');
       }
       
-      // Record the visit
+      // Record the visit with location
       await PatrolService.recordCheckpointVisit(
         activePatrol.id,
         checkpointId,
-        location
+        location || undefined
       );
       
       setScanResult(`${checkpoint.name} - ${checkpoint.location}`);
       
       toast({
         title: "Checkpoint Scanned",
-        description: "Successfully recorded checkpoint visit.",
+        description: "Successfully recorded checkpoint visit with location.",
       });
       
       // Reset after showing result
@@ -213,28 +212,6 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       });
       setIsScanning(true);
     }
-  };
-
-  const getCurrentLocation = (): Promise<{ latitude: number; longitude: number } | undefined> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve(undefined);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        () => {
-          resolve(undefined);
-        },
-        { timeout: 10000 }
-      );
-    });
   };
 
   const toggleFlashlight = async () => {

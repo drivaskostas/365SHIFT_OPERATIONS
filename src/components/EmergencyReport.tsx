@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ArrowLeft, AlertTriangle, Phone, MapPin, Clock, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -49,23 +48,20 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
 
     setIsSubmitting(true);
     try {
-      // Get current location
-      const location = await getCurrentLocation();
-      
+      // EmergencyService will automatically get current location
       await EmergencyService.createEmergencyReport(
         user.id,
         activePatrol?.id,
         activePatrol?.team_id,
         title,
         description,
-        severity,
-        undefined, // image_url
-        location
+        severity
+        // Location will be automatically captured by the service
       );
       
       toast({
         title: "Emergency Reported",
-        description: "Your emergency report has been submitted and flagged for immediate attention.",
+        description: "Your emergency report has been submitted with location data and flagged for immediate attention.",
       });
       
       onBack();
@@ -78,28 +74,6 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const getCurrentLocation = (): Promise<{ latitude: number; longitude: number } | undefined> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve(undefined);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        () => {
-          resolve(undefined);
-        },
-        { timeout: 10000 }
-      );
-    });
   };
 
   return (

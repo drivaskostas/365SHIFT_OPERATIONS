@@ -3,6 +3,33 @@ import { supabase } from '@/lib/supabase'
 import type { PatrolObservation } from '@/types/database'
 
 export class ObservationService {
+  static async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          resolve(null);
+        },
+        { 
+          timeout: 10000,
+          enableHighAccuracy: true,
+          maximumAge: 60000
+        }
+      );
+    });
+  }
+
   static async createObservation(
     guardId: string,
     patrolId: string | undefined,
@@ -13,6 +40,9 @@ export class ObservationService {
     imageUrl?: string,
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolObservation> {
+    // Always get fresh location if not provided
+    const currentLocation = location || await this.getCurrentLocation();
+
     const { data, error } = await supabase
       .from('patrol_observations')
       .insert({
@@ -24,8 +54,8 @@ export class ObservationService {
         severity,
         status: 'pending',
         image_url: imageUrl,
-        latitude: location?.latitude,
-        longitude: location?.longitude,
+        latitude: currentLocation?.latitude,
+        longitude: currentLocation?.longitude,
         timestamp: new Date().toISOString()
       })
       .select()
