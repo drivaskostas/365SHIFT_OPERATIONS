@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase'
 import type { PatrolSession, GuardianSite, PatrolCheckpointVisit, GuardianCheckpoint } from '@/types/database'
 
@@ -65,17 +64,26 @@ export class PatrolService {
   }
 
   static async getAvailableSites(guardId: string): Promise<GuardianSite[]> {
-    // Get only sites assigned to the guard
+    // First get the site IDs assigned to the guard
+    const { data: siteAssignments, error: assignmentError } = await supabase
+      .from('site_guards')
+      .select('site_id')
+      .eq('guard_id', guardId)
+
+    if (assignmentError) throw assignmentError
+    
+    if (!siteAssignments || siteAssignments.length === 0) {
+      return []
+    }
+
+    const siteIds = siteAssignments.map(assignment => assignment.site_id)
+
+    // Then get the actual site details
     const { data, error } = await supabase
       .from('guardian_sites')
       .select('*')
       .eq('active', true)
-      .in('id', 
-        supabase
-          .from('site_guards')
-          .select('site_id')
-          .eq('guard_id', guardId)
-      )
+      .in('id', siteIds)
       .order('name')
 
     if (error) throw error
