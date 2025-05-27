@@ -21,6 +21,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   const [isScanning, setIsScanning] = useState(true);
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -65,17 +66,33 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 
   const startCamera = async () => {
     try {
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
       });
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         
-        // Start scanning loop once video is ready
         videoRef.current.onloadedmetadata = () => {
-          startScanningLoop();
+          if (videoRef.current) {
+            videoRef.current.play().then(() => {
+              setIsVideoReady(true);
+              startScanningLoop();
+            }).catch(err => {
+              console.error('Error playing video:', err);
+              setCameraError('Failed to start video playback');
+            });
+          }
         };
       }
       setCameraError(null);
@@ -86,7 +103,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   };
 
   const startScanningLoop = () => {
-    if (!canvasRef.current || !videoRef.current) return;
+    if (!canvasRef.current || !videoRef.current || !isVideoReady) return;
     
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -136,6 +153,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
     }
+    
+    setIsVideoReady(false);
   };
 
   const handleScanSuccess = async (qrData: string) => {
@@ -221,26 +240,30 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   const toggleFlashlight = async () => {
     if (streamRef.current) {
       const track = streamRef.current.getVideoTracks()[0];
-      if (track && track.getCapabilities && track.getCapabilities().torch) {
-        try {
-          await track.applyConstraints({
-            advanced: [{ torch: !flashlightOn } as any]
-          });
-          setFlashlightOn(!flashlightOn);
-        } catch (error) {
-          console.error('Flashlight not supported:', error);
+      if (track && track.getCapabilities) {
+        const capabilities = track.getCapabilities();
+        // Check if torch capability exists
+        if ('torch' in capabilities) {
+          try {
+            await track.applyConstraints({
+              advanced: [{ torch: !flashlightOn } as any]
+            });
+            setFlashlightOn(!flashlightOn);
+          } catch (error) {
+            console.error('Flashlight not supported:', error);
+            toast({
+              title: "Flashlight Error",
+              description: "Your device does not support controlling the flashlight.",
+              variant: "destructive",
+            });
+          }
+        } else {
           toast({
-            title: "Flashlight Error",
-            description: "Your device does not support controlling the flashlight.",
+            title: "Flashlight Not Available",
+            description: "Your device or browser doesn't support flashlight control.",
             variant: "destructive",
           });
         }
-      } else {
-        toast({
-          title: "Flashlight Not Available",
-          description: "Your device or browser doesn't support flashlight control.",
-          variant: "destructive",
-        });
       }
     }
   };
@@ -296,7 +319,17 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           playsInline
           muted
           className="w-full h-96 object-cover"
+          style={{ display: isVideoReady ? 'block' : 'none' }}
         />
+        
+        {!isVideoReady && (
+          <div className="w-full h-96 bg-gray-800 flex items-center justify-center">
+            <div className="text-white text-center">
+              <Camera className="h-12 w-12 mx-auto mb-4" />
+              <p>Starting camera...</p>
+            </div>
+          </div>
+        )}
         
         {/* Hidden canvas for image processing */}
         <canvas 
@@ -305,15 +338,17 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         />
         
         {/* Scanning overlay */}
-        <div className="absolute inset-4 border-2 border-white/50 rounded-lg">
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
-        </div>
+        {isVideoReady && (
+          <div className="absolute inset-4 border-2 border-white/50 rounded-lg">
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
+          </div>
+        )}
         
         {/* Scanning line */}
-        {isScanning && (
+        {isScanning && isVideoReady && (
           <div className="absolute w-full h-1 bg-green-500 animate-pulse top-1/2"></div>
         )}
 
