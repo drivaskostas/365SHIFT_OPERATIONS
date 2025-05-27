@@ -221,10 +221,10 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
           <CardContent className="p-4">
             <Button 
               onClick={handleQRScanClick}
-              className="w-full h-16 bg-green-600 hover:bg-green-700"
+              className="w-full h-20 bg-green-600 hover:bg-green-700 text-sm font-medium"
             >
               <Camera className="h-6 w-6 mr-2" />
-              Scan QR
+              <span className="text-center">Scan QR</span>
             </Button>
           </CardContent>
         </Card>
@@ -233,10 +233,10 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
           <CardContent className="p-4">
             <Button 
               onClick={() => onNavigate('observation')} 
-              className="w-full h-16 bg-orange-600 hover:bg-orange-700"
+              className="w-full h-20 bg-orange-600 hover:bg-orange-700 text-sm font-medium"
             >
               <AlertTriangle className="h-6 w-6 mr-2" />
-              Patrol Observation
+              <span className="text-center">Patrol<br />Observation</span>
             </Button>
           </CardContent>
         </Card>
@@ -247,11 +247,11 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         <CardContent className="p-4">
           <Button 
             onClick={() => onNavigate('emergency')} 
-            className="w-full h-16 bg-red-600 hover:bg-red-700 text-white"
+            className="w-full h-20 bg-red-600 hover:bg-red-700 text-white text-sm font-medium"
             size="lg"
           >
             <AlertTriangle className="h-6 w-6 mr-2" />
-            EMERGENCY REPORT
+            <span className="text-center">EMERGENCY<br />REPORT</span>
           </Button>
         </CardContent>
       </Card>
