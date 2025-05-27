@@ -6,25 +6,54 @@ export class ObservationService {
   static async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
+        console.warn('Geolocation is not supported by this browser');
         resolve(null);
         return;
       }
 
+      // First try with high accuracy
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('Observation location obtained:', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
           resolve({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           });
         },
         (error) => {
-          console.error('Error getting location:', error);
-          resolve(null);
+          console.warn('High accuracy location failed for observation, trying with lower accuracy:', error);
+          // Fallback to lower accuracy
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              console.log('Fallback observation location obtained:', {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+              });
+              resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              });
+            },
+            (fallbackError) => {
+              console.error('Observation location access denied or failed:', fallbackError);
+              resolve(null);
+            },
+            { 
+              timeout: 15000,
+              enableHighAccuracy: false,
+              maximumAge: 300000 // 5 minutes
+            }
+          );
         },
         { 
-          timeout: 10000,
+          timeout: 8000,
           enableHighAccuracy: true,
-          maximumAge: 60000
+          maximumAge: 60000 // 1 minute
         }
       );
     });
@@ -41,7 +70,9 @@ export class ObservationService {
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolObservation> {
     // Always get fresh location if not provided
+    console.log('Attempting to get location for observation...');
     const currentLocation = location || await this.getCurrentLocation();
+    console.log('Location for observation:', currentLocation);
 
     const { data, error } = await supabase
       .from('patrol_observations')

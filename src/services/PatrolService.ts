@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase'
 import type { PatrolSession, GuardianSite, PatrolCheckpointVisit, GuardianCheckpoint } from '@/types/database'
 
@@ -6,25 +5,54 @@ export class PatrolService {
   static async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
+        console.warn('Geolocation is not supported by this browser');
         resolve(null);
         return;
       }
 
+      // First try with high accuracy
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('Location obtained:', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
           resolve({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           });
         },
         (error) => {
-          console.error('Error getting location:', error);
-          resolve(null);
+          console.warn('High accuracy location failed, trying with lower accuracy:', error);
+          // Fallback to lower accuracy
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              console.log('Fallback location obtained:', {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+              });
+              resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              });
+            },
+            (fallbackError) => {
+              console.error('Location access denied or failed:', fallbackError);
+              resolve(null);
+            },
+            { 
+              timeout: 15000,
+              enableHighAccuracy: false,
+              maximumAge: 300000 // 5 minutes
+            }
+          );
         },
         { 
-          timeout: 10000,
+          timeout: 8000,
           enableHighAccuracy: true,
-          maximumAge: 60000
+          maximumAge: 60000 // 1 minute
         }
       );
     });
@@ -62,8 +90,10 @@ export class PatrolService {
       }
     }
 
-    // Get current location
+    // Get current location with retries
+    console.log('Attempting to get location for patrol start...');
     const location = await this.getCurrentLocation();
+    console.log('Location for patrol start:', location);
 
     const { data, error } = await supabase
       .from('patrol_sessions')
@@ -85,7 +115,9 @@ export class PatrolService {
 
   static async endPatrol(patrolId: string): Promise<PatrolSession> {
     // Get current location for end patrol
+    console.log('Attempting to get location for patrol end...');
     const location = await this.getCurrentLocation();
+    console.log('Location for patrol end:', location);
 
     const { data, error } = await supabase
       .from('patrol_sessions')
@@ -152,7 +184,9 @@ export class PatrolService {
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolCheckpointVisit> {
     // Always get fresh location for checkpoint visits
+    console.log('Attempting to get location for checkpoint visit...');
     const currentLocation = location || await this.getCurrentLocation();
+    console.log('Location for checkpoint visit:', currentLocation);
 
     const { data, error } = await supabase
       .from('patrol_checkpoint_visits')
