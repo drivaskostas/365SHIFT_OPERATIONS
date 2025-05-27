@@ -129,6 +129,18 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     }
   };
 
+  const handleQRScanClick = () => {
+    if (!activePatrol) {
+      toast({
+        title: "No Active Patrol",
+        description: "Please start a patrol before scanning checkpoints.",
+        variant: "destructive",
+      });
+      return;
+    }
+    onNavigate('scanner');
+  };
+
   const selectedSiteData = availableSites.find(site => site.id === selectedSite);
 
   return (
@@ -205,12 +217,11 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-4">
-        <Card>
+        <Card className="cursor-pointer">
           <CardContent className="p-4">
             <Button 
-              onClick={() => onNavigate('scanner')} 
+              onClick={handleQRScanClick}
               className="w-full h-16 bg-green-600 hover:bg-green-700"
-              disabled={!activePatrol}
             >
               <Camera className="h-6 w-6 mr-2" />
               Scan QR
