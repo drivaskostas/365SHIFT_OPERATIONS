@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ interface RecentActivity {
   description: string;
   timestamp: string;
   color: string;
+  guardName?: string;
 }
 
 interface PatrolSession {
@@ -387,65 +389,100 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       const teamIds = teamMemberships.map(tm => tm.team_id);
       const activities: RecentActivity[] = [];
 
-      // Fetch recent patrol sessions
+      // Get all team members from these teams to include their activities
+      const { data: allTeamMembers } = await supabase
+        .from('team_members')
+        .select('profile_id, profiles(first_name, last_name, full_name)')
+        .in('team_id', teamIds);
+
+      const teamMemberIds = allTeamMembers?.map(tm => tm.profile_id) || [];
+
+      // Fetch recent patrol sessions from all team members
       const { data: recentPatrols } = await supabase
         .from('patrol_sessions')
-        .select('*')
-        .in('team_id', teamIds)
+        .select(`
+          *,
+          profiles!patrol_sessions_guard_id_fkey(first_name, last_name, full_name)
+        `)
+        .in('guard_id', teamMemberIds)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(5);
 
       if (recentPatrols) {
         recentPatrols.forEach(patrol => {
+          const guardName = patrol.profiles?.full_name || 
+                          (patrol.profiles?.first_name && patrol.profiles?.last_name ? 
+                           `${patrol.profiles.first_name} ${patrol.profiles.last_name}` : 
+                           'Unknown Guard');
+          
           activities.push({
             id: patrol.id,
             type: 'patrol',
             title: patrol.status === 'active' ? 'Patrol Started' : 'Patrol Completed',
             description: `Status: ${patrol.status}`,
             timestamp: patrol.created_at,
-            color: 'bg-blue-500'
+            color: 'bg-blue-500',
+            guardName: guardName
           });
         });
       }
 
-      // Fetch recent observations
+      // Fetch recent observations from all team members
       const { data: recentObservations } = await supabase
         .from('patrol_observations')
-        .select('*')
-        .in('team_id', teamIds)
+        .select(`
+          *,
+          profiles!patrol_observations_guard_id_fkey(first_name, last_name, full_name)
+        `)
+        .in('guard_id', teamMemberIds)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(5);
 
       if (recentObservations) {
         recentObservations.forEach(observation => {
+          const guardName = observation.profiles?.full_name || 
+                          (observation.profiles?.first_name && observation.profiles?.last_name ? 
+                           `${observation.profiles.first_name} ${observation.profiles.last_name}` : 
+                           observation.guard_name || 'Unknown Guard');
+          
           activities.push({
             id: observation.id,
             type: 'observation',
             title: 'Observation Logged',
             description: observation.title || 'New observation recorded',
             timestamp: observation.created_at,
-            color: 'bg-yellow-500'
+            color: 'bg-yellow-500',
+            guardName: guardName
           });
         });
       }
 
-      // Fetch recent emergency reports
+      // Fetch recent emergency reports from all team members
       const { data: recentEmergencies } = await supabase
         .from('emergency_reports')
-        .select('*')
-        .in('team_id', teamIds)
+        .select(`
+          *,
+          profiles!emergency_reports_guard_id_fkey(first_name, last_name, full_name)
+        `)
+        .in('guard_id', teamMemberIds)
         .order('created_at', { ascending: false })
-        .limit(2);
+        .limit(3);
 
       if (recentEmergencies) {
         recentEmergencies.forEach(emergency => {
+          const guardName = emergency.profiles?.full_name || 
+                          (emergency.profiles?.first_name && emergency.profiles?.last_name ? 
+                           `${emergency.profiles.first_name} ${emergency.profiles.last_name}` : 
+                           emergency.guard_name || 'Unknown Guard');
+          
           activities.push({
             id: emergency.id,
             type: 'emergency',
             title: 'Emergency Report',
             description: emergency.title,
             timestamp: emergency.created_at,
-            color: 'bg-red-500'
+            color: 'bg-red-500',
+            guardName: guardName
           });
         });
       }
@@ -782,6 +819,9 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                   <div className="flex-1">
                     <p className="text-sm font-medium">{activity.title}</p>
                     <p className="text-xs text-gray-500">{activity.description}</p>
+                    {activity.guardName && (
+                      <p className="text-xs text-gray-400">by {activity.guardName}</p>
+                    )}
                   </div>
                   <span className="text-xs text-gray-500">{getTimeAgo(activity.timestamp)}</span>
                 </div>
