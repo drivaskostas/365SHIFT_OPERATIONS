@@ -4,8 +4,8 @@ import { ArrowLeft, Calendar, MapPin, Clock, User, CheckCircle, AlertCircle } fr
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
-import { PatrolService } from '@/services/PatrolService';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import type { PatrolSession, PatrolCheckpointVisit, GuardianCheckpoint } from '@/types/database';
 
 interface PatrolSessionsProps {
@@ -14,6 +14,7 @@ interface PatrolSessionsProps {
 
 interface PatrolWithCheckpoints extends PatrolSession {
   checkpointVisits: (PatrolCheckpointVisit & { checkpoint?: GuardianCheckpoint })[];
+  guardian_sites?: { name: string };
 }
 
 const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {

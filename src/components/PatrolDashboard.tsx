@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
 import TeamObservations from '@/components/TeamObservations';
 import PatrolSessions from '@/components/PatrolSessions';
+import TeamEmergencyReports from '@/components/TeamEmergencyReports';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -16,6 +17,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showObservations, setShowObservations] = useState(false);
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
+  const [showEmergencyReports, setShowEmergencyReports] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -55,6 +57,10 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
   if (showPatrolSessions) {
     return <PatrolSessions onBack={() => setShowPatrolSessions(false)} />;
+  }
+
+  if (showEmergencyReports) {
+    return <TeamEmergencyReports onBack={() => setShowEmergencyReports(false)} />;
   }
 
   return (
@@ -129,7 +135,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowEmergencyReports(true)}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
