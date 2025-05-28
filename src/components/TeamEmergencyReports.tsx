@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, Clock, User, Shield, AlertTriangle, CheckCircle, FileText, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -187,7 +186,7 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
             Emergency Report Details
           </h1>
         </div>
@@ -195,75 +194,75 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
         {/* Report Details */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>{selectedReport.title}</span>
-              <div className="flex space-x-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedReport.severity)}`}>
+            <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+              <span className="break-words line-clamp-2 min-w-0">{selectedReport.title}</span>
+              <div className="flex flex-wrap gap-2 flex-shrink-0">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getSeverityColor(selectedReport.severity)}`}>
                   {selectedReport.severity.toUpperCase()}
                 </span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedReport.status)}`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(selectedReport.status)}`}>
                   {selectedReport.status.toUpperCase()}
                 </span>
               </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <p className="text-gray-600 dark:text-gray-300 font-medium">Reported by</p>
-                  <p className="text-gray-900 dark:text-white">{getGuardName(selectedReport)}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="min-w-0">
+                  <p className="text-gray-600 dark:text-gray-300 font-medium text-sm">Reported by</p>
+                  <p className="text-gray-900 dark:text-white break-words">{getGuardName(selectedReport)}</p>
                 </div>
-                <div>
-                  <p className="text-gray-600 dark:text-gray-300 font-medium">Date & Time</p>
-                  <p className="text-gray-900 dark:text-white">
+                <div className="min-w-0">
+                  <p className="text-gray-600 dark:text-gray-300 font-medium text-sm">Date & Time</p>
+                  <p className="text-gray-900 dark:text-white break-words text-sm">
                     {new Date(selectedReport.created_at).toLocaleString()}
                   </p>
                 </div>
                 {selectedReport.location && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">Location</p>
-                    <p className="text-gray-900 dark:text-white">{selectedReport.location}</p>
+                  <div className="min-w-0">
+                    <p className="text-gray-600 dark:text-gray-300 font-medium text-sm">Location</p>
+                    <p className="text-gray-900 dark:text-white break-words text-sm">{selectedReport.location}</p>
                   </div>
                 )}
                 {selectedReport.latitude && selectedReport.longitude && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">GPS Coordinates</p>
-                    <p className="text-gray-900 dark:text-white">
+                  <div className="min-w-0">
+                    <p className="text-gray-600 dark:text-gray-300 font-medium text-sm">GPS Coordinates</p>
+                    <p className="text-gray-900 dark:text-white break-words text-sm font-mono">
                       {selectedReport.latitude}, {selectedReport.longitude}
                     </p>
                   </div>
                 )}
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {selectedReport.involved_persons && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">Involved Persons</p>
-                    <p className="text-gray-900 dark:text-white">{selectedReport.involved_persons}</p>
+                  <div className="min-w-0">
+                    <p className="text-gray-600 dark:text-gray-300 font-medium text-sm">Involved Persons</p>
+                    <p className="text-gray-900 dark:text-white break-words text-sm">{selectedReport.involved_persons}</p>
                   </div>
                 )}
                 {selectedReport.resolved_at && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">Resolved At</p>
-                    <p className="text-gray-900 dark:text-white">
+                  <div className="min-w-0">
+                    <p className="text-gray-600 dark:text-gray-300 font-medium text-sm">Resolved At</p>
+                    <p className="text-gray-900 dark:text-white break-words text-sm">
                       {new Date(selectedReport.resolved_at).toLocaleString()}
                     </p>
                   </div>
                 )}
                 {selectedReport.resolved_by && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">Resolved By</p>
-                    <p className="text-gray-900 dark:text-white">{selectedReport.resolved_by}</p>
+                  <div className="min-w-0">
+                    <p className="text-gray-600 dark:text-gray-300 font-medium text-sm">Resolved By</p>
+                    <p className="text-gray-900 dark:text-white break-words text-sm">{selectedReport.resolved_by}</p>
                   </div>
                 )}
               </div>
             </div>
             
             {selectedReport.description && (
-              <div className="mt-6">
-                <p className="text-gray-600 dark:text-gray-300 font-medium mb-2">Description</p>
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
+              <div className="mt-4">
+                <p className="text-gray-600 dark:text-gray-300 font-medium mb-2 text-sm">Description</p>
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg max-w-full overflow-hidden">
+                  <p className="text-gray-900 dark:text-white whitespace-pre-wrap break-words text-sm">
                     {selectedReport.description}
                   </p>
                 </div>
@@ -271,13 +270,15 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
             )}
 
             {selectedReport.image_url && (
-              <div className="mt-6">
-                <p className="text-gray-600 dark:text-gray-300 font-medium mb-2">Evidence</p>
-                <img 
-                  src={selectedReport.image_url} 
-                  alt="Emergency evidence" 
-                  className="max-w-full h-auto rounded-lg border border-gray-200 dark:border-gray-700"
-                />
+              <div className="mt-4">
+                <p className="text-gray-600 dark:text-gray-300 font-medium mb-2 text-sm">Evidence</p>
+                <div className="max-w-full overflow-hidden">
+                  <img 
+                    src={selectedReport.image_url} 
+                    alt="Emergency evidence" 
+                    className="max-w-full h-auto max-h-64 object-contain rounded-lg border border-gray-200 dark:border-gray-700"
+                  />
+                </div>
               </div>
             )}
           </CardContent>
@@ -287,24 +288,24 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
         {selectedReport.notes && Array.isArray(selectedReport.notes) && selectedReport.notes.length > 0 && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <FileText className="h-5 w-5 mr-2" />
-                Notes
+              <CardTitle className="flex items-center text-lg">
+                <FileText className="h-5 w-5 mr-2 flex-shrink-0" />
+                <span className="truncate">Notes</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {selectedReport.notes.map((note: any, index: number) => (
-                  <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-blue-500">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                  <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-blue-500 max-w-full overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-300 break-words">
                         {note.timestamp ? new Date(note.timestamp).toLocaleString() : 'No timestamp'}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
                         by {note.author_name || 'Unknown'}
                       </p>
                     </div>
-                    <p className="text-gray-900 dark:text-white">{note.text}</p>
+                    <p className="text-gray-900 dark:text-white break-words text-sm">{note.text}</p>
                   </div>
                 ))}
               </div>
@@ -315,9 +316,9 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
         {/* History Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <History className="h-5 w-5 mr-2" />
-              History
+            <CardTitle className="flex items-center text-lg">
+              <History className="h-5 w-5 mr-2 flex-shrink-0" />
+              <span className="truncate">History</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -326,12 +327,12 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
               </div>
             ) : reportHistory.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {reportHistory.map((historyItem) => (
-                  <div key={historyItem.id} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  <div key={historyItem.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg max-w-full overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                      <div className="flex flex-wrap items-center gap-2 min-w-0">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                           historyItem.action_type === 'created' ? 'bg-green-100 text-green-700' :
                           historyItem.action_type === 'status_change' ? 'bg-blue-100 text-blue-700' :
                           historyItem.action_type === 'note_added' ? 'bg-yellow-100 text-yellow-700' :
@@ -340,28 +341,28 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
                           {historyItem.action_type.replace('_', ' ').toUpperCase()}
                         </span>
                         {historyItem.previous_status && historyItem.new_status && (
-                          <span className="text-sm text-gray-600 dark:text-gray-300">
+                          <span className="text-xs text-gray-600 dark:text-gray-300 break-words">
                             {historyItem.previous_status} → {historyItem.new_status}
                           </span>
                         )}
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs text-gray-600 dark:text-gray-300 break-words">
                           {new Date(historyItem.created_at).toLocaleString()}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
                           by {historyItem.user_name}
                         </p>
                       </div>
                     </div>
                     {historyItem.note && (
-                      <p className="text-gray-900 dark:text-white mt-2">{historyItem.note}</p>
+                      <p className="text-gray-900 dark:text-white mt-2 break-words text-sm">{historyItem.note}</p>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600 dark:text-gray-300 text-center py-4">
+              <p className="text-gray-600 dark:text-gray-300 text-center py-4 text-sm">
                 No history available for this report.
               </p>
             )}
@@ -378,11 +379,11 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
         <Button
           variant="ghost"
           onClick={onBack}
-          className="mr-4"
+          className="mr-4 flex-shrink-0"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
           Emergency Reports
         </h1>
       </div>
