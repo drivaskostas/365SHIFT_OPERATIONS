@@ -33,6 +33,7 @@ const LoginScreen = () => {
         description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
+      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
