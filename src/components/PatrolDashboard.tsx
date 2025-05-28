@@ -4,6 +4,7 @@ import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
+import TeamObservations from '@/components/TeamObservations';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -12,6 +13,7 @@ interface PatrolDashboardProps {
 const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const { t } = useLanguage();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showObservations, setShowObservations] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -44,6 +46,10 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       action: () => onNavigate('emergency')
     }
   ];
+
+  if (showObservations) {
+    return <TeamObservations onBack={() => setShowObservations(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
@@ -103,7 +109,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowObservations(true)}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
