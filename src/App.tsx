@@ -5,17 +5,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { useLocationTracking } from "@/hooks/useLocationTracking";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
-
-// Component to initialize location tracking
-function LocationTrackingInitializer() {
-  useLocationTracking();
-  return null;
-}
 
 function App() {
   return (
@@ -25,7 +18,6 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <LocationTrackingInitializer />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="*" element={<NotFound />} />

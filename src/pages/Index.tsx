@@ -8,9 +8,23 @@ import QRScanner from '@/components/QRScanner';
 import PatrolObservation from '@/components/PatrolObservation';
 import EnhancedEmergencyReport from '@/components/EnhancedEmergencyReport';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { LanguageProvider, useLanguage } from '@/hooks/useLanguage';
 import LanguageToggle from '@/components/LanguageToggle';
 import { Toaster } from '@/components/ui/toaster';
+
+// Component to initialize location tracking only when user is authenticated
+function LocationTrackingInitializer() {
+  const { profile, loading } = useAuth();
+  useLocationTracking();
+  
+  // Only render after authentication is resolved and user is logged in
+  if (loading || !profile) {
+    return null;
+  }
+  
+  return null;
+}
 
 function AppContent() {
   const { user, profile, loading, signOut } = useAuth();
@@ -19,7 +33,6 @@ function AppContent() {
   const [darkMode, setDarkMode] = useState(true);
 
   useEffect(() => {
-    // Apply dark mode class to document
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -64,6 +77,9 @@ function AppContent() {
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Initialize location tracking only when authenticated */}
+      <LocationTrackingInitializer />
+      
       <div className="min-h-screen flex flex-col">
         {/* Header */}
         {user && (

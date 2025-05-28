@@ -64,6 +64,8 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [locationPermissionStatus, setLocationPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
   const [recentLocations, setRecentLocations] = useState<any[]>([]);
+  const [isTestingLocation, setIsTestingLocation] = useState(false);
+  const [browserInstructions, setBrowserInstructions] = useState<{ browser: string; instructions: string[] } | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -181,8 +183,59 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     }
   };
 
+  const handleForcePermissionReset = async () => {
+    console.log('🔄 User requested force permission reset...');
+    setIsTestingLocation(true);
+    
+    try {
+      const { LocationTrackingService } = await import('@/services/LocationTrackingService');
+      
+      toast({
+        title: "🔄 Resetting Location Permissions",
+        description: "Attempting to clear cached permissions and request fresh access...",
+      });
+
+      const success = await LocationTrackingService.forcePermissionReset();
+      
+      if (success) {
+        setLocationPermissionStatus('granted');
+        toast({
+          title: "✅ Permission Reset Successful!",
+          description: "Location access has been restored. Location tracking should now work properly.",
+        });
+        
+        // Also test location to verify
+        const testResult = await LocationTrackingService.testLocationNow();
+        if (testResult.success && profile?.id) {
+          const locations = await LocationTrackingService.getRecentLocations(profile.id, 5);
+          setRecentLocations(locations);
+        }
+      } else {
+        setLocationPermissionStatus('denied');
+        const instructions = LocationTrackingService.getBrowserResetInstructions();
+        setBrowserInstructions(instructions);
+        
+        toast({
+          title: "❌ Automatic Reset Failed",
+          description: `Please try the manual steps for ${instructions.browser}. Instructions are shown below.`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error in force reset:', error);
+      toast({
+        title: "❌ Reset Error",
+        description: "Failed to reset permissions. Please try the manual browser steps.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTestingLocation(false);
+    }
+  };
+
   const handleTestLocation = async () => {
-    console.log('🧪 Testing location access...');
+    console.log('🧪 User requested location test...');
+    setIsTestingLocation(true);
     
     try {
       const { LocationTrackingService } = await import('@/services/LocationTrackingService');
@@ -192,52 +245,58 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       
       if (result.success) {
         toast({
-          title: "Location Test Successful! ✅",
+          title: "✅ Location Test Successful!",
           description: `Got location: ${result.position?.latitude.toFixed(6)}, ${result.position?.longitude.toFixed(6)} (accuracy: ${result.position?.accuracy}m)`,
         });
         setLocationPermissionStatus('granted');
         
-        // Also fetch recent locations to verify database operations
         if (profile?.id) {
           const locations = await LocationTrackingService.getRecentLocations(profile.id, 5);
           setRecentLocations(locations);
           
           if (locations.length > 0) {
             toast({
-              title: "Database Check ✅",
-              description: `Found ${locations.length} recent location records in database`,
+              title: "✅ Database Check Passed",
+              description: `Found ${locations.length} recent location records. Latest: ${new Date(locations[0]?.created_at).toLocaleTimeString()}`,
             });
           } else {
             toast({
-              title: "Database Info ℹ️",
-              description: "No recent location records found, but location access works",
-              variant: "default"
+              title: "⚠️ Database Issue",
+              description: "Location access works but no records are being saved to database. This might be a backend issue.",
+              variant: "destructive"
             });
           }
         }
       } else {
-        const errorDetails = result.error?.code === 1 ? "Permission denied by user" :
+        setLocationPermissionStatus('denied');
+        const errorMessage = result.error?.code === 1 ? "Permission denied by user" :
                            result.error?.code === 2 ? "Position unavailable" :
                            result.error?.code === 3 ? "Request timeout" :
                            "Unknown error";
         
         toast({
-          title: "Location Test Failed ❌",
-          description: `${errorDetails}: ${result.error?.message || 'Unknown error'}`,
+          title: "❌ Location Test Failed",
+          description: `${errorMessage}: ${result.error?.message || 'Unknown error'}`,
           variant: "destructive"
         });
         
-        if (result.debugInfo) {
-          console.log('Debug info:', result.debugInfo);
+        if (result.recommendations) {
+          setBrowserInstructions({
+            browser: navigator.userAgent.includes('Chrome') ? 'Chrome' : 
+                    navigator.userAgent.includes('Safari') ? 'Safari' : 'Browser',
+            instructions: result.recommendations
+          });
         }
       }
     } catch (error) {
       console.error('Error testing location:', error);
       toast({
-        title: "Test Error",
+        title: "❌ Test Error",
         description: "Failed to test location access",
         variant: "destructive"
       });
+    } finally {
+      setIsTestingLocation(false);
     }
   };
 
@@ -482,16 +541,16 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         <div className="mb-6">
           <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
             <CardContent className="p-4">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">
+                  <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">
                     🚨 Location Access Required
                   </h3>
-                  <p className="text-sm text-red-600 dark:text-red-300">
-                    Location tracking is essential for patrol functionality. Current status: {locationPermissionStatus}
+                  <p className="text-sm text-red-600 dark:text-red-300 mb-2">
+                    Location tracking is essential for patrol functionality. Current status: <strong>{locationPermissionStatus}</strong>
                   </p>
                   {recentLocations.length > 0 && (
-                    <p className="text-sm text-green-600 mt-1">
+                    <p className="text-sm text-green-600 mb-2">
                       ✅ Database: {recentLocations.length} recent location records found
                     </p>
                   )}
@@ -502,24 +561,39 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                     onClick={handleTestLocation}
                     variant="outline"
                     size="sm"
+                    disabled={isTestingLocation}
                     className="border-blue-300 text-blue-700 hover:bg-blue-100"
                   >
-                    🧪 Test & Debug Location
+                    {isTestingLocation ? '🔄 Testing...' : '🧪 Test Location'}
                   </Button>
                   <Button
-                    onClick={handleRequestPermission}
+                    onClick={handleForcePermissionReset}
                     variant="outline"
                     size="sm"
-                    className="border-green-300 text-green-700 hover:bg-green-100"
+                    disabled={isTestingLocation}
+                    className="border-orange-300 text-orange-700 hover:bg-orange-100"
                   >
-                    🔄 Force Permission Request
+                    {isTestingLocation ? '🔄 Resetting...' : '🔄 Force Reset Permissions'}
                   </Button>
                 </div>
                 
+                {browserInstructions && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <h4 className="font-semibold text-yellow-800 mb-2">
+                      📋 Manual Fix for {browserInstructions.browser}:
+                    </h4>
+                    <ul className="text-xs text-yellow-700 space-y-1">
+                      {browserInstructions.instructions.map((instruction, index) => (
+                        <li key={index}>{instruction}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
                 <div className="text-xs text-red-500 space-y-1">
-                  <div>💡 For Chrome: Settings → Privacy & Security → Site Settings → Location → Allow this site</div>
-                  <div>💡 Try clearing browser cache and cookies for this site</div>
-                  <div>💡 Ensure you're using HTTPS (not HTTP)</div>
+                  <div>💡 If location still doesn't work, try opening this page in an incognito/private window</div>
+                  <div>💡 Ensure you're using HTTPS (not HTTP) - location requires secure connection</div>
+                  <div>💡 Some corporate networks may block location services</div>
                 </div>
               </div>
             </CardContent>
@@ -532,15 +606,21 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         <div className="mb-6">
           <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
             <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 mb-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <h3 className="font-semibold text-green-800 dark:text-green-200">
                   ✅ Location Access Enabled
                 </h3>
               </div>
-              {recentLocations.length > 0 && (
-                <p className="text-sm text-green-600 dark:text-green-300 mt-1">
-                  Database: {recentLocations.length} recent location records | Latest: {new Date(recentLocations[0]?.created_at).toLocaleString()}
+              {recentLocations.length > 0 ? (
+                <div className="text-sm text-green-600 dark:text-green-300 space-y-1">
+                  <p>Database: {recentLocations.length} recent location records found</p>
+                  <p>Latest: {new Date(recentLocations[0]?.created_at).toLocaleString()}</p>
+                  <p>Coordinates: {recentLocations[0]?.latitude?.toFixed(6)}, {recentLocations[0]?.longitude?.toFixed(6)}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-yellow-600 dark:text-yellow-300">
+                  Location access works, but no database records found. Location tracking will create records during patrols.
                 </p>
               )}
             </CardContent>
@@ -572,8 +652,9 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                     onClick={handleTestLocation}
                     variant="outline"
                     size="sm"
+                    disabled={isTestingLocation}
                   >
-                    🧪 Test Location
+                    {isTestingLocation ? '🔄' : '🧪'} Test
                   </Button>
                 )}
                 <Button

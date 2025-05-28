@@ -13,13 +13,11 @@ export class LocationTrackingService {
 
     console.log('Starting location tracking for guard:', guardId);
 
-    // Check if geolocation is supported
     if (!navigator.geolocation) {
       console.error('Geolocation is not supported by this browser');
       return;
     }
 
-    // Try to get initial position
     console.log('Attempting to get initial location...');
     const initialPosition = await this.getLocationWithRetry();
     if (initialPosition) {
@@ -31,7 +29,6 @@ export class LocationTrackingService {
 
     this.isTracking = true;
 
-    // Set up interval for every minute (60000ms)
     this.trackingInterval = setInterval(async () => {
       if (this.isTracking) {
         console.log('Getting location update...');
@@ -59,35 +56,41 @@ export class LocationTrackingService {
 
   private static async updateGuardLocation(guardId: string, position: { latitude: number; longitude: number }): Promise<void> {
     try {
-      console.log('Updating guard location:', guardId, position);
+      console.log('📍 Attempting to save location:', { guardId, position });
 
-      // Insert into guard_locations table (the correct table for location tracking)
+      const locationData = {
+        guard_id: guardId,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        on_duty: true,
+        tracking_type: 'patrol',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('📍 Inserting location data:', locationData);
+
       const { data, error } = await supabase
         .from('guard_locations')
-        .insert({
-          guard_id: guardId,
-          latitude: position.latitude,
-          longitude: position.longitude,
-          on_duty: true,
-          tracking_type: 'patrol',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .insert(locationData)
         .select();
 
       if (error) {
-        console.error('Error saving location to guard_locations:', error);
+        console.error('❌ Database error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       } else {
-        console.log('Location saved successfully to guard_locations:', data);
+        console.log('✅ Location saved successfully:', data);
       }
     } catch (error) {
-      console.error('Error in location tracking database operation:', error);
-      // Don't throw here to avoid breaking the tracking loop
+      console.error('❌ Critical error in location tracking:', error);
     }
   }
 
-  // Enhanced location retrieval with multiple fallback strategies
   private static async getLocationWithRetry(): Promise<{ latitude: number; longitude: number } | null> {
     // Strategy 1: High accuracy, short timeout
     let position = await this.getLocationDirect({
@@ -162,85 +165,166 @@ export class LocationTrackingService {
     return 'unknown';
   }
 
-  // Force fresh permission request with cache busting
-  static async requestLocationPermission(): Promise<boolean> {
-    console.log('🔄 Requesting fresh location permission with cache busting...');
+  // Aggressive Chrome permission reset mechanism
+  static async forcePermissionReset(): Promise<boolean> {
+    console.log('🔄 Forcing complete permission reset...');
     
-    return new Promise((resolve) => {
-      // Use a very aggressive approach to force permission dialog
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 3000,
-        maximumAge: 0 // Force fresh request, no cache
-      };
+    try {
+      // Step 1: Clear any existing watch positions
+      if ('geolocation' in navigator) {
+        console.log('Step 1: Clearing any existing watch positions');
+        for (let i = 0; i < 100; i++) {
+          navigator.geolocation.clearWatch(i);
+        }
+      }
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          console.log('✅ Permission granted and location obtained:', {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          });
-          resolve(true);
-        },
-        (error) => {
-          console.error('❌ Permission request failed:', {
-            code: error.code,
-            message: error.message,
-            PERMISSION_DENIED: error.code === 1,
-            POSITION_UNAVAILABLE: error.code === 2,
-            TIMEOUT: error.code === 3
-          });
-          
-          // If it's a permission denied error, try to clear any cached permissions
-          if (error.code === 1) {
-            console.log('🔄 Permission denied, trying cache clearing approach...');
-            // For Chrome, try to use a watchPosition briefly to reset state
-            const watchId = navigator.geolocation.watchPosition(
-              (pos) => {
-                console.log('✅ Watch position success, clearing and resolving true');
-                navigator.geolocation.clearWatch(watchId);
-                resolve(true);
-              },
-              (watchError) => {
-                console.error('❌ Watch position also failed:', watchError.message);
-                navigator.geolocation.clearWatch(watchId);
-                resolve(false);
-              },
-              { enableHighAccuracy: false, timeout: 2000, maximumAge: 0 }
-            );
+      // Step 2: Force browser to re-evaluate permission
+      console.log('Step 2: Attempting to trigger fresh permission dialog');
+      
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          console.log('❌ Permission reset timeout');
+          resolve(false);
+        }, 10000);
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            clearTimeout(timeout);
+            console.log('✅ Permission reset successful!', position.coords);
+            resolve(true);
+          },
+          (error) => {
+            clearTimeout(timeout);
+            console.error('❌ Permission reset failed:', error);
             
-            // Clear watch after 2 seconds
-            setTimeout(() => {
-              navigator.geolocation.clearWatch(watchId);
-            }, 2000);
-          } else {
-            resolve(false);
+            // For Chrome specifically, try the watchPosition trick
+            if (error.code === 1 && navigator.userAgent.includes('Chrome')) {
+              console.log('🔄 Trying Chrome-specific reset...');
+              const watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                  navigator.geolocation.clearWatch(watchId);
+                  console.log('✅ Chrome reset successful!');
+                  resolve(true);
+                },
+                (watchError) => {
+                  navigator.geolocation.clearWatch(watchId);
+                  console.error('❌ Chrome reset also failed:', watchError);
+                  resolve(false);
+                },
+                { enableHighAccuracy: false, timeout: 3000, maximumAge: 0 }
+              );
+            } else {
+              resolve(false);
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 0 // Force fresh request
           }
-        },
-        options
-      );
-    });
+        );
+      });
+    } catch (error) {
+      console.error('❌ Error in permission reset:', error);
+      return false;
+    }
   }
 
-  // Test location access with detailed feedback
-  static async testLocationNow(): Promise<{ success: boolean; position?: any; error?: any; debugInfo?: any }> {
-    console.log('🧪 Testing location access with detailed debugging...');
+  // Manual browser reset instructions
+  static getBrowserResetInstructions(): { browser: string; instructions: string[] } {
+    const userAgent = navigator.userAgent;
+    
+    if (userAgent.includes('Chrome')) {
+      return {
+        browser: 'Chrome',
+        instructions: [
+          '1. Click the 🔒 or ⓘ icon in the address bar',
+          '2. Set Location to "Ask" or "Allow"',
+          '3. Refresh the page completely (Ctrl+F5)',
+          '4. Alternative: Go to Settings → Privacy → Site Settings → Location → Remove this site'
+        ]
+      };
+    } else if (userAgent.includes('Safari')) {
+      return {
+        browser: 'Safari',
+        instructions: [
+          '1. Go to Safari → Preferences → Websites → Location',
+          '2. Find this website and set to "Ask" or "Allow"',
+          '3. Refresh the page',
+          '4. Alternative: Safari → Privacy → Manage Website Data → Remove this site'
+        ]
+      };
+    } else if (userAgent.includes('Firefox')) {
+      return {
+        browser: 'Firefox',
+        instructions: [
+          '1. Click the 🔒 icon in the address bar',
+          '2. Click "Clear cookies and site data"',
+          '3. Refresh the page',
+          '4. Allow location when prompted'
+        ]
+      };
+    } else {
+      return {
+        browser: 'Unknown',
+        instructions: [
+          '1. Clear browser cache and cookies for this site',
+          '2. Refresh the page completely',
+          '3. Allow location when prompted'
+        ]
+      };
+    }
+  }
+
+  // Enhanced testing with detailed feedback
+  static async testLocationNow(): Promise<{ 
+    success: boolean; 
+    position?: any; 
+    error?: any; 
+    debugInfo?: any;
+    recommendations?: string[];
+  }> {
+    console.log('🧪 Starting comprehensive location test...');
     
     const debugInfo = {
       browser: navigator.userAgent,
       permissions: 'permissions' in navigator,
       geolocation: 'geolocation' in navigator,
       isSecureContext: window.isSecureContext,
-      protocol: window.location.protocol
+      protocol: window.location.protocol,
+      timestamp: new Date().toISOString()
     };
 
     console.log('Debug info:', debugInfo);
+
+    // Check if we're in a secure context
+    if (!window.isSecureContext) {
+      return {
+        success: false,
+        error: { message: 'Location requires HTTPS' },
+        debugInfo,
+        recommendations: ['Switch to HTTPS', 'Location API requires secure context']
+      };
+    }
     
     return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve({
+          success: false,
+          error: { message: 'Location request timeout', code: 3 },
+          debugInfo,
+          recommendations: [
+            'Try refreshing the page',
+            'Check if location is enabled in browser settings',
+            'Clear browser cache and cookies'
+          ]
+        });
+      }, 10000);
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('✅ Test successful:', position);
+          clearTimeout(timeout);
+          console.log('✅ Location test successful:', position);
           resolve({ 
             success: true, 
             position: {
@@ -253,7 +337,18 @@ export class LocationTrackingService {
           });
         },
         (error) => {
-          console.error('❌ Test failed:', error);
+          clearTimeout(timeout);
+          console.error('❌ Location test failed:', error);
+          
+          const recommendations = [];
+          if (error.code === 1) {
+            recommendations.push(...this.getBrowserResetInstructions().instructions);
+          } else if (error.code === 2) {
+            recommendations.push('Check internet connection', 'Try moving to a different location');
+          } else if (error.code === 3) {
+            recommendations.push('Request timed out - try again', 'Check if GPS is enabled');
+          }
+
           resolve({ 
             success: false, 
             error: {
@@ -263,21 +358,24 @@ export class LocationTrackingService {
               POSITION_UNAVAILABLE: error.code === 2,
               TIMEOUT: error.code === 3
             },
-            debugInfo
+            debugInfo,
+            recommendations
           });
         },
         {
           enableHighAccuracy: false,
-          timeout: 5000,
-          maximumAge: 0 // Force fresh request
+          timeout: 8000,
+          maximumAge: 0
         }
       );
     });
   }
 
-  // Get recent location data from database
+  // Get recent location data from database with better error handling
   static async getRecentLocations(guardId: string, limit: number = 10): Promise<any[]> {
     try {
+      console.log('📍 Fetching recent locations for guard:', guardId);
+      
       const { data, error } = await supabase
         .from('guard_locations')
         .select('*')
@@ -286,14 +384,19 @@ export class LocationTrackingService {
         .limit(limit);
 
       if (error) {
-        console.error('Error fetching recent locations:', error);
+        console.error('❌ Error fetching recent locations:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return [];
       }
 
-      console.log('Recent locations from database:', data);
+      console.log('✅ Recent locations from database:', data);
       return data || [];
     } catch (error) {
-      console.error('Error in getRecentLocations:', error);
+      console.error('❌ Critical error in getRecentLocations:', error);
       return [];
     }
   }
