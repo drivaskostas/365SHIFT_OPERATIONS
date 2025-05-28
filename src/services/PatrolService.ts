@@ -276,11 +276,15 @@ export class PatrolService {
     try {
       // ENHANCED DEBUGGING - Multiple database queries to understand the state
       
-      // Step 1: Check ALL checkpoints in the database
+      // Step 1: Check ALL checkpoints in the database - Fixed the count query
       console.log('🔍 STEP 1: Checking ALL checkpoints in database...');
-      const { data: allCheckpoints, error: allError, count: totalCount } = await supabase
+      const { count: totalCount } = await supabase
         .from('guardian_checkpoints')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true });
+      
+      const { data: allCheckpoints, error: allError } = await supabase
+        .from('guardian_checkpoints')
+        .select('*')
         .order('created_at', { ascending: false });
       
       console.log('🔍 ALL CHECKPOINTS QUERY:', {
@@ -295,11 +299,16 @@ export class PatrolService {
         }))
       });
       
-      // Step 2: Check checkpoints for the specific site
+      // Step 2: Check checkpoints for the specific site - Fixed the count query
       console.log('🔍 STEP 2: Checking checkpoints for specific site...');
-      const { data: siteCheckpoints, error: siteError, count: siteCount } = await supabase
+      const { count: siteCount } = await supabase
         .from('guardian_checkpoints')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
+        .eq('site_id', siteId);
+      
+      const { data: siteCheckpoints, error: siteError } = await supabase
+        .from('guardian_checkpoints')
+        .select('*')
         .eq('site_id', siteId)
         .order('created_at', { ascending: false });
       
@@ -452,14 +461,14 @@ export class PatrolService {
     // Get total checkpoints for the site
     const { count: totalCheckpoints } = await supabase
       .from('guardian_checkpoints')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'exact', head: true })
       .eq('site_id', patrol.site_id)
       .eq('active', true)
 
     // Get visited checkpoints for this patrol
     const { count: visitedCheckpoints } = await supabase
       .from('patrol_checkpoint_visits')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'exact', head: true })
       .eq('patrol_id', patrolId)
       .eq('status', 'completed')
 
@@ -472,17 +481,20 @@ export class PatrolService {
     }
   }
 
-  // Enhanced debugging methods
+  // Enhanced debugging methods - Fixed count queries
   static async debugGetAllCheckpoints(siteId?: string): Promise<GuardianCheckpoint[]> {
     console.log('🔧 ENHANCED DEBUG: Getting all checkpoints for site:', siteId);
     
-    let query = supabase.from('guardian_checkpoints').select('*');
+    let dataQuery = supabase.from('guardian_checkpoints').select('*');
+    let countQuery = supabase.from('guardian_checkpoints').select('*', { count: 'exact', head: true });
     
     if (siteId) {
-      query = query.eq('site_id', siteId);
+      dataQuery = dataQuery.eq('site_id', siteId);
+      countQuery = countQuery.eq('site_id', siteId);
     }
     
-    const { data, error, count } = await query.order('name').select('*', { count: 'exact' });
+    const { data, error } = await dataQuery.order('name');
+    const { count } = await countQuery;
     
     if (error) {
       console.error('❌ Failed to get checkpoints:', error);
