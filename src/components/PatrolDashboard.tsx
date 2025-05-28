@@ -181,23 +181,28 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   };
 
   const handleTestLocation = async () => {
-    console.log('Testing location access manually...');
+    console.log('🧪 Testing location access manually...');
     
     try {
-      // Import the LocationTrackingService dynamically
       const { LocationTrackingService } = await import('@/services/LocationTrackingService');
       const result = await LocationTrackingService.testLocationAccess();
       
+      console.log('🔍 Test result:', result);
+      
       if (result.success) {
         toast({
-          title: "Location Test Successful",
-          description: `Location obtained: ${result.position?.latitude.toFixed(6)}, ${result.position?.longitude.toFixed(6)}`,
+          title: "Location Test Successful! ✅",
+          description: `Location: ${result.position?.latitude.toFixed(6)}, ${result.position?.longitude.toFixed(6)}`,
         });
         setLocationPermissionStatus('granted');
       } else {
+        const errorDetails = result.error?.message || 'Unknown error';
+        const debugDetails = result.debugInfo ? 
+          `Debug: Protocol=${result.debugInfo.protocol}, Secure=${result.debugInfo.isSecureContext}, Permissions=${result.debugInfo.permissions}` : '';
+        
         toast({
-          title: "Location Test Failed",
-          description: `Error: ${result.error?.message || 'Unknown error'}`,
+          title: "Location Test Failed ❌",
+          description: `Error: ${errorDetails}. ${debugDetails}`,
           variant: "destructive"
         });
         setLocationPermissionStatus('denied');
@@ -210,6 +215,55 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleRequestLocationPermission = async () => {
+    try {
+      console.log('🔄 Manually requesting location permission...');
+      
+      const { LocationTrackingService } = await import('@/services/LocationTrackingService');
+      await LocationTrackingService.resetAndRetryPermissions();
+      
+      setLocationPermissionStatus('granted');
+      toast({
+        title: "Location Access Granted! ✅",
+        description: "Location tracking is now available for patrols.",
+      });
+    } catch (error: any) {
+      console.error('❌ Location permission request failed:', error);
+      setLocationPermissionStatus('denied');
+      
+      let errorMessage = "Please enable location access in your browser settings.";
+      
+      if (error?.code === 1) {
+        errorMessage = "Location access was denied. Please click the location icon in your browser's address bar and select 'Allow'.";
+      } else if (error?.code === 2) {
+        errorMessage = "Location is unavailable. Please check your device's location settings.";
+      } else if (error?.code === 3) {
+        errorMessage = "Location request timed out. Please try again.";
+      }
+      
+      toast({
+        title: "Location Access Denied ❌",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleResetLocationPermissions = async () => {
+    console.log('🔄 Resetting location permissions...');
+    setLocationPermissionStatus('unknown');
+    
+    toast({
+      title: "Permissions Reset",
+      description: "Please try the location test again to check current status.",
+    });
+    
+    // Re-check permission status
+    setTimeout(() => {
+      checkLocationPermission();
+    }, 1000);
   };
 
   const fetchDashboardStats = async () => {
@@ -381,42 +435,6 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     }
   ];
 
-  const handleRequestLocationPermission = async () => {
-    try {
-      console.log('Manually requesting location permission...');
-      
-      // Try to get location which will trigger permission request
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            console.log('Location permission granted:', position);
-            setLocationPermissionStatus('granted');
-            toast({
-              title: "Location Access Granted",
-              description: "Location tracking is now available for patrols.",
-            });
-          },
-          (error) => {
-            console.error('Location permission denied:', error);
-            setLocationPermissionStatus('denied');
-            toast({
-              title: "Location Access Denied",
-              description: "Please enable location access in your browser settings to use location tracking during patrols.",
-              variant: "destructive"
-            });
-          },
-          {
-            enableHighAccuracy: false,
-            timeout: 10000,
-            maximumAge: 600000
-          }
-        );
-      }
-    } catch (error) {
-      console.error('Error requesting location permission:', error);
-    }
-  };
-
   if (showObservations) {
     return <TeamObservations onBack={() => setShowObservations(false)} />;
   }
@@ -460,7 +478,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         </div>
       </div>
 
-      {/* Location Permission Alert */}
+      {/* Enhanced Location Permission Alert */}
       {locationPermissionStatus === 'denied' && (
         <div className="mb-6">
           <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
@@ -468,16 +486,22 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">
-                    Location Access Required
+                    🚨 Location Access Required
                   </h3>
-                  <p className="text-sm text-red-600 dark:text-red-300">
-                    Location tracking is disabled. To enable location tracking during patrols, please:
+                  <p className="text-sm text-red-600 dark:text-red-300 mb-2">
+                    Location tracking is disabled. Even though browser permissions show "Allow", 
+                    the JavaScript API is still being denied.
                   </p>
-                  <ul className="text-sm text-red-600 dark:text-red-300 mt-1 ml-4 list-disc">
-                    <li>Click the location icon in your browser's address bar</li>
-                    <li>Select "Allow" for location access</li>
-                    <li>Or try the buttons below to test and request permission</li>
-                  </ul>
+                  <div className="text-sm text-red-600 dark:text-red-300">
+                    <p className="font-medium mb-1">Troubleshooting steps:</p>
+                    <ul className="ml-4 list-disc space-y-1">
+                      <li>Click the location/lock icon in your browser's address bar</li>
+                      <li>Set location to "Allow" and refresh the page</li>
+                      <li>Clear site data and try again</li>
+                      <li>Try in an incognito/private window</li>
+                      <li>Check if your device location services are enabled</li>
+                    </ul>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button
@@ -486,15 +510,23 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                     size="sm"
                     className="border-blue-300 text-blue-700 hover:bg-blue-100"
                   >
-                    Test Location
+                    🧪 Test Location
                   </Button>
                   <Button
                     onClick={handleRequestLocationPermission}
                     variant="outline"
                     size="sm"
-                    className="border-red-300 text-red-700 hover:bg-red-100"
+                    className="border-yellow-300 text-yellow-700 hover:bg-yellow-100"
                   >
-                    Request Permission
+                    🔄 Retry Permission
+                  </Button>
+                  <Button
+                    onClick={handleResetLocationPermissions}
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                  >
+                    🗑️ Reset Status
                   </Button>
                 </div>
               </div>
