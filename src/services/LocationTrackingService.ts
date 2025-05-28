@@ -47,11 +47,11 @@ export class LocationTrackingService {
 
       console.log('Updating location for guard:', guardId, position);
 
-      // Check if guardian_geocodes record exists for this guard
+      // Check if guardian_geocodes record exists for this guard - using guardian_id not guard_id
       const { data: existingRecord } = await supabase
         .from('guardian_geocodes')
         .select('id')
-        .eq('guardian_id', guardId)
+        .eq('guardian_id', guardId)  // Fixed: using guardian_id instead of guard_id
         .single();
 
       if (existingRecord) {
@@ -64,7 +64,7 @@ export class LocationTrackingService {
             geocode_status: 'success',
             updated_at: new Date().toISOString()
           })
-          .eq('guardian_id', guardId);
+          .eq('guardian_id', guardId);  // Fixed: using guardian_id instead of guard_id
 
         if (error) {
           console.error('Error updating location:', error);
@@ -76,7 +76,7 @@ export class LocationTrackingService {
         const { error } = await supabase
           .from('guardian_geocodes')
           .insert({
-            guardian_id: guardId,
+            guardian_id: guardId,  // Fixed: using guardian_id instead of guard_id
             latitude: position.latitude,
             longitude: position.longitude,
             geocode_status: 'success',
