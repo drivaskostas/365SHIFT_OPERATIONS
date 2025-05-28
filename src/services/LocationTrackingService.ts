@@ -13,14 +13,14 @@ export class LocationTrackingService {
 
     console.log('Starting location tracking for guard:', guardId);
 
-    // Try to get location immediately to trigger permission request
+    // Try to get location immediately - this will trigger permission request
     const initialPosition = await this.getCurrentPosition();
     if (!initialPosition) {
-      console.warn('Could not get initial location, tracking will not start');
+      console.warn('Could not get initial location - location tracking will not start');
       return;
     }
 
-    console.log('Initial location obtained:', initialPosition);
+    console.log('Initial location obtained successfully:', initialPosition);
     this.isTracking = true;
 
     // Start immediate tracking with the initial position
@@ -29,12 +29,17 @@ export class LocationTrackingService {
     // Set up interval for every minute (60000ms)
     this.trackingInterval = setInterval(async () => {
       if (this.isTracking) {
+        console.log('Getting location update...');
         const position = await this.getCurrentPosition();
         if (position) {
           await this.updateLocation(guardId, position);
+        } else {
+          console.warn('Failed to get location update');
         }
       }
     }, 60000);
+
+    console.log('Location tracking started successfully');
   }
 
   static stopTracking(): void {
@@ -52,11 +57,16 @@ export class LocationTrackingService {
       console.log('Updating location for guard:', guardId, position);
 
       // Check if guardian_geocodes record exists for this guard
-      const { data: existingRecord } = await supabase
+      const { data: existingRecord, error: selectError } = await supabase
         .from('guardian_geocodes')
         .select('id')
         .eq('guardian_id', guardId)
         .maybeSingle();
+
+      if (selectError) {
+        console.error('Error checking existing location record:', selectError);
+        return;
+      }
 
       if (existingRecord) {
         // Update existing record
@@ -107,10 +117,12 @@ export class LocationTrackingService {
         return;
       }
 
-      // First try with high accuracy
+      console.log('Requesting current position...');
+
+      // Use a more permissive approach - try high accuracy first with shorter timeout
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('High accuracy location obtained:', {
+          console.log('Location obtained successfully:', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy: position.coords.accuracy
@@ -121,12 +133,12 @@ export class LocationTrackingService {
           });
         },
         (error) => {
-          console.log('High accuracy location failed, trying with lower accuracy:', error);
+          console.log('High accuracy location failed, trying with lower settings. Error:', error.message);
           
-          // Try again with lower accuracy
+          // Fallback with very permissive settings
           navigator.geolocation.getCurrentPosition(
             (position) => {
-              console.log('Lower accuracy location obtained:', {
+              console.log('Fallback location obtained:', {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
                 accuracy: position.coords.accuracy
@@ -136,21 +148,21 @@ export class LocationTrackingService {
                 longitude: position.coords.longitude
               });
             },
-            (error) => {
-              console.error('Location access denied or failed:', error);
+            (fallbackError) => {
+              console.error('All location attempts failed. Final error:', fallbackError.message, 'Code:', fallbackError.code);
               resolve(null);
             },
             {
               enableHighAccuracy: false,
-              timeout: 15000,
-              maximumAge: 600000 // 10 minutes
+              timeout: 30000, // 30 seconds
+              maximumAge: 600000 // 10 minutes - accept cached location
             }
           );
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
+          timeout: 10000, // 10 seconds
+          maximumAge: 60000 // 1 minute
         }
       );
     });

@@ -22,26 +22,14 @@ export const useLocationTracking = () => {
         console.log('Active patrol check result:', activePatrol);
         
         if (activePatrol && !LocationTrackingService.isCurrentlyTracking()) {
-          console.log('Active patrol found, starting location tracking');
+          console.log('Active patrol found, attempting to start location tracking');
           
-          // Check if location is available before starting tracking
+          // Try to start tracking directly - let the service handle permission checking
           if ('geolocation' in navigator) {
-            // Request permission explicitly before starting tracking
-            navigator.permissions.query({ name: 'geolocation' }).then((permission) => {
-              console.log('Geolocation permission status:', permission.state);
-              
-              if (permission.state === 'granted' || permission.state === 'prompt') {
-                LocationTrackingService.startTracking(profile.id);
-              } else {
-                console.warn('Geolocation permission denied');
-              }
-            }).catch(() => {
-              // Fallback for browsers that don't support permissions API
-              console.log('Permissions API not supported, attempting to start tracking anyway');
-              LocationTrackingService.startTracking(profile.id);
-            });
+            console.log('Geolocation API is available, starting tracking...');
+            LocationTrackingService.startTracking(profile.id);
           } else {
-            console.error('Geolocation not supported');
+            console.error('Geolocation not supported in this browser');
           }
         } else if (!activePatrol && LocationTrackingService.isCurrentlyTracking()) {
           console.log('No active patrol, stopping location tracking');
