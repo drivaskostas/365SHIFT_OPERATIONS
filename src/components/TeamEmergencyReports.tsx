@@ -6,10 +6,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import type { EmergencyReport } from '@/types/database';
 
 interface TeamEmergencyReportsProps {
   onBack: () => void;
+}
+
+interface EmergencyReport {
+  id: string;
+  guard_id: string;
+  patrol_id?: string;
+  team_id?: string;
+  title: string;
+  description?: string;
+  severity: string;
+  status: string;
+  image_url?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  incident_time?: string;
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+  guard_name?: string;
+  involved_persons?: string;
 }
 
 interface EmergencyReportWithProfile extends EmergencyReport {
@@ -53,10 +74,7 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
       // Fetch emergency reports from all teams
       const { data: emergencyReports, error } = await supabase
         .from('emergency_reports')
-        .select(`
-          *,
-          profiles!emergency_reports_guard_id_fkey(first_name, last_name, full_name)
-        `)
+        .select('*')
         .in('team_id', teamIds)
         .order('created_at', { ascending: false });
 
@@ -65,7 +83,23 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
         return;
       }
 
-      setReports(emergencyReports || []);
+      // For each report, try to get the guard profile information
+      const reportsWithProfiles = await Promise.all(
+        (emergencyReports || []).map(async (report) => {
+          const { data: guardProfile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, full_name')
+            .eq('id', report.guard_id)
+            .single();
+
+          return {
+            ...report,
+            profiles: guardProfile || undefined
+          };
+        })
+      );
+
+      setReports(reportsWithProfiles);
     } catch (error) {
       console.error('Error fetching emergency reports:', error);
     } finally {

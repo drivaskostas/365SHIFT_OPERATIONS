@@ -6,14 +6,43 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import type { PatrolSession, PatrolCheckpointVisit, GuardianCheckpoint } from '@/types/database';
 
 interface PatrolSessionsProps {
   onBack: () => void;
 }
 
+interface PatrolCheckpointVisit {
+  id: string;
+  patrol_id: string;
+  checkpoint_id: string;
+  timestamp: string;
+  status: string;
+  notes?: string;
+  latitude?: number;
+  longitude?: number;
+  created_at: string;
+  checkpoint?: {
+    name: string;
+    location: string;
+  };
+}
+
+interface PatrolSession {
+  id: string;
+  guard_id: string;
+  site_id: string;
+  team_id?: string;
+  start_time: string;
+  end_time?: string;
+  status: string;
+  latitude?: number;
+  longitude?: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface PatrolWithCheckpoints extends PatrolSession {
-  checkpointVisits: (PatrolCheckpointVisit & { checkpoint?: GuardianCheckpoint })[];
+  checkpointVisits: PatrolCheckpointVisit[];
   guardian_sites?: { name: string };
 }
 
@@ -77,7 +106,10 @@ const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {
 
           return {
             ...patrol,
-            checkpointVisits: visits || []
+            checkpointVisits: (visits || []).map(visit => ({
+              ...visit,
+              checkpoint: visit.guardian_checkpoints
+            }))
           };
         })
       );
