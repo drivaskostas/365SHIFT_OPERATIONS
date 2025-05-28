@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp } from 'lucide-react';
+import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { PatrolService } from '@/services/PatrolService';
 import TeamObservations from '@/components/TeamObservations';
 import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -28,13 +30,30 @@ interface RecentActivity {
   color: string;
 }
 
+interface PatrolSession {
+  id: string;
+  guard_id: string;
+  site_id: string;
+  team_id?: string;
+  start_time: string;
+  end_time?: string;
+  status: string;
+  latitude?: number;
+  longitude?: number;
+  created_at: string;
+  updated_at: string;
+}
+
 const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const { t } = useLanguage();
   const { profile } = useAuth();
+  const { toast } = useToast();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showObservations, setShowObservations] = useState(false);
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
   const [showEmergencyReports, setShowEmergencyReports] = useState(false);
+  const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
+  const [availableSites, setAvailableSites] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalPatrols: 0,
     totalObservations: 0,
@@ -51,8 +70,95 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     if (profile?.id) {
       fetchDashboardStats();
       fetchRecentActivities();
+      checkActivePatrol();
+      fetchAvailableSites();
     }
   }, [profile?.id]);
+
+  const checkActivePatrol = async () => {
+    if (!profile?.id) return;
+    
+    try {
+      const patrol = await PatrolService.getActivePatrol(profile.id);
+      setActivePatrol(patrol);
+    } catch (error) {
+      console.error('Error checking active patrol:', error);
+    }
+  };
+
+  const fetchAvailableSites = async () => {
+    if (!profile?.id) return;
+    
+    try {
+      const sites = await PatrolService.getAvailableSites(profile.id);
+      setAvailableSites(sites);
+    } catch (error) {
+      console.error('Error fetching available sites:', error);
+    }
+  };
+
+  const handleStartPatrol = async () => {
+    if (!profile?.id) {
+      toast({
+        title: "Error",
+        description: "Please log in to start a patrol",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (availableSites.length === 0) {
+      toast({
+        title: "No Sites Available",
+        description: "You are not assigned to any sites. Please contact your supervisor.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // For now, use the first available site. In a real app, you might want to show a selection dialog
+    const siteId = availableSites[0].id;
+
+    try {
+      const patrol = await PatrolService.startPatrol(siteId, profile.id);
+      setActivePatrol(patrol);
+      toast({
+        title: "Patrol Started",
+        description: `Patrol started at ${availableSites[0].name}`,
+      });
+      fetchDashboardStats();
+      fetchRecentActivities();
+    } catch (error) {
+      console.error('Error starting patrol:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to start patrol",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEndPatrol = async () => {
+    if (!activePatrol) return;
+
+    try {
+      await PatrolService.endPatrol(activePatrol.id);
+      setActivePatrol(null);
+      toast({
+        title: "Patrol Ended",
+        description: "Patrol completed successfully",
+      });
+      fetchDashboardStats();
+      fetchRecentActivities();
+    } catch (error) {
+      console.error('Error ending patrol:', error);
+      toast({
+        title: "Error",
+        description: "Failed to end patrol",
+        variant: "destructive"
+      });
+    }
+  };
 
   const fetchDashboardStats = async () => {
     try {
@@ -249,9 +355,44 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
           </div>
           <div className="flex items-center space-x-1">
             <MapPin className="h-4 w-4" />
-            <span>{t('dashboard.on_duty')}</span>
+            <span>{activePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
           </div>
         </div>
+      </div>
+
+      {/* Patrol Control */}
+      <div className="mb-6">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                  Patrol Status
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {activePatrol ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : 'No active patrol'}
+                </p>
+              </div>
+              <Button
+                onClick={activePatrol ? handleEndPatrol : handleStartPatrol}
+                className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}
+                disabled={!activePatrol && availableSites.length === 0}
+              >
+                {activePatrol ? (
+                  <>
+                    <Square className="h-4 w-4 mr-2" />
+                    End Patrol
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    Start Patrol
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
@@ -328,7 +469,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                   {t('dashboard.status')}
                 </p>
-                <p className="text-sm font-bold text-green-600">{t('dashboard.active')}</p>
+                <p className="text-sm font-bold text-green-600">{activePatrol ? 'On Patrol' : t('dashboard.active')}</p>
               </div>
               <User className="h-8 w-8 text-blue-500" />
             </div>
