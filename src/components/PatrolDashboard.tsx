@@ -12,17 +12,14 @@ import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import { useToast } from '@/components/ui/use-toast';
-
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
 }
-
 interface DashboardStats {
   totalPatrols: number;
   totalObservations: number;
   totalIncidents: number;
 }
-
 interface RecentActivity {
   id: string;
   type: 'checkpoint' | 'observation' | 'patrol' | 'emergency';
@@ -31,7 +28,6 @@ interface RecentActivity {
   timestamp: string;
   color: string;
 }
-
 interface PatrolSession {
   id: string;
   guard_id: string;
@@ -45,12 +41,21 @@ interface PatrolSession {
   created_at: string;
   updated_at: string;
 }
-
-const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
-  const { t } = useLanguage();
-  const { profile } = useAuth();
-  const { toast } = useToast();
-  const { isTracking } = useLocationTracking();
+const PatrolDashboard = ({
+  onNavigate
+}: PatrolDashboardProps) => {
+  const {
+    t
+  } = useLanguage();
+  const {
+    profile
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    isTracking
+  } = useLocationTracking();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showObservations, setShowObservations] = useState(false);
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
@@ -66,13 +71,14 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const [locationPermissionStatus, setLocationPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
   const [recentLocations, setRecentLocations] = useState<any[]>([]);
   const [isTestingLocation, setIsTestingLocation] = useState(false);
-  const [browserInstructions, setBrowserInstructions] = useState<{ browser: string; instructions: string[] } | null>(null);
-
+  const [browserInstructions, setBrowserInstructions] = useState<{
+    browser: string;
+    instructions: string[];
+  } | null>(null);
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
   useEffect(() => {
     if (profile?.id) {
       fetchDashboardStats();
@@ -82,13 +88,14 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       checkLocationPermission();
     }
   }, [profile?.id]);
-
   const checkLocationPermission = async () => {
     if ('permissions' in navigator) {
       try {
-        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        const permission = await navigator.permissions.query({
+          name: 'geolocation'
+        });
         setLocationPermissionStatus(permission.state);
-        
+
         // Listen for permission changes
         permission.addEventListener('change', () => {
           setLocationPermissionStatus(permission.state);
@@ -98,10 +105,8 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       }
     }
   };
-
   const checkActivePatrol = async () => {
     if (!profile?.id) return;
-    
     try {
       const patrol = await PatrolService.getActivePatrol(profile.id);
       setActivePatrol(patrol);
@@ -109,10 +114,8 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       console.error('Error checking active patrol:', error);
     }
   };
-
   const fetchAvailableSites = async () => {
     if (!profile?.id) return;
-    
     try {
       const sites = await PatrolService.getAvailableSites(profile.id);
       setAvailableSites(sites);
@@ -120,7 +123,6 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       console.error('Error fetching available sites:', error);
     }
   };
-
   const handleStartPatrol = async () => {
     if (!profile?.id) {
       toast({
@@ -130,7 +132,6 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       });
       return;
     }
-
     if (availableSites.length === 0) {
       toast({
         title: "No Sites Available",
@@ -142,13 +143,12 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
     // For now, use the first available site. In a real app, you might want to show a selection dialog
     const siteId = availableSites[0].id;
-
     try {
       const patrol = await PatrolService.startPatrol(siteId, profile.id);
       setActivePatrol(patrol);
       toast({
         title: "Patrol Started",
-        description: `Patrol started at ${availableSites[0].name}. Location tracking will begin shortly.`,
+        description: `Patrol started at ${availableSites[0].name}. Location tracking will begin shortly.`
       });
       fetchDashboardStats();
       fetchRecentActivities();
@@ -161,16 +161,14 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       });
     }
   };
-
   const handleEndPatrol = async () => {
     if (!activePatrol) return;
-
     try {
       await PatrolService.endPatrol(activePatrol.id);
       setActivePatrol(null);
       toast({
         title: "Patrol Ended",
-        description: "Patrol completed successfully. Location tracking stopped.",
+        description: "Patrol completed successfully. Location tracking stopped."
       });
       fetchDashboardStats();
       fetchRecentActivities();
@@ -183,28 +181,25 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       });
     }
   };
-
   const handleForcePermissionReset = async () => {
     console.log('🔄 User requested force permission reset...');
     setIsTestingLocation(true);
-    
     try {
-      const { LocationTrackingService } = await import('@/services/LocationTrackingService');
-      
+      const {
+        LocationTrackingService
+      } = await import('@/services/LocationTrackingService');
       toast({
         title: "🔄 Resetting Location Permissions",
-        description: "Attempting to clear cached permissions and request fresh access...",
+        description: "Attempting to clear cached permissions and request fresh access..."
       });
-
       const success = await LocationTrackingService.forcePermissionReset();
-      
       if (success) {
         setLocationPermissionStatus('granted');
         toast({
           title: "✅ Permission Reset Successful!",
-          description: "Location access has been restored. Location tracking should now work properly.",
+          description: "Location access has been restored. Location tracking should now work properly."
         });
-        
+
         // Also test location to verify
         const testResult = await LocationTrackingService.testLocationNow();
         if (testResult.success && profile?.id) {
@@ -215,7 +210,6 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         setLocationPermissionStatus('denied');
         const instructions = LocationTrackingService.getBrowserResetInstructions();
         setBrowserInstructions(instructions);
-        
         toast({
           title: "❌ Automatic Reset Failed",
           description: `Please try the manual steps for ${instructions.browser}. Instructions are shown below.`,
@@ -233,32 +227,28 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       setIsTestingLocation(false);
     }
   };
-
   const handleTestLocation = async () => {
     console.log('🧪 User requested location test...');
     setIsTestingLocation(true);
-    
     try {
-      const { LocationTrackingService } = await import('@/services/LocationTrackingService');
+      const {
+        LocationTrackingService
+      } = await import('@/services/LocationTrackingService');
       const result = await LocationTrackingService.testLocationNow();
-      
       console.log('Test result:', result);
-      
       if (result.success) {
         toast({
           title: "✅ Location Test Successful!",
-          description: `Got location: ${result.position?.latitude.toFixed(6)}, ${result.position?.longitude.toFixed(6)} (accuracy: ${result.position?.accuracy}m)`,
+          description: `Got location: ${result.position?.latitude.toFixed(6)}, ${result.position?.longitude.toFixed(6)} (accuracy: ${result.position?.accuracy}m)`
         });
         setLocationPermissionStatus('granted');
-        
         if (profile?.id) {
           const locations = await LocationTrackingService.getRecentLocations(profile.id, 5);
           setRecentLocations(locations);
-          
           if (locations.length > 0) {
             toast({
               title: "✅ Database Check Passed",
-              description: `Found ${locations.length} recent location records. Latest: ${new Date(locations[0]?.created_at).toLocaleTimeString()}`,
+              description: `Found ${locations.length} recent location records. Latest: ${new Date(locations[0]?.created_at).toLocaleTimeString()}`
             });
           } else {
             toast({
@@ -270,21 +260,15 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         }
       } else {
         setLocationPermissionStatus('denied');
-        const errorMessage = result.error?.code === 1 ? "Permission denied by user" :
-                           result.error?.code === 2 ? "Position unavailable" :
-                           result.error?.code === 3 ? "Request timeout" :
-                           "Unknown error";
-        
+        const errorMessage = result.error?.code === 1 ? "Permission denied by user" : result.error?.code === 2 ? "Position unavailable" : result.error?.code === 3 ? "Request timeout" : "Unknown error";
         toast({
           title: "❌ Location Test Failed",
           description: `${errorMessage}: ${result.error?.message || 'Unknown error'}`,
           variant: "destructive"
         });
-        
         if (result.recommendations) {
           setBrowserInstructions({
-            browser: navigator.userAgent.includes('Chrome') ? 'Chrome' : 
-                    navigator.userAgent.includes('Safari') ? 'Safari' : 'Browser',
+            browser: navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Browser',
             instructions: result.recommendations
           });
         }
@@ -300,19 +284,18 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       setIsTestingLocation(false);
     }
   };
-
   const handleRequestPermission = async () => {
     try {
       console.log('🔄 Requesting location permission...');
-      
-      const { LocationTrackingService } = await import('@/services/LocationTrackingService');
+      const {
+        LocationTrackingService
+      } = await import('@/services/LocationTrackingService');
       const success = await LocationTrackingService.requestLocationPermission();
-      
       if (success) {
         setLocationPermissionStatus('granted');
         toast({
           title: "Location Access Granted! ✅",
-          description: "Location tracking is now available. Try testing location again.",
+          description: "Location tracking is now available. Try testing location again."
         });
       } else {
         toast({
@@ -330,39 +313,37 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       });
     }
   };
-
   const fetchDashboardStats = async () => {
     try {
       // Get user's team memberships
-      const { data: teamMemberships } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('profile_id', profile?.id);
-
+      const {
+        data: teamMemberships
+      } = await supabase.from('team_members').select('team_id').eq('profile_id', profile?.id);
       if (!teamMemberships || teamMemberships.length === 0) {
         return;
       }
-
       const teamIds = teamMemberships.map(tm => tm.team_id);
 
       // Fetch patrol sessions count
-      const { count: patrolCount } = await supabase
-        .from('patrol_sessions')
-        .select('*', { count: 'exact' })
-        .in('team_id', teamIds);
+      const {
+        count: patrolCount
+      } = await supabase.from('patrol_sessions').select('*', {
+        count: 'exact'
+      }).in('team_id', teamIds);
 
       // Fetch observations count
-      const { count: observationsCount } = await supabase
-        .from('patrol_observations')
-        .select('*', { count: 'exact' })
-        .in('team_id', teamIds);
+      const {
+        count: observationsCount
+      } = await supabase.from('patrol_observations').select('*', {
+        count: 'exact'
+      }).in('team_id', teamIds);
 
       // Fetch emergency reports count
-      const { count: incidentsCount } = await supabase
-        .from('emergency_reports')
-        .select('*', { count: 'exact' })
-        .in('team_id', teamIds);
-
+      const {
+        count: incidentsCount
+      } = await supabase.from('emergency_reports').select('*', {
+        count: 'exact'
+      }).in('team_id', teamIds);
       setStats({
         totalPatrols: patrolCount || 0,
         totalObservations: observationsCount || 0,
@@ -372,45 +353,35 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       console.error('Error fetching dashboard stats:', error);
     }
   };
-
   const fetchRecentActivities = async () => {
     try {
       // Get user's team memberships
-      const { data: teamMemberships } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('profile_id', profile?.id);
-
+      const {
+        data: teamMemberships
+      } = await supabase.from('team_members').select('team_id').eq('profile_id', profile?.id);
       if (!teamMemberships || teamMemberships.length === 0) {
         return;
       }
-
       const teamIds = teamMemberships.map(tm => tm.team_id);
       const activities: RecentActivity[] = [];
 
       // Fetch recent patrol sessions with guard info
-      const { data: recentPatrols } = await supabase
-        .from('patrol_sessions')
-        .select(`
+      const {
+        data: recentPatrols
+      } = await supabase.from('patrol_sessions').select(`
           *,
           profiles!patrol_sessions_guard_id_fkey (
             first_name,
             last_name,
             full_name
           )
-        `)
-        .in('team_id', teamIds)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
+        `).in('team_id', teamIds).order('created_at', {
+        ascending: false
+      }).limit(3);
       if (recentPatrols) {
         recentPatrols.forEach(patrol => {
           const guardProfile = patrol.profiles as any;
-          const guardName = guardProfile?.full_name || 
-                          (guardProfile?.first_name && guardProfile?.last_name 
-                            ? `${guardProfile.first_name} ${guardProfile.last_name}`
-                            : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
-          
+          const guardName = guardProfile?.full_name || (guardProfile?.first_name && guardProfile?.last_name ? `${guardProfile.first_name} ${guardProfile.last_name}` : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
           activities.push({
             id: patrol.id,
             type: 'patrol',
@@ -423,28 +394,22 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       }
 
       // Fetch recent observations with guard info
-      const { data: recentObservations } = await supabase
-        .from('patrol_observations')
-        .select(`
+      const {
+        data: recentObservations
+      } = await supabase.from('patrol_observations').select(`
           *,
           profiles!patrol_observations_guard_id_fkey (
             first_name,
             last_name,
             full_name
           )
-        `)
-        .in('team_id', teamIds)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
+        `).in('team_id', teamIds).order('created_at', {
+        ascending: false
+      }).limit(3);
       if (recentObservations) {
         recentObservations.forEach(observation => {
           const guardProfile = observation.profiles as any;
-          const guardName = guardProfile?.full_name || 
-                          (guardProfile?.first_name && guardProfile?.last_name 
-                            ? `${guardProfile.first_name} ${guardProfile.last_name}`
-                            : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
-          
+          const guardName = guardProfile?.full_name || (guardProfile?.first_name && guardProfile?.last_name ? `${guardProfile.first_name} ${guardProfile.last_name}` : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
           activities.push({
             id: observation.id,
             type: 'observation',
@@ -457,28 +422,22 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       }
 
       // Fetch recent emergency reports with guard info
-      const { data: recentEmergencies } = await supabase
-        .from('emergency_reports')
-        .select(`
+      const {
+        data: recentEmergencies
+      } = await supabase.from('emergency_reports').select(`
           *,
           profiles!emergency_reports_guard_id_fkey (
             first_name,
             last_name,
             full_name
           )
-        `)
-        .in('team_id', teamIds)
-        .order('created_at', { ascending: false })
-        .limit(2);
-
+        `).in('team_id', teamIds).order('created_at', {
+        ascending: false
+      }).limit(2);
       if (recentEmergencies) {
         recentEmergencies.forEach(emergency => {
           const guardProfile = emergency.profiles as any;
-          const guardName = guardProfile?.full_name || 
-                          (guardProfile?.first_name && guardProfile?.last_name 
-                            ? `${guardProfile.first_name} ${guardProfile.last_name}`
-                            : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
-          
+          const guardName = guardProfile?.full_name || (guardProfile?.first_name && guardProfile?.last_name ? `${guardProfile.first_name} ${guardProfile.last_name}` : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
           activities.push({
             id: emergency.id,
             type: 'emergency',
@@ -491,68 +450,53 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       }
 
       // Sort all activities by timestamp and take the most recent 5
-      const sortedActivities = activities
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 5);
-
+      const sortedActivities = activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
       setRecentActivities(sortedActivities);
     } catch (error) {
       console.error('Error fetching recent activities:', error);
     }
   };
-
   const getTimeAgo = (timestamp: string) => {
     const now = new Date();
     const past = new Date(timestamp);
     const diffInMinutes = Math.floor((now.getTime() - past.getTime()) / (1000 * 60));
-    
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes} ${t('dashboard.minutes_ago')}`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} ${t('dashboard.hour_ago')}`;
     return `${Math.floor(diffInMinutes / 1440)} days ago`;
   };
-
-  const quickActions = [
-    {
-      id: 'scanner',
-      title: t('nav.scan'),
-      description: t('dashboard.scan_description'),
-      icon: Camera,
-      color: 'bg-blue-500',
-      action: () => onNavigate('scanner')
-    },
-    {
-      id: 'observation',
-      title: t('nav.report'),
-      description: t('dashboard.report_description'),
-      icon: AlertTriangle,
-      color: 'bg-yellow-500',
-      action: () => onNavigate('observation')
-    },
-    {
-      id: 'emergency',
-      title: t('dashboard.emergency'),
-      description: t('dashboard.emergency_description'),
-      icon: Shield,
-      color: 'bg-red-500',
-      action: () => onNavigate('emergency')
-    }
-  ];
-
+  const quickActions = [{
+    id: 'scanner',
+    title: t('nav.scan'),
+    description: t('dashboard.scan_description'),
+    icon: Camera,
+    color: 'bg-blue-500',
+    action: () => onNavigate('scanner')
+  }, {
+    id: 'observation',
+    title: t('nav.report'),
+    description: t('dashboard.report_description'),
+    icon: AlertTriangle,
+    color: 'bg-yellow-500',
+    action: () => onNavigate('observation')
+  }, {
+    id: 'emergency',
+    title: t('dashboard.emergency'),
+    description: t('dashboard.emergency_description'),
+    icon: Shield,
+    color: 'bg-red-500',
+    action: () => onNavigate('emergency')
+  }];
   if (showObservations) {
     return <TeamObservations onBack={() => setShowObservations(false)} />;
   }
-
   if (showPatrolSessions) {
     return <PatrolSessions onBack={() => setShowPatrolSessions(false)} />;
   }
-
   if (showEmergencyReports) {
     return <TeamEmergencyReports onBack={() => setShowEmergencyReports(false)} />;
   }
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+  return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />
 
@@ -570,18 +514,15 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
             <MapPin className="h-4 w-4" />
             <span>{activePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
           </div>
-          {isTracking && (
-            <div className="flex items-center space-x-1 text-green-600">
+          {isTracking && <div className="flex items-center space-x-1 text-green-600">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span>Location Tracking Active</span>
-            </div>
-          )}
+            </div>}
         </div>
       </div>
 
       {/* Enhanced Location Permission Alert */}
-      {(locationPermissionStatus === 'denied' || locationPermissionStatus === 'unknown') && (
-        <div className="mb-6">
+      {(locationPermissionStatus === 'denied' || locationPermissionStatus === 'unknown') && <div className="mb-6">
           <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
             <CardContent className="p-4">
               <div className="space-y-4">
@@ -592,46 +533,28 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                   <p className="text-sm text-red-600 dark:text-red-300 mb-2">
                     Location tracking is essential for patrol functionality. Current status: <strong>{locationPermissionStatus}</strong>
                   </p>
-                  {recentLocations.length > 0 && (
-                    <p className="text-sm text-green-600 mb-2">
+                  {recentLocations.length > 0 && <p className="text-sm text-green-600 mb-2">
                       ✅ Database: {recentLocations.length} recent location records found
-                    </p>
-                  )}
+                    </p>}
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={handleTestLocation}
-                    variant="outline"
-                    size="sm"
-                    disabled={isTestingLocation}
-                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                  >
+                  <Button onClick={handleTestLocation} variant="outline" size="sm" disabled={isTestingLocation} className="border-blue-300 text-blue-700 hover:bg-blue-100">
                     {isTestingLocation ? '🔄 Testing...' : '🧪 Test Location'}
                   </Button>
-                  <Button
-                    onClick={handleForcePermissionReset}
-                    variant="outline"
-                    size="sm"
-                    disabled={isTestingLocation}
-                    className="border-orange-300 text-orange-700 hover:bg-orange-100"
-                  >
+                  <Button onClick={handleForcePermissionReset} variant="outline" size="sm" disabled={isTestingLocation} className="border-orange-300 text-orange-700 hover:bg-orange-100">
                     {isTestingLocation ? '🔄 Resetting...' : '🔄 Force Reset Permissions'}
                   </Button>
                 </div>
                 
-                {browserInstructions && (
-                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                {browserInstructions && <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
                     <h4 className="font-semibold text-yellow-800 mb-2">
                       📋 Manual Fix for {browserInstructions.browser}:
                     </h4>
                     <ul className="text-xs text-yellow-700 space-y-1">
-                      {browserInstructions.instructions.map((instruction, index) => (
-                        <li key={index}>{instruction}</li>
-                      ))}
+                      {browserInstructions.instructions.map((instruction, index) => <li key={index}>{instruction}</li>)}
                     </ul>
-                  </div>
-                )}
+                  </div>}
                 
                 <div className="text-xs text-red-500 space-y-1">
                   <div>💡 If location still doesn't work, try opening this page in an incognito/private window</div>
@@ -641,12 +564,10 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
+        </div>}
 
       {/* Show location success when permission is granted */}
-      {locationPermissionStatus === 'granted' && (
-        <div className="mb-6">
+      {locationPermissionStatus === 'granted' && <div className="mb-6">
           <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
             <CardContent className="p-4">
               <div className="flex items-center space-x-2 mb-2">
@@ -655,21 +576,16 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                   ✅ Location Access Enabled
                 </h3>
               </div>
-              {recentLocations.length > 0 ? (
-                <div className="text-sm text-green-600 dark:text-green-300 space-y-1">
+              {recentLocations.length > 0 ? <div className="text-sm text-green-600 dark:text-green-300 space-y-1">
                   <p>Database: {recentLocations.length} recent location records found</p>
                   <p className="break-words">Latest: {new Date(recentLocations[0]?.created_at).toLocaleString()}</p>
                   <p className="break-all">Coordinates: {recentLocations[0]?.latitude?.toFixed(6)}, {recentLocations[0]?.longitude?.toFixed(6)}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-yellow-600 dark:text-yellow-300">
+                </div> : <p className="text-sm text-yellow-600 dark:text-yellow-300">
                   Location access works, but no database records found. Location tracking will create records during patrols.
-                </p>
-              )}
+                </p>}
             </CardContent>
           </Card>
-        </div>
-      )}
+        </div>}
 
       {/* Patrol Control */}
       <div className="mb-6">
@@ -683,39 +599,20 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                 <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
                   {activePatrol ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : 'No active patrol'}
                 </p>
-                {isTracking && (
-                  <p className="text-xs text-green-600 mt-1">
+                {isTracking && <p className="text-xs text-green-600 mt-1">
                     📍 Location updates every minute
-                  </p>
-                )}
+                  </p>}
               </div>
               <div className="flex gap-2 flex-shrink-0">
-                {!activePatrol && (
-                  <Button
-                    onClick={handleTestLocation}
-                    variant="outline"
-                    size="sm"
-                    disabled={isTestingLocation}
-                  >
-                    {isTestingLocation ? '🔄' : '🧪'} Test
-                  </Button>
-                )}
-                <Button
-                  onClick={activePatrol ? handleEndPatrol : handleStartPatrol}
-                  className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}
-                  disabled={!activePatrol && availableSites.length === 0}
-                >
-                  {activePatrol ? (
-                    <>
+                {!activePatrol}
+                <Button onClick={activePatrol ? handleEndPatrol : handleStartPatrol} className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} disabled={!activePatrol && availableSites.length === 0}>
+                  {activePatrol ? <>
                       <Square className="h-4 w-4 mr-2" />
                       End Patrol
-                    </>
-                  ) : (
-                    <>
+                    </> : <>
                       <Play className="h-4 w-4 mr-2" />
                       Start Patrol
-                    </>
-                  )}
+                    </>}
                 </Button>
               </div>
             </div>
@@ -725,8 +622,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {quickActions.map((action) => (
-          <Card key={action.id} className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden">
+        {quickActions.map(action => <Card key={action.id} className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden">
             <CardContent className="p-6" onClick={action.action}>
               <div className="flex items-center space-x-4">
                 <div className={`${action.color} p-3 rounded-full flex-shrink-0`}>
@@ -742,8 +638,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        ))}
+          </Card>)}
       </div>
 
       {/* Status Cards */}
@@ -812,29 +707,21 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentActivities.length === 0 ? (
-              <div className="text-center py-8">
+            {recentActivities.length === 0 ? <div className="text-center py-8">
                 <p className="text-gray-500 dark:text-gray-400">
                   No recent activity found
                 </p>
-              </div>
-            ) : (
-              recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
+              </div> : recentActivities.map(activity => <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
                   <div className={`w-2 h-2 ${activity.color} rounded-full flex-shrink-0`}></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{activity.title}</p>
                     <p className="text-xs text-gray-500 break-words">{activity.description}</p>
                   </div>
                   <span className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">{getTimeAgo(activity.timestamp)}</span>
-                </div>
-              ))
-            )}
+                </div>)}
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default PatrolDashboard;
