@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -659,8 +658,8 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
               {recentLocations.length > 0 ? (
                 <div className="text-sm text-green-600 dark:text-green-300 space-y-1">
                   <p>Database: {recentLocations.length} recent location records found</p>
-                  <p>Latest: {new Date(recentLocations[0]?.created_at).toLocaleString()}</p>
-                  <p>Coordinates: {recentLocations[0]?.latitude?.toFixed(6)}, {recentLocations[0]?.longitude?.toFixed(6)}</p>
+                  <p className="break-words">Latest: {new Date(recentLocations[0]?.created_at).toLocaleString()}</p>
+                  <p className="break-all">Coordinates: {recentLocations[0]?.latitude?.toFixed(6)}, {recentLocations[0]?.longitude?.toFixed(6)}</p>
                 </div>
               ) : (
                 <p className="text-sm text-yellow-600 dark:text-yellow-300">
@@ -674,14 +673,14 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
       {/* Patrol Control */}
       <div className="mb-6">
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+              <div className="flex-1 min-w-0 pr-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 truncate">
                   Patrol Status
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
+                <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
                   {activePatrol ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : 'No active patrol'}
                 </p>
                 {isTracking && (
@@ -690,7 +689,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                   </p>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-shrink-0">
                 {!activePatrol && (
                   <Button
                     onClick={handleTestLocation}
@@ -727,17 +726,17 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {quickActions.map((action) => (
-          <Card key={action.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+          <Card key={action.id} className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden">
             <CardContent className="p-6" onClick={action.action}>
               <div className="flex items-center space-x-4">
-                <div className={`${action.color} p-3 rounded-full`}>
+                <div className={`${action.color} p-3 rounded-full flex-shrink-0`}>
                   <action.icon className="h-6 w-6 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                     {action.title}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                  <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
                     {action.description}
                   </p>
                 </div>
@@ -749,65 +748,65 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
       {/* Status Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowPatrolSessions(true)}>
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowPatrolSessions(true)}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.patrol_rounds')}
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPatrols}</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
+              <TrendingUp className="h-8 w-8 text-green-500 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowObservations(true)}>
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowObservations(true)}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.observations')}
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalObservations}</p>
               </div>
-              <AlertTriangle className="h-8 w-8 text-yellow-500" />
+              <AlertTriangle className="h-8 w-8 text-yellow-500 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowEmergencyReports(true)}>
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowEmergencyReports(true)}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.incidents')}
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalIncidents}</p>
               </div>
-              <Shield className="h-8 w-8 text-red-500" />
+              <Shield className="h-8 w-8 text-red-500 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.status')}
                 </p>
-                <p className="text-sm font-bold text-green-600">{activePatrol ? 'On Patrol' : t('dashboard.active')}</p>
+                <p className="text-sm font-bold text-green-600 truncate">{activePatrol ? 'On Patrol' : t('dashboard.active')}</p>
               </div>
-              <User className="h-8 w-8 text-blue-500" />
+              <User className="h-8 w-8 text-blue-500 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Recent Activity */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>{t('dashboard.recent_activity')}</CardTitle>
         </CardHeader>
@@ -821,13 +820,13 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
               </div>
             ) : (
               recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className={`w-2 h-2 ${activity.color} rounded-full`}></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.title}</p>
-                    <p className="text-xs text-gray-500">{activity.description}</p>
+                <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
+                  <div className={`w-2 h-2 ${activity.color} rounded-full flex-shrink-0`}></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{activity.title}</p>
+                    <p className="text-xs text-gray-500 break-words">{activity.description}</p>
                   </div>
-                  <span className="text-xs text-gray-500">{getTimeAgo(activity.timestamp)}</span>
+                  <span className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">{getTimeAgo(activity.timestamp)}</span>
                 </div>
               ))
             )}
