@@ -349,6 +349,42 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     }
   ];
 
+  const handleRequestLocationPermission = async () => {
+    try {
+      console.log('Manually requesting location permission...');
+      
+      // Try to get location which will trigger permission request
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log('Location permission granted:', position);
+            setLocationPermissionStatus('granted');
+            toast({
+              title: "Location Access Granted",
+              description: "Location tracking is now available for patrols.",
+            });
+          },
+          (error) => {
+            console.error('Location permission denied:', error);
+            setLocationPermissionStatus('denied');
+            toast({
+              title: "Location Access Denied",
+              description: "Please enable location access in your browser settings to use location tracking during patrols.",
+              variant: "destructive"
+            });
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 600000
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+    }
+  };
+
   if (showObservations) {
     return <TeamObservations onBack={() => setShowObservations(false)} />;
   }
@@ -383,8 +419,47 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
               <span>Location Tracking Active</span>
             </div>
           )}
+          {locationPermissionStatus === 'denied' && (
+            <div className="flex items-center space-x-1 text-red-600">
+              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+              <span>Location Access Denied</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Location Permission Alert */}
+      {locationPermissionStatus === 'denied' && (
+        <div className="mb-6">
+          <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">
+                    Location Access Required
+                  </h3>
+                  <p className="text-sm text-red-600 dark:text-red-300">
+                    Location tracking is disabled. To enable location tracking during patrols, please:
+                  </p>
+                  <ul className="text-sm text-red-600 dark:text-red-300 mt-1 ml-4 list-disc">
+                    <li>Click the location icon in your browser's address bar</li>
+                    <li>Select "Allow" for location access</li>
+                    <li>Or try the button below to request permission again</li>
+                  </ul>
+                </div>
+                <Button
+                  onClick={handleRequestLocationPermission}
+                  variant="outline"
+                  size="sm"
+                  className="border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  Enable Location
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Patrol Control */}
       <div className="mb-6">
@@ -403,9 +478,14 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                     Location updates every minute
                   </p>
                 )}
-                {activePatrol && !isTracking && (
+                {activePatrol && !isTracking && locationPermissionStatus === 'granted' && (
                   <p className="text-xs text-orange-600 mt-1">
-                    Location tracking starting... Please allow location access if prompted
+                    Location tracking starting...
+                  </p>
+                )}
+                {activePatrol && !isTracking && locationPermissionStatus === 'denied' && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Location tracking disabled - enable location access to track patrol
                   </p>
                 )}
               </div>

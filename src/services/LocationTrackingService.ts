@@ -13,24 +13,30 @@ export class LocationTrackingService {
 
     console.log('Starting location tracking for guard:', guardId);
 
-    // Try to get location immediately - this will trigger permission request
-    const initialPosition = await this.getCurrentPosition();
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+      console.error('Geolocation is not supported by this browser');
+      return;
+    }
+
+    // Try to get initial position with very permissive settings
+    const initialPosition = await this.getCurrentPositionWithRetry();
     if (!initialPosition) {
-      console.warn('Could not get initial location - location tracking will not start');
+      console.warn('Could not get initial location after multiple attempts');
       return;
     }
 
     console.log('Initial location obtained successfully:', initialPosition);
     this.isTracking = true;
 
-    // Start immediate tracking with the initial position
+    // Update location immediately
     await this.updateLocation(guardId, initialPosition);
 
     // Set up interval for every minute (60000ms)
     this.trackingInterval = setInterval(async () => {
       if (this.isTracking) {
         console.log('Getting location update...');
-        const position = await this.getCurrentPosition();
+        const position = await this.getCurrentPositionWithRetry();
         if (position) {
           await this.updateLocation(guardId, position);
         } else {
@@ -109,23 +115,48 @@ export class LocationTrackingService {
     }
   }
 
-  private static getCurrentPosition(): Promise<{ latitude: number; longitude: number } | null> {
+  private static async getCurrentPositionWithRetry(): Promise<{ latitude: number; longitude: number } | null> {
+    console.log('Attempting to get current position...');
+    
+    // First attempt with high accuracy
+    let position = await this.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 300000 // 5 minutes
+    });
+
+    if (position) {
+      return position;
+    }
+
+    console.log('High accuracy failed, trying with reduced accuracy...');
+    
+    // Second attempt with reduced accuracy
+    position = await this.getCurrentPosition({
+      enableHighAccuracy: false,
+      timeout: 30000,
+      maximumAge: 600000 // 10 minutes
+    });
+
+    if (position) {
+      return position;
+    }
+
+    console.log('All location attempts failed');
+    return null;
+  }
+
+  private static getCurrentPosition(options: PositionOptions): Promise<{ latitude: number; longitude: number } | null> {
     return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        console.error('Geolocation is not supported by this browser');
-        resolve(null);
-        return;
-      }
+      console.log('Requesting position with options:', options);
 
-      console.log('Requesting current position...');
-
-      // Use a more permissive approach - try high accuracy first with shorter timeout
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('Location obtained successfully:', {
+          console.log('Location obtained:', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
+            accuracy: position.coords.accuracy,
+            timestamp: new Date(position.timestamp).toISOString()
           });
           resolve({
             latitude: position.coords.latitude,
@@ -133,42 +164,35 @@ export class LocationTrackingService {
           });
         },
         (error) => {
-          console.log('High accuracy location failed, trying with lower settings. Error:', error.message);
-          
-          // Fallback with very permissive settings
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              console.log('Fallback location obtained:', {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy
-              });
-              resolve({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude
-              });
-            },
-            (fallbackError) => {
-              console.error('All location attempts failed. Final error:', fallbackError.message, 'Code:', fallbackError.code);
-              resolve(null);
-            },
-            {
-              enableHighAccuracy: false,
-              timeout: 30000, // 30 seconds
-              maximumAge: 600000 // 10 minutes - accept cached location
-            }
-          );
+          console.error('Geolocation error:', {
+            code: error.code,
+            message: error.message,
+            PERMISSION_DENIED: error.code === 1,
+            POSITION_UNAVAILABLE: error.code === 2,
+            TIMEOUT: error.code === 3
+          });
+          resolve(null);
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000, // 10 seconds
-          maximumAge: 60000 // 1 minute
-        }
+        options
       );
     });
   }
 
   static isCurrentlyTracking(): boolean {
     return this.isTracking;
+  }
+
+  static async checkPermissionStatus(): Promise<string> {
+    if ('permissions' in navigator) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        console.log('Permission status:', permission.state);
+        return permission.state;
+      } catch (error) {
+        console.error('Error checking permission:', error);
+        return 'unknown';
+      }
+    }
+    return 'unknown';
   }
 }
