@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, Clock, User, Shield, AlertTriangle, CheckCircle, FileText, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -401,50 +402,50 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
           {reports.map((report) => (
             <Card 
               key={report.id} 
-              className="cursor-pointer hover:shadow-lg transition-shadow"
+              className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
               onClick={() => handleReportSelect(report)}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-2 flex items-center">
-                      <Shield className="h-5 w-5 mr-2 text-red-500" />
-                      {report.title}
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg mb-2 break-words line-clamp-2 flex items-center">
+                      <Shield className="h-5 w-5 mr-2 text-red-500 flex-shrink-0" />
+                      <span className="truncate">{report.title}</span>
                     </CardTitle>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
-                      <div className="flex items-center space-x-1">
-                        <User className="h-4 w-4" />
-                        <span>{getGuardName(report)}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs text-gray-600 dark:text-gray-300">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <User className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{getGuardName(report)}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{new Date(report.created_at).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Calendar className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{new Date(report.created_at).toLocaleDateString()}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{new Date(report.created_at).toLocaleTimeString()}</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Clock className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{new Date(report.created_at).toLocaleTimeString()}</span>
                       </div>
                       {report.location && (
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{report.location}</span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate text-xs">{report.location}</span>
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col space-y-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(report.severity)}`}>
+                  <div className="flex flex-col gap-1 flex-shrink-0">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getSeverityColor(report.severity)}`}>
                       {report.severity.toUpperCase()}
                     </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(report.status)}`}>
                       {report.status.toUpperCase()}
                     </span>
                   </div>
                 </div>
               </CardHeader>
               {report.description && (
-                <CardContent>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-2">
+                <CardContent className="pt-0">
+                  <p className="text-gray-700 dark:text-gray-300 text-sm break-words line-clamp-2">
                     {report.description}
                   </p>
                 </CardContent>
