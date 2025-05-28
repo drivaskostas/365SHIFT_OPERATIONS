@@ -39,6 +39,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null)
         setLoading(false)
+        
+        // Stop location tracking when user signs out
+        if (event === 'SIGNED_OUT') {
+          // Dynamic import to avoid circular dependencies
+          import('@/services/LocationTrackingService').then(({ LocationTrackingService }) => {
+            LocationTrackingService.stopTracking();
+          });
+        }
       }
     })
 

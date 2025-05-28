@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { supabase } from '@/integrations/supabase/client';
 import { PatrolService } from '@/services/PatrolService';
 import TeamObservations from '@/components/TeamObservations';
@@ -48,6 +49,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const { t } = useLanguage();
   const { profile } = useAuth();
   const { toast } = useToast();
+  const { isTracking } = useLocationTracking();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showObservations, setShowObservations] = useState(false);
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
@@ -124,7 +126,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       setActivePatrol(patrol);
       toast({
         title: "Patrol Started",
-        description: `Patrol started at ${availableSites[0].name}`,
+        description: `Patrol started at ${availableSites[0].name}. Location tracking enabled.`,
       });
       fetchDashboardStats();
       fetchRecentActivities();
@@ -146,7 +148,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       setActivePatrol(null);
       toast({
         title: "Patrol Ended",
-        description: "Patrol completed successfully",
+        description: "Patrol completed successfully. Location tracking stopped.",
       });
       fetchDashboardStats();
       fetchRecentActivities();
@@ -357,6 +359,12 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
             <MapPin className="h-4 w-4" />
             <span>{activePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
           </div>
+          {isTracking && (
+            <div className="flex items-center space-x-1 text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Location Tracking Active</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -372,6 +380,11 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   {activePatrol ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : 'No active patrol'}
                 </p>
+                {isTracking && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Location updates every minute
+                  </p>
+                )}
               </div>
               <Button
                 onClick={activePatrol ? handleEndPatrol : handleStartPatrol}
