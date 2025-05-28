@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Camera, MapPin, Clock, Send, X } from 'lucide-react';
+import { ArrowLeft, Camera, MapPin, Clock, Send, X, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,15 +29,22 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [locationInfo, setLocationInfo] = useState<{
+    coordinates: { latitude: number; longitude: number } | null;
+    source: 'database' | 'device' | 'none';
+    status: 'loading' | 'success' | 'error';
+  }>({
+    coordinates: null,
+    source: 'none',
+    status: 'loading'
+  });
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (user) {
       loadActivePatrol();
-      getCurrentLocation();
+      loadLocationInfo();
     }
   }, [user]);
 
@@ -50,28 +57,62 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
     };
   }, [stream]);
 
-  const getCurrentLocation = async () => {
-    console.log('🔄 Getting current location for observation...');
-    setLocationStatus('loading');
+  const loadLocationInfo = async () => {
+    if (!user) return;
+    
+    console.log('🔄 Loading location info for observation...');
+    setLocationInfo(prev => ({ ...prev, status: 'loading' }));
     
     try {
-      const location = await ObservationService.getCurrentLocation();
-      if (location) {
-        console.log('✅ Location obtained for observation:', location);
-        setCurrentLocation(location);
-        setLocationStatus('success');
-      } else {
-        console.warn('⚠️ Could not get location for observation');
-        setLocationStatus('error');
-        toast({
-          title: "Location Warning",
-          description: "Could not get your location. Observation will be submitted without coordinates.",
-          variant: "destructive",
+      // First try to get location from database
+      const dbLocation = await ObservationService.getLatestGuardLocation(user.id);
+      
+      if (dbLocation) {
+        console.log('✅ Location loaded from database:', dbLocation);
+        setLocationInfo({
+          coordinates: dbLocation,
+          source: 'database',
+          status: 'success'
         });
+        return;
       }
+
+      // If no database location, try device location
+      console.log('🔄 No database location found, trying device location...');
+      const deviceLocation = await ObservationService.getCurrentLocation();
+      
+      if (deviceLocation) {
+        console.log('✅ Location loaded from device:', deviceLocation);
+        setLocationInfo({
+          coordinates: deviceLocation,
+          source: 'device',
+          status: 'success'
+        });
+        return;
+      }
+
+      // No location available
+      console.warn('⚠️ No location available for observation');
+      setLocationInfo({
+        coordinates: null,
+        source: 'none',
+        status: 'error'
+      });
+      
+      toast({
+        title: "Location Warning",
+        description: "Could not get your location. Observation will be submitted without coordinates.",
+        variant: "destructive",
+      });
+      
     } catch (error) {
-      console.error('❌ Error getting location for observation:', error);
-      setLocationStatus('error');
+      console.error('❌ Error loading location info:', error);
+      setLocationInfo({
+        coordinates: null,
+        source: 'none',
+        status: 'error'
+      });
+      
       toast({
         title: "Location Error",
         description: "Failed to get your location. Please ensure location permissions are enabled.",
@@ -159,11 +200,11 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
     e.preventDefault();
     if (!user || !title || !description) return;
 
-    console.log('📝 Submitting observation with location:', currentLocation);
+    console.log('📝 Submitting observation with location info:', locationInfo);
 
     setIsSubmitting(true);
     try {
-      // Use the current location we captured when the component loaded
+      // Use the coordinates we loaded when the component mounted
       await ObservationService.createObservation(
         user.id,
         activePatrol?.id,
@@ -172,14 +213,16 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
         description,
         severity,
         photos[0] || undefined,
-        currentLocation || undefined
+        locationInfo.coordinates || undefined
       );
+      
+      const locationMessage = locationInfo.coordinates 
+        ? `Your patrol observation has been submitted with location coordinates (${locationInfo.source}).`
+        : "Your patrol observation has been submitted (location not available).";
       
       toast({
         title: "Observation Reported",
-        description: currentLocation 
-          ? "Your patrol observation has been submitted with location coordinates."
-          : "Your patrol observation has been submitted (location not available).",
+        description: locationMessage,
       });
       
       onBack();
@@ -193,6 +236,25 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
       setIsSubmitting(false);
     }
   };
+
+  const getLocationStatusInfo = () => {
+    switch (locationInfo.status) {
+      case 'loading':
+        return { icon: '🔄', text: 'Loading location...', color: 'text-gray-500' };
+      case 'success':
+        return { 
+          icon: locationInfo.source === 'database' ? '💾' : '📍', 
+          text: `Location from ${locationInfo.source}`, 
+          color: 'text-green-500' 
+        };
+      case 'error':
+        return { icon: '❌', text: 'Location unavailable', color: 'text-red-500' };
+      default:
+        return { icon: '❓', text: 'Unknown status', color: 'text-gray-500' };
+    }
+  };
+
+  const statusInfo = getLocationStatusInfo();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -212,18 +274,17 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center space-x-2">
-                <MapPin className={`h-4 w-4 ${
-                  locationStatus === 'success' ? 'text-green-500' : 
-                  locationStatus === 'error' ? 'text-red-500' : 'text-gray-500'
-                }`} />
-                <span>
-                  {locationStatus === 'loading' && 'Getting location...'}
-                  {locationStatus === 'success' && 'Location captured'}
-                  {locationStatus === 'error' && 'Location unavailable'}
+                {locationInfo.source === 'database' ? (
+                  <Database className={`h-4 w-4 ${statusInfo.color}`} />
+                ) : (
+                  <MapPin className={`h-4 w-4 ${statusInfo.color}`} />
+                )}
+                <span className={statusInfo.color}>
+                  {statusInfo.text}
                 </span>
-                {currentLocation && (
+                {locationInfo.coordinates && (
                   <span className="text-xs text-gray-400">
-                    ({currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)})
+                    ({locationInfo.coordinates.latitude.toFixed(6)}, {locationInfo.coordinates.longitude.toFixed(6)})
                   </span>
                 )}
               </div>
@@ -232,12 +293,12 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
                 <span>{new Date().toLocaleTimeString()}</span>
               </div>
             </div>
-            {locationStatus === 'error' && (
+            {locationInfo.status === 'error' && (
               <div className="mt-2">
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={getCurrentLocation}
+                  onClick={loadLocationInfo}
                   className="text-xs"
                 >
                   Retry Location

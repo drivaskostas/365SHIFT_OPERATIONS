@@ -3,6 +3,43 @@ import { supabase } from '@/lib/supabase'
 import type { PatrolObservation } from '@/types/database'
 
 export class ObservationService {
+  static async getLatestGuardLocation(guardId: string): Promise<{ latitude: number; longitude: number } | null> {
+    console.log('🔄 ObservationService: Getting latest guard location from database for guard:', guardId);
+    
+    try {
+      const { data, error } = await supabase
+        .from('guard_locations')
+        .select('latitude, longitude, created_at')
+        .eq('guard_id', guardId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        console.error('❌ Error fetching guard location:', error);
+        return null;
+      }
+
+      if (data && data.latitude && data.longitude) {
+        console.log('✅ Latest guard location retrieved from database:', {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          timestamp: data.created_at
+        });
+        return {
+          latitude: Number(data.latitude),
+          longitude: Number(data.longitude)
+        };
+      }
+
+      console.warn('⚠️ No location data found in database for guard:', guardId);
+      return null;
+    } catch (error) {
+      console.error('❌ Exception while fetching guard location:', error);
+      return null;
+    }
+  }
+
   static async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
     console.log('🔄 ObservationService: Getting current location...');
     
@@ -83,10 +120,19 @@ export class ObservationService {
       location: location ? `${location.latitude}, ${location.longitude}` : 'none'
     });
 
-    // Use provided location or try to get fresh location
+    // Priority order for location:
+    // 1. Use provided location if available
+    // 2. Try to get latest location from database
+    // 3. Try to get fresh location from device
     let finalLocation = location;
+    
     if (!finalLocation) {
-      console.log('🔄 No location provided, attempting to get fresh location...');
+      console.log('🔄 No location provided, fetching latest from database...');
+      finalLocation = await this.getLatestGuardLocation(guardId);
+    }
+    
+    if (!finalLocation) {
+      console.log('🔄 No database location found, attempting to get fresh location...');
       finalLocation = await this.getCurrentLocation();
     }
 
