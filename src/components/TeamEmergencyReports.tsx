@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, Clock, User, Shield, AlertTriangle, CheckCircle, FileText, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -164,6 +165,70 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
     return report.guard_name || 'Unknown Guard';
   };
 
+  const renderNotes = (notes: any) => {
+    if (!notes) return null;
+    
+    let notesArray = [];
+    if (Array.isArray(notes)) {
+      notesArray = notes;
+    } else if (typeof notes === 'object' && notes !== null) {
+      notesArray = Object.values(notes).filter(note => {
+        if (typeof note === 'string' && note.trim()) return note;
+        if (typeof note === 'object' && note !== null && 'text' in note) return note;
+        return false;
+      });
+    } else if (typeof notes === 'string' && notes.trim()) {
+      notesArray = [notes];
+    }
+
+    if (notesArray.length === 0) return null;
+
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center text-lg">
+            <FileText className="h-5 w-5 mr-2 flex-shrink-0" />
+            <span className="truncate">Notes</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {notesArray.map((note: any, index: number) => {
+              let noteText = '';
+              let noteAuthor = '';
+              let noteTimestamp = '';
+              
+              if (typeof note === 'string') {
+                noteText = note;
+              } else if (typeof note === 'object' && note !== null) {
+                const noteObj = note as Record<string, any>;
+                noteText = noteObj.text || '';
+                noteAuthor = noteObj.author_name || noteObj.author || '';
+                noteTimestamp = noteObj.timestamp || '';
+              }
+              
+              if (!noteText.trim()) return null;
+              
+              return (
+                <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-blue-500 max-w-full overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-2">
+                    <p className="text-xs text-gray-600 dark:text-gray-300 break-words">
+                      {noteTimestamp ? new Date(noteTimestamp).toLocaleString() : 'No timestamp'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
+                      by {noteAuthor || 'Unknown'}
+                    </p>
+                  </div>
+                  <p className="text-gray-900 dark:text-white break-words text-sm">{noteText}</p>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
@@ -285,33 +350,7 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
         </Card>
 
         {/* Notes Section */}
-        {selectedReport.notes && Array.isArray(selectedReport.notes) && selectedReport.notes.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center text-lg">
-                <FileText className="h-5 w-5 mr-2 flex-shrink-0" />
-                <span className="truncate">Notes</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {selectedReport.notes.map((note: any, index: number) => (
-                  <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-blue-500 max-w-full overflow-hidden">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-2">
-                      <p className="text-xs text-gray-600 dark:text-gray-300 break-words">
-                        {note.timestamp ? new Date(note.timestamp).toLocaleString() : 'No timestamp'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
-                        by {note.author_name || 'Unknown'}
-                      </p>
-                    </div>
-                    <p className="text-gray-900 dark:text-white break-words text-sm">{note.text}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {renderNotes(selectedReport.notes)}
 
         {/* History Section */}
         <Card>
