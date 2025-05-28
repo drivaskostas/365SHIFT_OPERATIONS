@@ -10,6 +10,7 @@ import { PatrolService } from '@/services/PatrolService';
 import TeamObservations from '@/components/TeamObservations';
 import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import { useToast } from '@/components/ui/use-toast';
 
 interface PatrolDashboardProps {
@@ -387,63 +388,99 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       const teamIds = teamMemberships.map(tm => tm.team_id);
       const activities: RecentActivity[] = [];
 
-      // Fetch recent patrol sessions
+      // Fetch recent patrol sessions with guard info
       const { data: recentPatrols } = await supabase
         .from('patrol_sessions')
-        .select('*')
+        .select(`
+          *,
+          profiles:guard_id (
+            first_name,
+            last_name,
+            full_name
+          )
+        `)
         .in('team_id', teamIds)
         .order('created_at', { ascending: false })
         .limit(3);
 
       if (recentPatrols) {
         recentPatrols.forEach(patrol => {
+          const guardName = patrol.profiles?.full_name || 
+                          (patrol.profiles?.first_name && patrol.profiles?.last_name 
+                            ? `${patrol.profiles.first_name} ${patrol.profiles.last_name}`
+                            : `${patrol.profiles?.first_name || patrol.profiles?.last_name || 'Unknown Guard'}`);
+          
           activities.push({
             id: patrol.id,
             type: 'patrol',
             title: patrol.status === 'active' ? 'Patrol Started' : 'Patrol Completed',
-            description: `Status: ${patrol.status}`,
+            description: `${guardName} - Status: ${patrol.status}`,
             timestamp: patrol.created_at,
             color: 'bg-blue-500'
           });
         });
       }
 
-      // Fetch recent observations
+      // Fetch recent observations with guard info
       const { data: recentObservations } = await supabase
         .from('patrol_observations')
-        .select('*')
+        .select(`
+          *,
+          profiles:guard_id (
+            first_name,
+            last_name,
+            full_name
+          )
+        `)
         .in('team_id', teamIds)
         .order('created_at', { ascending: false })
         .limit(3);
 
       if (recentObservations) {
         recentObservations.forEach(observation => {
+          const guardName = observation.profiles?.full_name || 
+                          (observation.profiles?.first_name && observation.profiles?.last_name 
+                            ? `${observation.profiles.first_name} ${observation.profiles.last_name}`
+                            : `${observation.profiles?.first_name || observation.profiles?.last_name || 'Unknown Guard'}`);
+          
           activities.push({
             id: observation.id,
             type: 'observation',
             title: 'Observation Logged',
-            description: observation.title || 'New observation recorded',
+            description: `${guardName} - ${observation.title || 'New observation recorded'}`,
             timestamp: observation.created_at,
             color: 'bg-yellow-500'
           });
         });
       }
 
-      // Fetch recent emergency reports
+      // Fetch recent emergency reports with guard info
       const { data: recentEmergencies } = await supabase
         .from('emergency_reports')
-        .select('*')
+        .select(`
+          *,
+          profiles:guard_id (
+            first_name,
+            last_name,
+            full_name
+          )
+        `)
         .in('team_id', teamIds)
         .order('created_at', { ascending: false })
         .limit(2);
 
       if (recentEmergencies) {
         recentEmergencies.forEach(emergency => {
+          const guardName = emergency.profiles?.full_name || 
+                          (emergency.profiles?.first_name && emergency.profiles?.last_name 
+                            ? `${emergency.profiles.first_name} ${emergency.profiles.last_name}`
+                            : `${emergency.profiles?.first_name || emergency.profiles?.last_name || 'Unknown Guard'}`);
+          
           activities.push({
             id: emergency.id,
             type: 'emergency',
             title: 'Emergency Report',
-            description: emergency.title,
+            description: `${guardName} - ${emergency.title}`,
             timestamp: emergency.created_at,
             color: 'bg-red-500'
           });
@@ -513,6 +550,9 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
+
       {/* Welcome Section */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
