@@ -11,23 +11,28 @@ export class LocationTrackingService {
       return;
     }
 
-    // First, request permission explicitly
-    const hasPermission = await this.requestLocationPermission();
-    if (!hasPermission) {
-      console.warn('Location permission denied, cannot start tracking');
+    console.log('Starting location tracking for guard:', guardId);
+
+    // Try to get location immediately to trigger permission request
+    const initialPosition = await this.getCurrentPosition();
+    if (!initialPosition) {
+      console.warn('Could not get initial location, tracking will not start');
       return;
     }
 
-    console.log('Starting location tracking for guard:', guardId);
+    console.log('Initial location obtained:', initialPosition);
     this.isTracking = true;
 
-    // Start immediate tracking
-    await this.updateLocation(guardId);
+    // Start immediate tracking with the initial position
+    await this.updateLocation(guardId, initialPosition);
 
     // Set up interval for every minute (60000ms)
     this.trackingInterval = setInterval(async () => {
       if (this.isTracking) {
-        await this.updateLocation(guardId);
+        const position = await this.getCurrentPosition();
+        if (position) {
+          await this.updateLocation(guardId, position);
+        }
       }
     }, 60000);
   }
@@ -42,62 +47,8 @@ export class LocationTrackingService {
     }
   }
 
-  private static async requestLocationPermission(): Promise<boolean> {
-    if (!navigator.geolocation) {
-      console.error('Geolocation is not supported by this browser');
-      return false;
-    }
-
+  private static async updateLocation(guardId: string, position: { latitude: number; longitude: number }): Promise<void> {
     try {
-      // Check current permission status
-      if ('permissions' in navigator) {
-        const permission = await navigator.permissions.query({ name: 'geolocation' });
-        console.log('Current geolocation permission:', permission.state);
-        
-        if (permission.state === 'denied') {
-          console.warn('Geolocation permission is denied');
-          return false;
-        }
-        
-        if (permission.state === 'granted') {
-          return true;
-        }
-      }
-
-      // Try to get position to trigger permission request
-      return new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          () => {
-            console.log('Location permission granted');
-            resolve(true);
-          },
-          (error) => {
-            console.warn('Location permission denied or failed:', error.message);
-            resolve(false);
-          },
-          {
-            enableHighAccuracy: false,
-            timeout: 5000,
-            maximumAge: 0
-          }
-        );
-      });
-    } catch (error) {
-      console.error('Error checking location permission:', error);
-      return false;
-    }
-  }
-
-  private static async updateLocation(guardId: string): Promise<void> {
-    try {
-      // Get current position
-      const position = await this.getCurrentPosition();
-      
-      if (!position) {
-        console.warn('Could not get current position');
-        return;
-      }
-
       console.log('Updating location for guard:', guardId, position);
 
       // Check if guardian_geocodes record exists for this guard
@@ -156,21 +107,50 @@ export class LocationTrackingService {
         return;
       }
 
+      // First try with high accuracy
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('High accuracy location obtained:', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
           resolve({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
           });
         },
         (error) => {
-          console.error('Error getting location:', error.message);
-          resolve(null);
+          console.log('High accuracy location failed, trying with lower accuracy:', error);
+          
+          // Try again with lower accuracy
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              console.log('Lower accuracy location obtained:', {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+              });
+              resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              });
+            },
+            (error) => {
+              console.error('Location access denied or failed:', error);
+              resolve(null);
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 15000,
+              maximumAge: 600000 // 10 minutes
+            }
+          );
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // Cache for 5 minutes
+          maximumAge: 300000 // 5 minutes
         }
       );
     });
