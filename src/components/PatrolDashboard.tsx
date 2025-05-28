@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,15 @@ interface DashboardStats {
   totalIncidents: number;
 }
 
+interface RecentActivity {
+  id: string;
+  type: 'checkpoint' | 'observation' | 'patrol' | 'emergency';
+  title: string;
+  description: string;
+  timestamp: string;
+  color: string;
+}
+
 const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const { t } = useLanguage();
   const { profile } = useAuth();
@@ -32,6 +40,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     totalObservations: 0,
     totalIncidents: 0
   });
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -41,6 +50,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   useEffect(() => {
     if (profile?.id) {
       fetchDashboardStats();
+      fetchRecentActivities();
     }
   }, [profile?.id]);
 
@@ -84,6 +94,106 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     }
+  };
+
+  const fetchRecentActivities = async () => {
+    try {
+      // Get user's team memberships
+      const { data: teamMemberships } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', profile?.id);
+
+      if (!teamMemberships || teamMemberships.length === 0) {
+        return;
+      }
+
+      const teamIds = teamMemberships.map(tm => tm.team_id);
+      const activities: RecentActivity[] = [];
+
+      // Fetch recent patrol sessions
+      const { data: recentPatrols } = await supabase
+        .from('patrol_sessions')
+        .select('*')
+        .in('team_id', teamIds)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (recentPatrols) {
+        recentPatrols.forEach(patrol => {
+          activities.push({
+            id: patrol.id,
+            type: 'patrol',
+            title: patrol.status === 'active' ? 'Patrol Started' : 'Patrol Completed',
+            description: `Status: ${patrol.status}`,
+            timestamp: patrol.created_at,
+            color: 'bg-blue-500'
+          });
+        });
+      }
+
+      // Fetch recent observations
+      const { data: recentObservations } = await supabase
+        .from('patrol_observations')
+        .select('*')
+        .in('team_id', teamIds)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (recentObservations) {
+        recentObservations.forEach(observation => {
+          activities.push({
+            id: observation.id,
+            type: 'observation',
+            title: 'Observation Logged',
+            description: observation.title || 'New observation recorded',
+            timestamp: observation.created_at,
+            color: 'bg-yellow-500'
+          });
+        });
+      }
+
+      // Fetch recent emergency reports
+      const { data: recentEmergencies } = await supabase
+        .from('emergency_reports')
+        .select('*')
+        .in('team_id', teamIds)
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      if (recentEmergencies) {
+        recentEmergencies.forEach(emergency => {
+          activities.push({
+            id: emergency.id,
+            type: 'emergency',
+            title: 'Emergency Report',
+            description: emergency.title,
+            timestamp: emergency.created_at,
+            color: 'bg-red-500'
+          });
+        });
+      }
+
+      // Sort all activities by timestamp and take the most recent 5
+      const sortedActivities = activities
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 5);
+
+      setRecentActivities(sortedActivities);
+    } catch (error) {
+      console.error('Error fetching recent activities:', error);
+    }
+  };
+
+  const getTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - past.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes} ${t('dashboard.minutes_ago')}`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} ${t('dashboard.hour_ago')}`;
+    return `${Math.floor(diffInMinutes / 1440)} days ago`;
   };
 
   const quickActions = [
@@ -233,32 +343,24 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{t('dashboard.checkpoint_scanned')}</p>
-                <p className="text-xs text-gray-500">Building A - East Entrance</p>
+            {recentActivities.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">
+                  No recent activity found
+                </p>
               </div>
-              <span className="text-xs text-gray-500">2 {t('dashboard.minutes_ago')}</span>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{t('dashboard.observation_logged')}</p>
-                <p className="text-xs text-gray-500">{t('emergency.suspicious_incident')}</p>
-              </div>
-              <span className="text-xs text-gray-500">15 {t('dashboard.minutes_ago')}</span>
-            </div>
-            
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{t('dashboard.patrol_started')}</p>
-                <p className="text-xs text-gray-500">{t('dashboard.night_shift')}</p>
-              </div>
-              <span className="text-xs text-gray-500">1 {t('dashboard.hour_ago')}</span>
-            </div>
+            ) : (
+              recentActivities.map((activity) => (
+                <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className={`w-2 h-2 ${activity.color} rounded-full`}></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.title}</p>
+                    <p className="text-xs text-gray-500">{activity.description}</p>
+                  </div>
+                  <span className="text-xs text-gray-500">{getTimeAgo(activity.timestamp)}</span>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
