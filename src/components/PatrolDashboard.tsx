@@ -180,6 +180,38 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     }
   };
 
+  const handleTestLocation = async () => {
+    console.log('Testing location access manually...');
+    
+    try {
+      // Import the LocationTrackingService dynamically
+      const { LocationTrackingService } = await import('@/services/LocationTrackingService');
+      const result = await LocationTrackingService.testLocationAccess();
+      
+      if (result.success) {
+        toast({
+          title: "Location Test Successful",
+          description: `Location obtained: ${result.position?.latitude.toFixed(6)}, ${result.position?.longitude.toFixed(6)}`,
+        });
+        setLocationPermissionStatus('granted');
+      } else {
+        toast({
+          title: "Location Test Failed",
+          description: `Error: ${result.error?.message || 'Unknown error'}`,
+          variant: "destructive"
+        });
+        setLocationPermissionStatus('denied');
+      }
+    } catch (error) {
+      console.error('Error testing location:', error);
+      toast({
+        title: "Location Test Error",
+        description: "Failed to test location access",
+        variant: "destructive"
+      });
+    }
+  };
+
   const fetchDashboardStats = async () => {
     try {
       // Get user's team memberships
@@ -444,17 +476,27 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                   <ul className="text-sm text-red-600 dark:text-red-300 mt-1 ml-4 list-disc">
                     <li>Click the location icon in your browser's address bar</li>
                     <li>Select "Allow" for location access</li>
-                    <li>Or try the button below to request permission again</li>
+                    <li>Or try the buttons below to test and request permission</li>
                   </ul>
                 </div>
-                <Button
-                  onClick={handleRequestLocationPermission}
-                  variant="outline"
-                  size="sm"
-                  className="border-red-300 text-red-700 hover:bg-red-100"
-                >
-                  Enable Location
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={handleTestLocation}
+                    variant="outline"
+                    size="sm"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                  >
+                    Test Location
+                  </Button>
+                  <Button
+                    onClick={handleRequestLocationPermission}
+                    variant="outline"
+                    size="sm"
+                    className="border-red-300 text-red-700 hover:bg-red-100"
+                  >
+                    Request Permission
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -489,23 +531,34 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                   </p>
                 )}
               </div>
-              <Button
-                onClick={activePatrol ? handleEndPatrol : handleStartPatrol}
-                className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}
-                disabled={!activePatrol && availableSites.length === 0}
-              >
-                {activePatrol ? (
-                  <>
-                    <Square className="h-4 w-4 mr-2" />
-                    End Patrol
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Patrol
-                  </>
+              <div className="flex gap-2">
+                {!activePatrol && (
+                  <Button
+                    onClick={handleTestLocation}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Test Location
+                  </Button>
                 )}
-              </Button>
+                <Button
+                  onClick={activePatrol ? handleEndPatrol : handleStartPatrol}
+                  className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}
+                  disabled={!activePatrol && availableSites.length === 0}
+                >
+                  {activePatrol ? (
+                    <>
+                      <Square className="h-4 w-4 mr-2" />
+                      End Patrol
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Start Patrol
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
