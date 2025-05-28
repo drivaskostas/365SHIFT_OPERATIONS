@@ -94,13 +94,26 @@ export class EnhancedEmergencyService {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Error creating emergency report:', error);
+      throw error;
+    }
+
+    console.log('Emergency report created successfully:', data);
 
     // Log creation in history
-    await this.addReportHistory(data.id, 'created', undefined, undefined, 'Emergency report created');
+    try {
+      await this.addReportHistory(data.id, 'created', undefined, undefined, 'Emergency report created');
+    } catch (historyError) {
+      console.warn('Failed to log report history:', historyError);
+    }
 
     // Send emergency notification
-    await this.sendEmergencyNotification(data, reportData);
+    try {
+      await this.sendEmergencyNotification(data, reportData);
+    } catch (notificationError) {
+      console.warn('Failed to send emergency notification:', notificationError);
+    }
 
     return data
   }

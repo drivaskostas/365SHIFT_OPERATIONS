@@ -138,7 +138,17 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !title || !description || description.length < 10) {
+    
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to submit an emergency report.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!title || !description || description.length < 10 || !locationDescription) {
       toast({
         title: "Validation Error",
         description: "Please fill all required fields. Description must be at least 10 characters.",
@@ -149,6 +159,8 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
 
     setIsSubmitting(true);
     try {
+      console.log('Submitting emergency report...');
+      
       const reportData: EmergencyReportData = {
         emergency_type: emergencyType,
         title,
@@ -159,12 +171,16 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
         images: photos
       };
 
-      await EnhancedEmergencyService.createEmergencyReport(
+      console.log('Report data:', reportData);
+
+      const report = await EnhancedEmergencyService.createEmergencyReport(
         user.id,
         activePatrol?.id,
         activePatrol?.team_id,
         reportData
       );
+      
+      console.log('Emergency report created successfully:', report);
       
       toast({
         title: "Emergency Report Submitted",
@@ -173,9 +189,10 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
       
       onBack();
     } catch (error: any) {
+      console.error('Error submitting emergency report:', error);
       toast({
         title: "Failed to submit emergency report",
-        description: error.message || "Unable to submit emergency report.",
+        description: error.message || "Unable to submit emergency report. Please try again.",
         variant: "destructive",
       });
     } finally {
