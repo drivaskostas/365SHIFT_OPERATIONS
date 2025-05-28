@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, MapPin, Clock, User, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, User, Shield, AlertTriangle, CheckCircle, FileText, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { EnhancedEmergencyService } from '@/services/EnhancedEmergencyService';
 
 interface TeamEmergencyReportsProps {
   onBack: () => void;
@@ -47,6 +47,8 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
   const [reports, setReports] = useState<EmergencyReportWithProfile[]>([]);
   const [selectedReport, setSelectedReport] = useState<EmergencyReportWithProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reportHistory, setReportHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     if (profile?.id) {
@@ -105,6 +107,24 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchReportHistory = async (reportId: string) => {
+    try {
+      setLoadingHistory(true);
+      const history = await EnhancedEmergencyService.getReportHistory(reportId);
+      setReportHistory(history);
+    } catch (error) {
+      console.error('Error fetching report history:', error);
+      setReportHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleReportSelect = (report: EmergencyReportWithProfile) => {
+    setSelectedReport(report);
+    fetchReportHistory(report.id);
   };
 
   const getSeverityColor = (severity: string) => {
@@ -260,6 +280,91 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
             )}
           </CardContent>
         </Card>
+
+        {/* Notes Section */}
+        {selectedReport.notes && Array.isArray(selectedReport.notes) && selectedReport.notes.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <FileText className="h-5 w-5 mr-2" />
+                Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {selectedReport.notes.map((note: any, index: number) => (
+                  <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-blue-500">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        {note.timestamp ? new Date(note.timestamp).toLocaleString() : 'No timestamp'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        by {note.author_name || 'Unknown'}
+                      </p>
+                    </div>
+                    <p className="text-gray-900 dark:text-white">{note.text}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* History Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <History className="h-5 w-5 mr-2" />
+              History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingHistory ? (
+              <div className="flex items-center justify-center p-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              </div>
+            ) : reportHistory.length > 0 ? (
+              <div className="space-y-4">
+                {reportHistory.map((historyItem) => (
+                  <div key={historyItem.id} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          historyItem.action_type === 'created' ? 'bg-green-100 text-green-700' :
+                          historyItem.action_type === 'status_change' ? 'bg-blue-100 text-blue-700' :
+                          historyItem.action_type === 'note_added' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {historyItem.action_type.replace('_', ' ').toUpperCase()}
+                        </span>
+                        {historyItem.previous_status && historyItem.new_status && (
+                          <span className="text-sm text-gray-600 dark:text-gray-300">
+                            {historyItem.previous_status} → {historyItem.new_status}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {new Date(historyItem.created_at).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          by {historyItem.user_name}
+                        </p>
+                      </div>
+                    </div>
+                    {historyItem.note && (
+                      <p className="text-gray-900 dark:text-white mt-2">{historyItem.note}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600 dark:text-gray-300 text-center py-4">
+                No history available for this report.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -296,7 +401,7 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
             <Card 
               key={report.id} 
               className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setSelectedReport(report)}
+              onClick={() => handleReportSelect(report)}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
