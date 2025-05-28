@@ -1,18 +1,22 @@
 
 import { useState } from 'react';
-import { Shield, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Shield, Mail, Lock, Eye, EyeOff, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { ShiftValidationService } from '@/services/ShiftValidationService';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [shiftWarning, setShiftWarning] = useState<string | null>(null);
   const { signIn } = useAuth();
   const { toast } = useToast();
 
@@ -21,12 +25,32 @@ const LoginScreen = () => {
     if (!email || !password) return;
 
     setIsLoading(true);
+    setShiftWarning(null);
+
     try {
+      // First, attempt to sign in to get the user
       await signIn(email, password);
-      toast({
-        title: "Welcome back!",
-        description: "Successfully signed in to Sentinel Guard.",
-      });
+      
+      // Get the current user to validate their shift access
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Validate shift access
+        const shiftValidation = await ShiftValidationService.validateGuardShiftAccess(user.id);
+        
+        if (!shiftValidation.canLogin) {
+          // Sign out the user if they don't have valid shift access
+          await supabase.auth.signOut();
+          setShiftWarning(shiftValidation.message || 'You are not authorized to login at this time.');
+          return;
+        }
+
+        // Show success message with shift info
+        toast({
+          title: "Welcome back!",
+          description: shiftValidation.message || "Successfully signed in to Sentinel Guard.",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Sign in failed",
@@ -54,6 +78,15 @@ const LoginScreen = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {shiftWarning && (
+            <Alert className="mb-4 border-amber-200 bg-amber-50">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                {shiftWarning}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -108,6 +141,16 @@ const LoginScreen = () => {
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
+
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center space-x-2 text-blue-700">
+              <Clock className="h-4 w-4" />
+              <span className="text-sm font-medium">Shift-Based Access</span>
+            </div>
+            <p className="text-xs text-blue-600 mt-1">
+              You can only login during your assigned shift times or 30 minutes before your shift starts.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
