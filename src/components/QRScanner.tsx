@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, ArrowLeft, Flashlight, CheckCircle, AlertTriangle, Info, List } from 'lucide-react';
+import { Camera, ArrowLeft, Flashlight, CheckCircle, AlertTriangle, Info, List, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -26,6 +26,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [availableCheckpoints, setAvailableCheckpoints] = useState<GuardianCheckpoint[]>([]);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
+  const [lastQRData, setLastQRData] = useState<string>('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -36,7 +37,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     const timestamp = new Date().toLocaleTimeString();
     const logMessage = `[${timestamp}] ${message}`;
     console.log('QR Scanner Debug:', logMessage);
-    setDebugInfo(prev => [...prev.slice(-4), logMessage]); // Keep last 5 logs
+    setDebugInfo(prev => [...prev.slice(-9), logMessage]); // Keep last 10 logs
   };
 
   useEffect(() => {
@@ -195,60 +196,80 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 
   const handleScanSuccess = async (qrData: string) => {
     if (!activePatrol) {
-      addDebugLog('No active patrol found during scan');
+      addDebugLog('❌ No active patrol found during scan');
       return;
     }
     
     setIsScanning(false);
+    setLastQRData(qrData);
     addDebugLog(`🔍 SCAN START - Processing QR data: ${qrData}`);
-    addDebugLog(`📍 Patrol ID: ${activePatrol.id}, Site ID: ${activePatrol.site_id}`);
+    addDebugLog(`📍 Active Patrol: ${activePatrol.id}, Site: ${activePatrol.site_id}`);
     
     try {
-      // Enhanced QR data parsing with detailed logging
-      let checkpointId = qrData.trim();
-      let parsedData = null;
-      
+      // Enhanced QR data parsing with JSON support
       addDebugLog(`📋 Raw QR data: "${qrData}"`);
-      addDebugLog(`📋 Trimmed QR data: "${checkpointId}"`);
       
-      try {
-        // Check if it's a JSON string with a checkpointId field
-        parsedData = JSON.parse(qrData);
-        addDebugLog(`✅ JSON parsing successful: ${JSON.stringify(parsedData)}`);
-        
-        if (parsedData.checkpointId) {
-          checkpointId = parsedData.checkpointId;
-          addDebugLog(`📍 Extracted checkpoint ID from JSON.checkpointId: ${checkpointId}`);
-        } else if (parsedData.id) {
-          checkpointId = parsedData.id;
-          addDebugLog(`📍 Using JSON.id as checkpoint ID: ${checkpointId}`);
+      // Use the new parsing method to handle JSON QR codes
+      const parsedQR = PatrolService.parseQRData(qrData);
+      addDebugLog(`📋 Parsed QR result: ${JSON.stringify(parsedQR)}`);
+      
+      let checkpointId: string;
+      let siteId: string;
+      
+      if (parsedQR) {
+        if (parsedQR.checkpointId && parsedQR.siteId) {
+          // JSON QR code with both checkpoint and site ID
+          checkpointId = parsedQR.checkpointId;
+          siteId = parsedQR.siteId;
+          addDebugLog(`✅ Using JSON QR data - Checkpoint: ${checkpointId}, Site: ${siteId}`);
+          
+          // Log additional data if present
+          if (parsedQR.additionalData) {
+            addDebugLog(`📝 Additional QR data: ${JSON.stringify(parsedQR.additionalData)}`);
+          }
+          
+          // Verify the site ID matches the active patrol
+          if (siteId !== activePatrol.site_id) {
+            addDebugLog(`⚠️ Site ID mismatch - QR Site: ${siteId}, Patrol Site: ${activePatrol.site_id}`);
+            throw new Error(`This checkpoint belongs to a different site. Expected: ${activePatrol.site_id}, Found: ${siteId}`);
+          }
+        } else if (parsedQR.checkpointId) {
+          // Plain UUID format
+          checkpointId = parsedQR.checkpointId;
+          siteId = activePatrol.site_id;
+          addDebugLog(`✅ Using plain UUID with patrol site - Checkpoint: ${checkpointId}, Site: ${siteId}`);
         } else {
-          addDebugLog(`⚠️ JSON found but no checkpointId or id field`);
+          throw new Error('Invalid QR code format - missing checkpoint ID');
         }
-      } catch (e) {
-        // Not JSON, assume the string itself is the checkpoint ID
-        addDebugLog(`📋 QR data is not JSON, using as checkpoint ID: ${checkpointId}`);
+      } else {
+        // Fallback to treating the entire string as checkpoint ID
+        checkpointId = qrData.trim();
+        siteId = activePatrol.site_id;
+        addDebugLog(`⚠️ Fallback parsing - treating as plain checkpoint ID: ${checkpointId}`);
       }
       
-      addDebugLog(`🎯 Final checkpoint ID: "${checkpointId}"`);
-      addDebugLog(`🏢 Target site ID: "${activePatrol.site_id}"`);
+      addDebugLog(`🎯 Final validation parameters - Checkpoint: "${checkpointId}", Site: "${siteId}"`);
       
-      // Run debug validation step
-      addDebugLog(`🔧 Running enhanced validation debug...`);
-      await PatrolService.debugValidationStep(checkpointId, activePatrol.site_id);
+      // Enhanced validation with detailed logging
+      addDebugLog(`🔧 Running comprehensive validation debug...`);
+      await PatrolService.debugValidationStep(checkpointId, siteId);
       
       // Validate checkpoint belongs to the current patrol site
       addDebugLog(`🔍 Starting checkpoint validation...`);
-      const checkpoint = await PatrolService.validateCheckpoint(checkpointId, activePatrol.site_id);
+      const checkpoint = await PatrolService.validateCheckpoint(checkpointId, siteId);
       
       if (!checkpoint) {
         addDebugLog(`❌ Checkpoint validation failed`);
-        throw new Error(`Invalid checkpoint or checkpoint not found at this site. Checkpoint ID: ${checkpointId}, Site ID: ${activePatrol.site_id}`);
+        addDebugLog(`🔧 Available checkpoints in current site:`);
+        availableCheckpoints.forEach(cp => {
+          addDebugLog(`  - ${cp.id} (${cp.name})`);
+        });
+        throw new Error(`Invalid checkpoint or checkpoint not found at this site. Checkpoint ID: ${checkpointId}, Site ID: ${siteId}`);
       }
       
       addDebugLog(`✅ Checkpoint validated successfully: ${checkpoint.name} at ${checkpoint.location}`);
       
-      // Get current location - PatrolService will handle this automatically
+      // Get current location
       addDebugLog('📍 Getting current location...');
       const location = await PatrolService.getCurrentLocation();
       addDebugLog(`📍 Location obtained: ${location ? `${location.latitude}, ${location.longitude}` : 'No location'}`);
@@ -265,8 +286,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       addDebugLog(`✅ Checkpoint visit recorded successfully`);
       
       toast({
-        title: "Checkpoint Scanned",
-        description: "Successfully recorded checkpoint visit with location.",
+        title: "Checkpoint Scanned Successfully",
+        description: `${checkpoint.name} recorded with location data.`,
       });
       
       // Reset after showing result
@@ -318,18 +339,26 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     }
   };
 
-  // Enhanced manual scan for testing with validation debug
+  // Enhanced manual scan with JSON QR support
   const handleManualScan = async () => {
-    const testCheckpointId = prompt('Enter checkpoint ID for testing:');
-    if (testCheckpointId && activePatrol) {
-      addDebugLog(`🧪 MANUAL TEST - Checkpoint ID: ${testCheckpointId}`);
-      addDebugLog(`🧪 Site ID: ${activePatrol.site_id}`);
+    const testData = prompt('Enter QR data for testing (JSON or UUID):');
+    if (testData && activePatrol) {
+      addDebugLog(`🧪 MANUAL TEST - QR Data: ${testData}`);
+      addDebugLog(`🧪 Current Site: ${activePatrol.site_id}`);
       
-      // Run enhanced debug before actual scan
-      await PatrolService.debugValidationStep(testCheckpointId, activePatrol.site_id);
+      // Parse and show what we extracted
+      const parsed = PatrolService.parseQRData(testData);
+      addDebugLog(`🧪 Parsed result: ${JSON.stringify(parsed)}`);
       
-      handleScanSuccess(testCheckpointId);
+      handleScanSuccess(testData);
     }
+  };
+
+  // Test with your specific JSON format
+  const handleTestYourQR = () => {
+    const yourQRData = '{"type":"checkpoint","siteId":"c5ca9f8d-7f57-4a62-bf70-0acccddbe9b8","checkpointId":"06d783a6-b1c1-49d4-a7ab-73d70201ffe5","name":"advasdcasc","location":"ascascasc"}';
+    addDebugLog(`🎯 TESTING YOUR QR - Using: ${yourQRData}`);
+    handleScanSuccess(yourQRData);
   };
 
   // Quick scan from available checkpoints
@@ -404,6 +433,19 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         </div>
       )}
 
+      {/* Last QR Data Display */}
+      {lastQRData && (
+        <div className="px-4 pb-2">
+          <Alert className="bg-purple-900/50 border-purple-700">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-white">
+              <div className="text-sm font-semibold mb-1">Last Scanned QR:</div>
+              <div className="text-xs font-mono break-all">{lastQRData}</div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {/* Available Checkpoints */}
       {showCheckpoints && availableCheckpoints.length > 0 && (
         <div className="px-4 pb-2">
@@ -438,9 +480,15 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           <Alert className="bg-gray-900/50 border-gray-700">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="text-white">
-              <div className="text-xs font-mono space-y-1 max-h-32 overflow-y-auto">
+              <div className="text-xs font-mono space-y-1 max-h-40 overflow-y-auto">
                 {debugInfo.map((log, index) => (
-                  <div key={index}>{log}</div>
+                  <div key={index} className={
+                    log.includes('❌') ? 'text-red-300' :
+                    log.includes('✅') ? 'text-green-300' :
+                    log.includes('⚠️') ? 'text-yellow-300' :
+                    log.includes('🔧') ? 'text-blue-300' :
+                    'text-gray-300'
+                  }>{log}</div>
                 ))}
               </div>
             </AlertDescription>
@@ -512,32 +560,42 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           <h3 className="font-semibold mb-2">Instructions:</h3>
           <ul className="text-sm space-y-1 text-gray-300">
             <li>• Hold phone steady over QR code</li>
-            <li>• Ensure good lighting or use flashlight</li>
-            <li>• Wait for automatic scan detection</li>
-            <li>• Use checkpoint list to test specific IDs</li>
-            <li>• Check debug info for detailed validation logs</li>
+            <li>• Supports JSON format: {"{"}"type":"checkpoint","checkpointId":"...","siteId":"..."{"}"}</li>
+            <li>• Also supports plain UUID format</li>
+            <li>• Use debug info to see parsing details</li>
+            <li>• Test your specific QR code with the "Test Your QR" button</li>
           </ul>
         </div>
         
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <Button 
             onClick={handleManualScan} 
-            className="flex-1 bg-yellow-600 hover:bg-yellow-700" 
-            size="lg"
+            className="bg-yellow-600 hover:bg-yellow-700" 
+            size="sm"
             disabled={!isScanning || !activePatrol}
           >
-            <Camera className="h-5 w-5 mr-2" />
+            <Camera className="h-4 w-4 mr-1" />
             Manual Test
           </Button>
           <Button 
-            onClick={() => setShowDebugInfo(!showDebugInfo)} 
-            variant="outline"
-            className="text-white border-white" 
-            size="lg"
+            onClick={handleTestYourQR} 
+            className="bg-purple-600 hover:bg-purple-700" 
+            size="sm"
+            disabled={!isScanning || !activePatrol}
           >
-            Debug
+            <PlayCircle className="h-4 w-4 mr-1" />
+            Test Your QR
           </Button>
         </div>
+        
+        <Button 
+          onClick={() => setShowDebugInfo(!showDebugInfo)} 
+          variant="outline"
+          className="w-full text-white border-white" 
+          size="sm"
+        >
+          {showDebugInfo ? 'Hide' : 'Show'} Debug Info
+        </Button>
       </div>
     </div>
   );
