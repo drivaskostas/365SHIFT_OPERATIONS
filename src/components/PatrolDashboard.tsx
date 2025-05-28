@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -393,7 +394,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         .from('patrol_sessions')
         .select(`
           *,
-          profiles:guard_id (
+          profiles!patrol_sessions_guard_id_fkey (
             first_name,
             last_name,
             full_name
@@ -405,10 +406,11 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
       if (recentPatrols) {
         recentPatrols.forEach(patrol => {
-          const guardName = patrol.profiles?.full_name || 
-                          (patrol.profiles?.first_name && patrol.profiles?.last_name 
-                            ? `${patrol.profiles.first_name} ${patrol.profiles.last_name}`
-                            : `${patrol.profiles?.first_name || patrol.profiles?.last_name || 'Unknown Guard'}`);
+          const guardProfile = patrol.profiles as any;
+          const guardName = guardProfile?.full_name || 
+                          (guardProfile?.first_name && guardProfile?.last_name 
+                            ? `${guardProfile.first_name} ${guardProfile.last_name}`
+                            : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
           
           activities.push({
             id: patrol.id,
@@ -426,7 +428,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         .from('patrol_observations')
         .select(`
           *,
-          profiles:guard_id (
+          profiles!patrol_observations_guard_id_fkey (
             first_name,
             last_name,
             full_name
@@ -438,10 +440,11 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
       if (recentObservations) {
         recentObservations.forEach(observation => {
-          const guardName = observation.profiles?.full_name || 
-                          (observation.profiles?.first_name && observation.profiles?.last_name 
-                            ? `${observation.profiles.first_name} ${observation.profiles.last_name}`
-                            : `${observation.profiles?.first_name || observation.profiles?.last_name || 'Unknown Guard'}`);
+          const guardProfile = observation.profiles as any;
+          const guardName = guardProfile?.full_name || 
+                          (guardProfile?.first_name && guardProfile?.last_name 
+                            ? `${guardProfile.first_name} ${guardProfile.last_name}`
+                            : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
           
           activities.push({
             id: observation.id,
@@ -459,7 +462,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         .from('emergency_reports')
         .select(`
           *,
-          profiles:guard_id (
+          profiles!emergency_reports_guard_id_fkey (
             first_name,
             last_name,
             full_name
@@ -471,10 +474,11 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
       if (recentEmergencies) {
         recentEmergencies.forEach(emergency => {
-          const guardName = emergency.profiles?.full_name || 
-                          (emergency.profiles?.first_name && emergency.profiles?.last_name 
-                            ? `${emergency.profiles.first_name} ${emergency.profiles.last_name}`
-                            : `${emergency.profiles?.first_name || emergency.profiles?.last_name || 'Unknown Guard'}`);
+          const guardProfile = emergency.profiles as any;
+          const guardName = guardProfile?.full_name || 
+                          (guardProfile?.first_name && guardProfile?.last_name 
+                            ? `${guardProfile.first_name} ${guardProfile.last_name}`
+                            : `${guardProfile?.first_name || guardProfile?.last_name || 'Unknown Guard'}`);
           
           activities.push({
             id: emergency.id,
