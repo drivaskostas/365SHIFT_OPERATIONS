@@ -66,11 +66,17 @@ export class EnhancedEmergencyService {
     const currentLocation = await this.getCurrentLocation();
     console.log('Location for emergency report:', currentLocation);
 
-    const gpsCoordinates = currentLocation ? {
-      latitude: currentLocation.latitude,
-      longitude: currentLocation.longitude,
-      timestamp: new Date().toISOString()
-    } : null;
+    // Fetch guard's name
+    const { data: guardProfile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, full_name')
+      .eq('id', guardId)
+      .single();
+
+    const guardName = guardProfile?.full_name || 
+                    (guardProfile?.first_name && guardProfile?.last_name ? 
+                     `${guardProfile.first_name} ${guardProfile.last_name}` : 
+                     'Unknown Guard');
 
     const { data, error } = await supabase
       .from('emergency_reports')
@@ -87,7 +93,8 @@ export class EnhancedEmergencyService {
         image_url: reportData.images && reportData.images.length > 0 ? reportData.images[0] : null,
         latitude: currentLocation?.latitude,
         longitude: currentLocation?.longitude,
-        incident_time: new Date().toISOString()
+        incident_time: new Date().toISOString(),
+        guard_name: guardName
       })
       .select()
       .single()
