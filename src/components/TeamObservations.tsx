@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, AlertTriangle, User, Clock, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -128,7 +129,7 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
     return (
       <div className="mt-3 pt-3 border-t border-gray-200">
         <div className="flex items-center space-x-2 mb-2">
-          <FileText className="h-4 w-4 text-gray-500" />
+          <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-700">Notes:</span>
         </div>
         <div className="space-y-1">
@@ -150,12 +151,12 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
             if (!noteText.trim()) return null;
             
             return (
-              <div key={index} className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                <p className="mb-1">{noteText}</p>
+              <div key={index} className="text-sm text-gray-600 bg-gray-50 p-2 rounded break-words">
+                <p className="mb-1 break-words">{noteText}</p>
                 {(noteAuthor || noteTimestamp) && (
-                  <div className="text-xs text-gray-500 flex items-center space-x-2">
-                    {noteAuthor && <span>By: {noteAuthor}</span>}
-                    {noteTimestamp && <span>At: {new Date(noteTimestamp).toLocaleString()}</span>}
+                  <div className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
+                    {noteAuthor && <span className="truncate">By: {noteAuthor}</span>}
+                    {noteTimestamp && <span className="truncate">At: {new Date(noteTimestamp).toLocaleString()}</span>}
                   </div>
                 )}
               </div>
@@ -183,11 +184,11 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
         <Button
           variant="ghost"
           onClick={onBack}
-          className="mr-4"
+          className="mr-4 flex-shrink-0"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
           {t('dashboard.observations')}
         </h1>
       </div>
@@ -205,43 +206,43 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
       ) : (
         <div className="space-y-4">
           {observations.map((observation) => (
-            <Card key={observation.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-2">{observation.title}</CardTitle>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
-                      <div className="flex items-center space-x-1">
-                        <User className="h-4 w-4" />
-                        <span>{observation.guard_name || 'Unknown Guard'}</span>
+            <Card key={observation.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg mb-2 break-words line-clamp-2">{observation.title}</CardTitle>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600 dark:text-gray-300">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <User className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{observation.guard_name || 'Unknown Guard'}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{new Date(observation.timestamp).toLocaleString()}</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Clock className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{new Date(observation.timestamp).toLocaleString()}</span>
                       </div>
                       {observation.latitude && observation.longitude && (
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <MapPin className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate text-xs">
                             {observation.latitude.toFixed(4)}, {observation.longitude.toFixed(4)}
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col space-y-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(observation.severity)}`}>
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getSeverityColor(observation.severity)}`}>
                       {getSeverityText(observation.severity)}
                     </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(observation.status)}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(observation.status)}`}>
                       {observation.status.charAt(0).toUpperCase() + observation.status.slice(1)}
                     </span>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 {observation.description && (
-                  <p className="text-gray-700 dark:text-gray-300 mb-3">
+                  <p className="text-gray-700 dark:text-gray-300 mb-3 break-words line-clamp-3">
                     {observation.description}
                   </p>
                 )}
@@ -250,7 +251,7 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
                     <img
                       src={observation.image_url}
                       alt="Observation evidence"
-                      className="max-w-full h-48 object-cover rounded-lg"
+                      className="w-full max-w-sm h-32 object-cover rounded-lg"
                     />
                   </div>
                 )}
