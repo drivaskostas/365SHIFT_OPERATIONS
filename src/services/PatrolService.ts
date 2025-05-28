@@ -59,8 +59,6 @@ export class PatrolService {
   }
 
   static async startPatrol(siteId: string, guardId: string, teamId?: string): Promise<PatrolSession> {
-    console.log('Starting patrol for guard:', guardId, 'at site:', siteId);
-    
     // First verify the guard is assigned to this site
     const { data: siteGuard, error: assignmentError } = await supabase
       .from('site_guards')
@@ -69,17 +67,11 @@ export class PatrolService {
       .eq('site_id', siteId)
       .maybeSingle()
 
-    if (assignmentError) {
-      console.error('Error checking site assignment:', assignmentError);
-      throw assignmentError;
-    }
+    if (assignmentError) throw assignmentError
     
     if (!siteGuard) {
-      console.error('Guard not assigned to site:', { guardId, siteId });
-      throw new Error('You are not assigned to this site. Please contact your supervisor.');
+      throw new Error('You are not assigned to this site. Please contact your supervisor.')
     }
-
-    console.log('Guard assignment verified:', siteGuard);
 
     // Get the guard's team assignment if teamId is not provided
     let resolvedTeamId = teamId;
@@ -95,7 +87,6 @@ export class PatrolService {
         // Continue without team_id rather than failing
       } else if (teamMember) {
         resolvedTeamId = teamMember.team_id
-        console.log('Resolved team ID:', resolvedTeamId);
       }
     }
 
@@ -118,13 +109,8 @@ export class PatrolService {
       .select()
       .single()
 
-    if (error) {
-      console.error('Error creating patrol session:', error);
-      throw error;
-    }
-    
-    console.log('Patrol session created:', data);
-    return data;
+    if (error) throw error
+    return data
   }
 
   static async endPatrol(patrolId: string): Promise<PatrolSession> {
@@ -152,8 +138,6 @@ export class PatrolService {
   }
 
   static async getActivePatrol(guardId: string): Promise<PatrolSession | null> {
-    console.log('Checking for active patrol for guard:', guardId);
-    
     const { data, error } = await supabase
       .from('patrol_sessions')
       .select('*')
@@ -163,38 +147,24 @@ export class PatrolService {
       .limit(1)
       .maybeSingle()
 
-    if (error) {
-      console.error('Error fetching active patrol:', error);
-      throw error;
-    }
-    
-    console.log('Active patrol result:', data);
-    return data;
+    if (error) throw error
+    return data
   }
 
   static async getAvailableSites(guardId: string): Promise<GuardianSite[]> {
-    console.log('Getting available sites for guard:', guardId);
-    
     // First get the site IDs assigned to the guard
     const { data: siteAssignments, error: assignmentError } = await supabase
       .from('site_guards')
       .select('site_id')
       .eq('guard_id', guardId)
 
-    if (assignmentError) {
-      console.error('Error fetching site assignments:', assignmentError);
-      throw assignmentError;
-    }
-    
-    console.log('Site assignments:', siteAssignments);
+    if (assignmentError) throw assignmentError
     
     if (!siteAssignments || siteAssignments.length === 0) {
-      console.log('No site assignments found');
-      return [];
+      return []
     }
 
-    const siteIds = siteAssignments.map(assignment => assignment.site_id);
-    console.log('Site IDs:', siteIds);
+    const siteIds = siteAssignments.map(assignment => assignment.site_id)
 
     // Then get the actual site details
     const { data, error } = await supabase
@@ -204,13 +174,8 @@ export class PatrolService {
       .in('id', siteIds)
       .order('name')
 
-    if (error) {
-      console.error('Error fetching site details:', error);
-      throw error;
-    }
-    
-    console.log('Available sites:', data);
-    return data || [];
+    if (error) throw error
+    return data || []
   }
 
   static async recordCheckpointVisit(
@@ -218,8 +183,6 @@ export class PatrolService {
     checkpointId: string,
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolCheckpointVisit> {
-    console.log('Recording checkpoint visit:', { patrolId, checkpointId, location });
-    
     // Always get fresh location for checkpoint visits
     console.log('Attempting to get location for checkpoint visit...');
     const currentLocation = location || await this.getCurrentLocation();
@@ -238,210 +201,21 @@ export class PatrolService {
       .select()
       .single()
 
-    if (error) {
-      console.error('Error recording checkpoint visit:', error);
-      throw error;
-    }
-    
-    console.log('Checkpoint visit recorded:', data);
-    return data;
+    if (error) throw error
+    return data
   }
 
   static async validateCheckpoint(checkpointId: string, siteId: string): Promise<GuardianCheckpoint | null> {
-    console.log('🔍 ENHANCED VALIDATION - Deep Database Investigation');
-    console.log('📍 Input Parameters:', { 
-      checkpointId: checkpointId,
-      checkpointIdType: typeof checkpointId,
-      checkpointIdLength: checkpointId?.length,
-      siteId: siteId,
-      siteIdType: typeof siteId,
-      siteIdLength: siteId?.length
-    });
-    
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    
-    if (!uuidRegex.test(checkpointId)) {
-      console.error('❌ VALIDATION FAILED - Invalid checkpoint UUID format:', checkpointId);
-      console.log('Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
-      return null;
-    }
-    
-    if (!uuidRegex.test(siteId)) {
-      console.error('❌ VALIDATION FAILED - Invalid site UUID format:', siteId);
-      console.log('Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
-      return null;
-    }
-    
-    try {
-      // ENHANCED DEBUGGING - Multiple database queries to understand the state
-      
-      // Step 1: Check ALL checkpoints in the database - Fixed the count query
-      console.log('🔍 STEP 1: Checking ALL checkpoints in database...');
-      const { count: totalCount } = await supabase
-        .from('guardian_checkpoints')
-        .select('*', { count: 'exact', head: true });
-      
-      const { data: allCheckpoints, error: allError } = await supabase
-        .from('guardian_checkpoints')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      console.log('🔍 ALL CHECKPOINTS QUERY:', {
-        totalCount: totalCount,
-        totalFound: allCheckpoints?.length || 0,
-        error: allError,
-        sampleCheckpoints: allCheckpoints?.slice(0, 3).map(cp => ({
-          id: cp.id,
-          name: cp.name,
-          site_id: cp.site_id,
-          active: cp.active
-        }))
-      });
-      
-      // Step 2: Check checkpoints for the specific site - Fixed the count query
-      console.log('🔍 STEP 2: Checking checkpoints for specific site...');
-      const { count: siteCount } = await supabase
-        .from('guardian_checkpoints')
-        .select('*', { count: 'exact', head: true })
-        .eq('site_id', siteId);
-      
-      const { data: siteCheckpoints, error: siteError } = await supabase
-        .from('guardian_checkpoints')
-        .select('*')
-        .eq('site_id', siteId)
-        .order('created_at', { ascending: false });
-      
-      console.log('🔍 SITE CHECKPOINTS QUERY:', {
-        siteId: siteId,
-        siteCount: siteCount,
-        siteFound: siteCheckpoints?.length || 0,
-        error: siteError,
-        checkpoints: siteCheckpoints?.map(cp => ({
-          id: cp.id,
-          name: cp.name,
-          location: cp.location,
-          active: cp.active,
-          site_id: cp.site_id
-        }))
-      });
-      
-      // Step 3: Search for the specific checkpoint globally
-      console.log('🔍 STEP 3: Searching for specific checkpoint globally...');
-      const { data: globalCheckpoint, error: globalError } = await supabase
-        .from('guardian_checkpoints')
-        .select('*')
-        .eq('id', checkpointId)
-        .maybeSingle();
-      
-      console.log('🔍 GLOBAL CHECKPOINT SEARCH:', {
-        searchingFor: checkpointId,
-        found: !!globalCheckpoint,
-        error: globalError,
-        checkpoint: globalCheckpoint ? {
-          id: globalCheckpoint.id,
-          name: globalCheckpoint.name,
-          location: globalCheckpoint.location,
-          site_id: globalCheckpoint.site_id,
-          active: globalCheckpoint.active,
-          created_at: globalCheckpoint.created_at
-        } : null
-      });
-      
-      // Step 4: Check if the checkpoint exists but in a different site
-      if (globalCheckpoint && globalCheckpoint.site_id !== siteId) {
-        console.error('❌ SITE MISMATCH DETECTED');
-        console.log('Checkpoint belongs to site:', globalCheckpoint.site_id);
-        console.log('Expected site:', siteId);
-        
-        // Get site names for better understanding
-        const { data: checkpointSite } = await supabase
-          .from('guardian_sites')
-          .select('name, address')
-          .eq('id', globalCheckpoint.site_id)
-          .maybeSingle();
-          
-        const { data: expectedSite } = await supabase
-          .from('guardian_sites')
-          .select('name, address')
-          .eq('id', siteId)
-          .maybeSingle();
-          
-        console.log('🏢 SITE DETAILS COMPARISON:', {
-          checkpointSite: {
-            id: globalCheckpoint.site_id,
-            name: checkpointSite?.name,
-            address: checkpointSite?.address
-          },
-          expectedSite: {
-            id: siteId,
-            name: expectedSite?.name,
-            address: expectedSite?.address
-          }
-        });
-        
-        return null;
-      }
-      
-      // Step 5: Check database connection and permissions
-      console.log('🔍 STEP 5: Testing database connection and permissions...');
-      const { data: connectionTest, error: connectionError } = await supabase
-        .from('guardian_checkpoints')
-        .select('count(*)')
-        .limit(1);
-      
-      console.log('🔍 CONNECTION TEST:', {
-        success: !connectionError,
-        error: connectionError,
-        result: connectionTest
-      });
-      
-      // Step 6: Search for similar checkpoint IDs (partial match)
-      console.log('🔍 STEP 6: Searching for similar checkpoint IDs...');
-      const checkpointIdEnd = checkpointId.slice(-12); // Last 12 characters
-      const { data: similarCheckpoints, error: similarError } = await supabase
-        .from('guardian_checkpoints')
-        .select('id, name, site_id, active')
-        .ilike('id', `%${checkpointIdEnd}%`)
-        .limit(5);
-      
-      console.log('🔍 SIMILAR CHECKPOINTS SEARCH:', {
-        searchPattern: `%${checkpointIdEnd}%`,
-        found: similarCheckpoints?.length || 0,
-        error: similarError,
-        matches: similarCheckpoints
-      });
-      
-      // Final validation
-      if (!globalCheckpoint) {
-        console.error('❌ FINAL RESULT: Checkpoint does not exist in database');
-        console.log('❌ Searched for checkpoint ID:', checkpointId);
-        console.log('❌ In site:', siteId);
-        console.log('❌ Total checkpoints in database:', totalCount);
-        console.log('❌ Checkpoints in target site:', siteCount);
-        return null;
-      }
-      
-      if (!globalCheckpoint.active) {
-        console.error('❌ FINAL RESULT: Checkpoint exists but is inactive');
-        return null;
-      }
-      
-      console.log('✅ FINAL RESULT: Checkpoint validation successful!');
-      console.log('✅ Validated checkpoint:', {
-        id: globalCheckpoint.id,
-        name: globalCheckpoint.name,
-        location: globalCheckpoint.location,
-        site_id: globalCheckpoint.site_id,
-        active: globalCheckpoint.active
-      });
-      
-      return globalCheckpoint;
-      
-    } catch (error) {
-      console.error('❌ VALIDATION ERROR - Exception during validation:', error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('guardian_checkpoints')
+      .select('*')
+      .eq('id', checkpointId)
+      .eq('site_id', siteId)
+      .eq('active', true)
+      .maybeSingle()
+
+    if (error) throw error
+    return data
   }
 
   static async getPatrolProgress(patrolId: string): Promise<{
@@ -461,14 +235,14 @@ export class PatrolService {
     // Get total checkpoints for the site
     const { count: totalCheckpoints } = await supabase
       .from('guardian_checkpoints')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'exact' })
       .eq('site_id', patrol.site_id)
       .eq('active', true)
 
     // Get visited checkpoints for this patrol
     const { count: visitedCheckpoints } = await supabase
       .from('patrol_checkpoint_visits')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'exact' })
       .eq('patrol_id', patrolId)
       .eq('status', 'completed')
 
@@ -478,163 +252,6 @@ export class PatrolService {
       totalCheckpoints: totalCheckpoints || 0,
       visitedCheckpoints: visitedCheckpoints || 0,
       progress
-    }
-  }
-
-  // Enhanced debugging methods - Fixed count queries
-  static async debugGetAllCheckpoints(siteId?: string): Promise<GuardianCheckpoint[]> {
-    console.log('🔧 ENHANCED DEBUG: Getting all checkpoints for site:', siteId);
-    
-    let dataQuery = supabase.from('guardian_checkpoints').select('*');
-    let countQuery = supabase.from('guardian_checkpoints').select('*', { count: 'exact', head: true });
-    
-    if (siteId) {
-      dataQuery = dataQuery.eq('site_id', siteId);
-      countQuery = countQuery.eq('site_id', siteId);
-    }
-    
-    const { data, error } = await dataQuery.order('name');
-    const { count } = await countQuery;
-    
-    if (error) {
-      console.error('❌ Failed to get checkpoints:', error);
-      throw error;
-    }
-    
-    console.log('🔧 ENHANCED DEBUG: Checkpoint query result:', {
-      requestedSiteId: siteId,
-      totalFound: data?.length || 0,
-      totalCount: count,
-      error: error,
-      queryUsed: siteId ? `site_id = ${siteId}` : 'all checkpoints'
-    });
-    
-    console.table(data?.map(cp => ({
-      id: cp.id,
-      name: cp.name,
-      location: cp.location,
-      site_id: cp.site_id,
-      active: cp.active,
-      created_at: cp.created_at
-    })));
-    
-    return data || [];
-  }
-
-  static async debugGetSiteInfo(siteId: string): Promise<GuardianSite | null> {
-    console.log('🔧 DEBUG: Getting site info for:', siteId);
-    
-    const { data, error } = await supabase
-      .from('guardian_sites')
-      .select('*')
-      .eq('id', siteId)
-      .maybeSingle();
-    
-    if (error) {
-      console.error('❌ Failed to get site info:', error);
-      throw error;
-    }
-    
-    console.log('🔧 DEBUG: Site info:', data);
-    return data;
-  }
-
-  static async debugValidationStep(checkpointId: string, siteId: string): Promise<void> {
-    console.log('🔧 DEBUG: Running step-by-step validation debug...');
-    
-    try {
-      // Get site info
-      const site = await this.debugGetSiteInfo(siteId);
-      console.log('🔧 Site exists:', !!site, site?.name);
-      
-      // Get all checkpoints for site
-      const siteCheckpoints = await this.debugGetAllCheckpoints(siteId);
-      console.log('🔧 Checkpoints in site:', siteCheckpoints.length);
-      
-      // Check if our checkpoint is in the list
-      const foundCheckpoint = siteCheckpoints.find(cp => cp.id === checkpointId);
-      console.log('🔧 Target checkpoint found in site:', !!foundCheckpoint);
-      
-      if (foundCheckpoint) {
-        console.log('🔧 Found checkpoint details:', {
-          id: foundCheckpoint.id,
-          name: foundCheckpoint.name,
-          location: foundCheckpoint.location,
-          active: foundCheckpoint.active,
-          site_id: foundCheckpoint.site_id
-        });
-      } else {
-        console.log('🔧 Available checkpoint IDs in site:');
-        siteCheckpoints.forEach(cp => console.log(`  - ${cp.id} (${cp.name})`));
-        
-        // Also check if the checkpoint exists in any other site
-        console.log('🔧 Checking if checkpoint exists in other sites...');
-        const { data: globalCheckpoint } = await supabase
-          .from('guardian_checkpoints')
-          .select('id, name, location, site_id, active')
-          .eq('id', checkpointId)
-          .maybeSingle();
-          
-        if (globalCheckpoint) {
-          console.log('🔧 Checkpoint found in different site:', {
-            id: globalCheckpoint.id,
-            name: globalCheckpoint.name,
-            site_id: globalCheckpoint.site_id,
-            active: globalCheckpoint.active
-          });
-        } else {
-          console.log('🔧 Checkpoint not found anywhere in database');
-        }
-      }
-      
-    } catch (error) {
-      console.error('❌ Validation debug failed:', error);
-    }
-  }
-
-  // New method to parse and validate QR JSON data
-  static parseQRData(qrData: string): { checkpointId: string; siteId: string; additionalData?: any } | null {
-    console.log('🔧 QR Data Parsing - Raw input:', qrData);
-    
-    try {
-      // Try to parse as JSON first
-      const parsed = JSON.parse(qrData);
-      console.log('🔧 QR Data Parsing - Parsed JSON:', parsed);
-      
-      // Check if it's a checkpoint QR code with the expected structure
-      if (parsed.type === 'checkpoint' && parsed.checkpointId && parsed.siteId) {
-        console.log('🔧 QR Data Parsing - Valid checkpoint QR detected');
-        return {
-          checkpointId: parsed.checkpointId,
-          siteId: parsed.siteId,
-          additionalData: {
-            name: parsed.name,
-            location: parsed.location,
-            type: parsed.type
-          }
-        };
-      } else {
-        console.log('🔧 QR Data Parsing - JSON missing required fields');
-        console.log('Required: type="checkpoint", checkpointId, siteId');
-        console.log('Found:', Object.keys(parsed));
-        return null;
-      }
-    } catch (e) {
-      // Not JSON, try other formats
-      console.log('🔧 QR Data Parsing - Not JSON, trying as plain text');
-      
-      // Check if it's a plain UUID
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (uuidRegex.test(qrData.trim())) {
-        console.log('🔧 QR Data Parsing - Plain UUID detected');
-        return {
-          checkpointId: qrData.trim(),
-          siteId: '', // Will need to be provided separately
-        };
-      }
-      
-      console.log('🔧 QR Data Parsing - Unrecognized format');
-      return null;
     }
   }
 }
