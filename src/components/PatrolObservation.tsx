@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Camera, MapPin, Clock, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/hooks/useLanguage';
 import { ObservationService } from '@/services/ObservationService';
 import { PatrolService } from '@/services/PatrolService';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +20,7 @@ interface PatrolObservationProps {
 
 const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -61,7 +64,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
       setIsCapturing(true);
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment', // Use back camera on mobile
+          facingMode: 'environment',
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
@@ -76,8 +79,8 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
     } catch (error) {
       console.error('Error accessing camera:', error);
       toast({
-        title: "Camera Error",
-        description: "Unable to access camera. Please check permissions.",
+        title: t('camera.error'),
+        description: t('camera.permission_error'),
         variant: "destructive",
       });
       setIsCapturing(false);
@@ -126,8 +129,6 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
 
     setIsSubmitting(true);
     try {
-      // For now, we'll send the first photo to maintain compatibility with the existing service
-      // In the future, the service could be updated to handle multiple photos
       await ObservationService.createObservation(
         user.id,
         activePatrol?.id,
@@ -136,7 +137,6 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
         description,
         severity,
         photos[0] || undefined
-        // Location will be automatically captured by the service
       );
       
       toast({
@@ -164,7 +164,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
           <Button variant="ghost" onClick={onBack}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
-          <h1 className="text-lg font-semibold">Patrol Observation</h1>
+          <h1 className="text-lg font-semibold">{t('observation.title')}</h1>
         </div>
       </div>
 
@@ -175,7 +175,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-gray-500" />
-                <span>Auto-captured location</span>
+                <span>{t('location.auto_captured')}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-gray-500" />
@@ -188,15 +188,15 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
         {/* Form */}
         <Card>
           <CardHeader>
-            <CardTitle>Observation Details</CardTitle>
+            <CardTitle>{t('observation.details')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Observation Title</Label>
+                <Label htmlFor="title">{t('observation.observation_title')}</Label>
                 <Input
                   id="title"
-                  placeholder="Brief description of the observation"
+                  placeholder={t('placeholder.observation_title')}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
@@ -204,25 +204,25 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="severity">Severity Level</Label>
+                <Label htmlFor="severity">{t('observation.severity')}</Label>
                 <Select value={severity} onValueChange={(value: any) => setSeverity(value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select severity level" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low - Minor issue</SelectItem>
-                    <SelectItem value="medium">Medium - Requires attention</SelectItem>
-                    <SelectItem value="high">High - Urgent action needed</SelectItem>
-                    <SelectItem value="critical">Critical - Immediate response</SelectItem>
+                    <SelectItem value="low">{t('severity.low')}</SelectItem>
+                    <SelectItem value="medium">{t('severity.medium')}</SelectItem>
+                    <SelectItem value="high">{t('severity.high')}</SelectItem>
+                    <SelectItem value="critical">{t('severity.critical')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('observation.description')}</Label>
                 <Textarea
                   id="description"
-                  placeholder="Provide detailed information about the observation..."
+                  placeholder={t('placeholder.description')}
                   rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -232,7 +232,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
 
               {/* Photos Section */}
               <div className="space-y-2">
-                <Label>Evidence Photos ({photos.length}/5)</Label>
+                <Label>{t('observation.evidence_photos')} ({photos.length}/5)</Label>
                 
                 {/* Display captured photos */}
                 {photos.length > 0 && (
@@ -275,14 +275,14 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
                         className="flex-1 bg-green-600 hover:bg-green-700"
                       >
                         <Camera className="h-4 w-4 mr-2" />
-                        Take Photo
+                        {t('observation.take_photo')}
                       </Button>
                       <Button 
                         type="button"
                         onClick={stopCamera}
                         variant="outline"
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </Button>
                     </div>
                   </div>
@@ -295,7 +295,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
                     disabled={photos.length >= 5}
                   >
                     <Camera className="h-6 w-6 mr-2" />
-                    {photos.length === 0 ? 'Capture Photos' : 'Add Another Photo'}
+                    {photos.length === 0 ? t('observation.capture_photos') : t('observation.add_photo')}
                   </Button>
                 )}
               </div>
@@ -307,10 +307,10 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
                 className="w-full bg-orange-600 hover:bg-orange-700"
                 size="lg"
               >
-                {isSubmitting ? 'Submitting...' : (
+                {isSubmitting ? t('common.loading') : (
                   <>
                     <Send className="h-5 w-5 mr-2" />
-                    Submit Observation
+                    {t('observation.submit_observation')}
                   </>
                 )}
               </Button>

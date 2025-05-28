@@ -8,10 +8,13 @@ import QRScanner from '@/components/QRScanner';
 import PatrolObservation from '@/components/PatrolObservation';
 import EnhancedEmergencyReport from '@/components/EnhancedEmergencyReport';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { LanguageProvider, useLanguage } from '@/hooks/useLanguage';
+import LanguageToggle from '@/components/LanguageToggle';
 import { Toaster } from '@/components/ui/toaster';
 
 function AppContent() {
   const { user, profile, loading, signOut } = useAuth();
+  const { t } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(true);
 
@@ -67,7 +70,7 @@ function AppContent() {
           <header className="bg-blue-900 text-white p-4 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Shield className="h-6 w-6" />
-              <h1 className="text-lg font-bold">Sentinel Guard</h1>
+              <h1 className="text-lg font-bold">{t('app.title')}</h1>
             </div>
             <div className="flex items-center space-x-2">
               <Button
@@ -78,11 +81,13 @@ function AppContent() {
               >
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
+              <LanguageToggle />
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleSignOut}
                 className="text-white hover:bg-blue-800"
+                title={t('button.sign_out')}
               >
                 <User className="h-4 w-4" />
               </Button>
@@ -105,7 +110,7 @@ function AppContent() {
                 onClick={() => setCurrentScreen('dashboard')}
               >
                 <Shield className="h-5 w-5" />
-                <span className="text-xs">Dashboard</span>
+                <span className="text-xs">{t('nav.dashboard')}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -113,7 +118,7 @@ function AppContent() {
                 onClick={() => setCurrentScreen('scanner')}
               >
                 <Camera className="h-5 w-5" />
-                <span className="text-xs">Scan</span>
+                <span className="text-xs">{t('nav.scan')}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -121,7 +126,7 @@ function AppContent() {
                 onClick={() => setCurrentScreen('observation')}
               >
                 <AlertTriangle className="h-5 w-5" />
-                <span className="text-xs">Report</span>
+                <span className="text-xs">{t('nav.report')}</span>
               </Button>
             </div>
           </nav>
@@ -135,7 +140,9 @@ function AppContent() {
 const Index = () => {
   return (
     <AuthProvider>
-      <AppContent />
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
     </AuthProvider>
   );
 };

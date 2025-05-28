@@ -1,20 +1,73 @@
 
 export const EMERGENCY_TYPES = {
-  unsafe_area: 'Επικίνδυνη Περιοχή',
-  theft_attempt: 'Απόπειρα Κλοπής',
-  vandalism: 'Βανδαλισμός',
-  suspicious_activity: 'Ύποπτη Δραστηριότητα',
-  medical_emergency: 'Ιατρική Επείγουσα Ανάγκη',
-  fire_hazard: 'Κίνδυνος Πυρκαγιάς',
-  security_breach: 'Παραβίαση Ασφαλείας',
-  equipment_malfunction: 'Βλάβη Εξοπλισμού',
-  unauthorized_access: 'Μη Εξουσιοδοτημένη Πρόσβαση',
-  violence_threat: 'Απειλή Βίας',
-  property_damage: 'Ζημιά Περιουσίας',
-  environmental_hazard: 'Περιβαλλοντικός Κίνδυνος',
-  missing_person: 'Αγνοούμενο Άτομο',
-  accident: 'Ατύχημα',
-  other: 'Άλλο'
+  unsafe_area: {
+    en: 'Unsafe Area',
+    el: 'Ανασφαλής Χώρος'
+  },
+  theft_attempt: {
+    en: 'Theft Attempt',
+    el: 'Απόπειρα Υπεξαίρεσης'
+  },
+  dangerous_object: {
+    en: 'Dangerous Object',
+    el: 'Επικίνδυνο Αντικείμενο'
+  },
+  suspicious_incident: {
+    en: 'Suspicious Incident',
+    el: 'Ύποπτο Περιστατικό'
+  },
+  vandalism: {
+    en: 'Vandalism',
+    el: 'Βανδαλισμός'
+  },
+  theft: {
+    en: 'Theft',
+    el: 'Υπεξαίρεση'
+  },
+  material_damage: {
+    en: 'Material Damage',
+    el: 'Φθορά Υλικού'
+  },
+  perimeter_breach: {
+    en: 'Perimeter Breach',
+    el: 'Παραβίαση Περιμέτρου'
+  },
+  malfunction: {
+    en: 'Malfunction/Breakdown',
+    el: 'Βλάβη'
+  },
+  company_personnel_incident: {
+    en: 'Incident Involving Company Personnel',
+    el: 'Συμβάν με Εμπλεκόμενο Προσωπικό της Εταιρείας'
+  },
+  visitor_incident: {
+    en: 'Incident Involving Visitor',
+    el: 'Συμβάν με Εμπλεκόμενο Επισκέπτη'
+  },
+  union_action: {
+    en: 'Union Action - Protest',
+    el: 'Συνδικαλιστική Δράση - Διαμαρτυρία'
+  },
+  public_authority_inspection: {
+    en: 'Inspection by Public Authority',
+    el: 'Έλεγχος από Δημόσια Αρχή'
+  },
+  perimeter_alarm: {
+    en: 'Perimeter Breach Alarm Indication',
+    el: 'Ένδειξη Συναγερμού Παραβίασης Περιμέτρου'
+  },
+  fire_alarm: {
+    en: 'Fire Safety Alarm Indication',
+    el: 'Ένδειξη Συναγερμού Πυρασφάλειας'
+  },
+  natural_disaster: {
+    en: 'Natural Disaster',
+    el: 'Φυσική Καταστροφή'
+  },
+  other: {
+    en: 'Other',
+    el: 'Άλλο'
+  }
 } as const;
 
 export type EmergencyType = keyof typeof EMERGENCY_TYPES;

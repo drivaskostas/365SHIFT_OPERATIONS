@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, AlertTriangle, Phone, MapPin, Clock, Send, Camera, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/hooks/useLanguage';
 import { EnhancedEmergencyService } from '@/services/EnhancedEmergencyService';
 import { PatrolService } from '@/services/PatrolService';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,7 @@ interface EnhancedEmergencyReportProps {
 
 const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
   const { user, profile } = useAuth();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   
   // Form state
@@ -59,11 +60,11 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
   // Auto-fill title when emergency type changes
   useEffect(() => {
     if (emergencyType && emergencyType !== 'other') {
-      setTitle(EMERGENCY_TYPES[emergencyType]);
+      setTitle(EMERGENCY_TYPES[emergencyType][language]);
     } else {
       setTitle('');
     }
-  }, [emergencyType]);
+  }, [emergencyType, language]);
 
   const loadActivePatrol = async () => {
     if (!user) return;
@@ -191,7 +192,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
             <ArrowLeft className="h-6 w-6" />
           </Button>
           <AlertTriangle className="h-6 w-6" />
-          <h1 className="text-lg font-semibold">EMERGENCY REPORT</h1>
+          <h1 className="text-lg font-semibold">{t('emergency.title')}</h1>
         </div>
       </div>
 
@@ -202,8 +203,8 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
             <div className="flex items-center space-x-3">
               <AlertTriangle className="h-8 w-8 text-red-600" />
               <div>
-                <h3 className="font-semibold text-red-800 dark:text-red-200">Emergency Protocol Active</h3>
-                <p className="text-sm text-red-700 dark:text-red-300">This report will be prioritized and sent immediately</p>
+                <h3 className="font-semibold text-red-800 dark:text-red-200">{t('emergency.protocol_active')}</h3>
+                <p className="text-sm text-red-700 dark:text-red-300">{t('emergency.prioritized')}</p>
               </div>
             </div>
           </CardContent>
@@ -215,7 +216,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-red-500" />
-                <span>GPS coordinates will be captured</span>
+                <span>{t('location.gps_coordinates')}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-red-500" />
@@ -228,20 +229,20 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
         {/* Emergency Form */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-red-600">Emergency Details</CardTitle>
+            <CardTitle className="text-red-600">{t('emergency.details')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Emergency Type */}
               <div className="space-y-2">
-                <Label htmlFor="emergency-type">Emergency Type *</Label>
+                <Label htmlFor="emergency-type">{t('emergency.type')} *</Label>
                 <Select value={emergencyType} onValueChange={(value: EmergencyType) => setEmergencyType(value)}>
                   <SelectTrigger className="border-red-200">
                     <SelectValue placeholder="Select emergency type" />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(EMERGENCY_TYPES).map(([key, value]) => (
-                      <SelectItem key={key} value={key}>{value}</SelectItem>
+                      <SelectItem key={key} value={key}>{value[language]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -249,10 +250,10 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
 
               {/* Title */}
               <div className="space-y-2">
-                <Label htmlFor="title">Emergency Title *</Label>
+                <Label htmlFor="title">{t('emergency.emergency_title')} *</Label>
                 <Input
                   id="title"
-                  placeholder="Brief description of the emergency"
+                  placeholder={t('placeholder.emergency_title')}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="border-red-200"
@@ -262,16 +263,16 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
 
               {/* Severity */}
               <div className="space-y-2">
-                <Label htmlFor="severity">Emergency Severity *</Label>
+                <Label htmlFor="severity">{t('emergency.emergency_severity')} *</Label>
                 <Select value={severity} onValueChange={(value: any) => setSeverity(value)}>
                   <SelectTrigger className="border-red-200">
                     <SelectValue placeholder="Select severity level" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="critical">Critical - Life threatening</SelectItem>
-                    <SelectItem value="high">High - Urgent security threat</SelectItem>
-                    <SelectItem value="medium">Medium - Security concern</SelectItem>
-                    <SelectItem value="low">Low - Minor incident</SelectItem>
+                    <SelectItem value="critical">{t('emergency.severity.critical')}</SelectItem>
+                    <SelectItem value="high">{t('emergency.severity.high')}</SelectItem>
+                    <SelectItem value="medium">{t('emergency.severity.medium')}</SelectItem>
+                    <SelectItem value="low">{t('emergency.severity.low')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -279,7 +280,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
               {/* Date and Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="incident-date">Incident Date</Label>
+                  <Label htmlFor="incident-date">{t('emergency.incident_date')}</Label>
                   <Input
                     id="incident-date"
                     type="date"
@@ -289,7 +290,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="incident-time">Incident Time</Label>
+                  <Label htmlFor="incident-time">{t('emergency.incident_time')}</Label>
                   <Input
                     id="incident-time"
                     type="time"
@@ -302,10 +303,10 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
 
               {/* Location Description */}
               <div className="space-y-2">
-                <Label htmlFor="location">Location Description *</Label>
+                <Label htmlFor="location">{t('emergency.location_description')} *</Label>
                 <Input
                   id="location"
-                  placeholder="Describe the exact location of the incident"
+                  placeholder={t('placeholder.location_description')}
                   value={locationDescription}
                   onChange={(e) => setLocationDescription(e.target.value)}
                   className="border-red-200"
@@ -315,10 +316,10 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description">Detailed Description * (min. 10 characters)</Label>
+                <Label htmlFor="description">{t('emergency.detailed_description')} * (min. 10 characters)</Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe the emergency situation in detail..."
+                  placeholder={t('placeholder.emergency_description')}
                   rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -326,15 +327,15 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                   required
                   minLength={10}
                 />
-                <p className="text-xs text-gray-500">{description.length}/10 minimum characters</p>
+                <p className="text-xs text-gray-500">{description.length}/10 {t('validation.min_characters')}</p>
               </div>
 
               {/* Involved Persons */}
               <div className="space-y-2">
-                <Label htmlFor="involved-persons">Involved Persons (Optional)</Label>
+                <Label htmlFor="involved-persons">{t('emergency.involved_persons')}</Label>
                 <Textarea
                   id="involved-persons"
-                  placeholder="List any persons involved in the incident..."
+                  placeholder={t('placeholder.involved_persons')}
                   rows={2}
                   value={involvedPersons}
                   onChange={(e) => setInvolvedPersons(e.target.value)}
@@ -344,7 +345,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
 
               {/* Photos Section */}
               <div className="space-y-2">
-                <Label>Evidence Photos ({photos.length}/5)</Label>
+                <Label>{t('observation.evidence_photos')} ({photos.length}/5)</Label>
                 
                 {photos.length > 0 && (
                   <div className="grid grid-cols-2 gap-2 mb-4">
@@ -386,14 +387,14 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                         className="flex-1 bg-green-600 hover:bg-green-700"
                       >
                         <Camera className="h-4 w-4 mr-2" />
-                        Take Photo
+                        {t('observation.take_photo')}
                       </Button>
                       <Button 
                         type="button"
                         onClick={stopCamera}
                         variant="outline"
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </Button>
                     </div>
                   </div>
@@ -406,7 +407,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                     disabled={photos.length >= 5}
                   >
                     <Camera className="h-6 w-6 mr-2" />
-                    {photos.length === 0 ? 'Capture Photos' : 'Add Another Photo'}
+                    {photos.length === 0 ? t('observation.capture_photos') : t('observation.add_photo')}
                   </Button>
                 )}
               </div>
@@ -421,7 +422,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                 {isSubmitting ? 'Sending Emergency Report...' : (
                   <>
                     <Send className="h-5 w-5 mr-2" />
-                    SEND EMERGENCY REPORT
+                    {t('emergency.send_report')}
                   </>
                 )}
               </Button>
@@ -434,12 +435,12 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-blue-800 dark:text-blue-200">Need Immediate Help?</h3>
-                <p className="text-sm text-blue-700 dark:text-blue-300">Call emergency services</p>
+                <h3 className="font-semibold text-blue-800 dark:text-blue-200">{t('emergency.need_help')}</h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300">{t('emergency.call_emergency')}</p>
               </div>
               <Button variant="outline" className="border-blue-300 text-blue-700">
                 <Phone className="h-4 w-4 mr-2" />
-                Call 911
+                {t('emergency.call_911')}
               </Button>
             </div>
           </CardContent>
