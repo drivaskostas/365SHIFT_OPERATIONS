@@ -185,7 +185,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     
     try {
       const { LocationTrackingService } = await import('@/services/LocationTrackingService');
-      const result = await LocationTrackingService.testLocationAccess();
+      const result = await LocationTrackingService.testLocationNow();
       
       if (result.success) {
         toast({
@@ -210,12 +210,12 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     }
   };
 
-  const handleForceLocationRequest = async () => {
+  const handleRequestPermission = async () => {
     try {
-      console.log('🔄 Forcing location permission request...');
+      console.log('🔄 Requesting location permission...');
       
       const { LocationTrackingService } = await import('@/services/LocationTrackingService');
-      const success = await LocationTrackingService.forcePermissionRequest();
+      const success = await LocationTrackingService.requestLocationPermission();
       
       if (success) {
         setLocationPermissionStatus('granted');
@@ -225,16 +225,16 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         });
       } else {
         toast({
-          title: "Location Access Still Denied ❌",
-          description: "Please enable location manually in your browser settings.",
+          title: "Permission Still Denied ❌",
+          description: "Please manually enable location in your browser settings and refresh the page.",
           variant: "destructive"
         });
       }
     } catch (error: any) {
-      console.error('❌ Force permission failed:', error);
+      console.error('❌ Permission request failed:', error);
       toast({
         title: "Permission Request Failed ❌",
-        description: "Please enable location access in your browser settings.",
+        description: "Please manually enable location in your browser settings.",
         variant: "destructive"
       });
     }
@@ -446,37 +446,42 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         </div>
       </div>
 
-      {/* Location Permission Alert - Only show if denied */}
-      {locationPermissionStatus === 'denied' && (
+      {/* Enhanced Location Permission Alert */}
+      {(locationPermissionStatus === 'denied' || locationPermissionStatus === 'unknown') && (
         <div className="mb-6">
           <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="space-y-3">
                 <div>
                   <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">
-                    🚨 Location Access Issue
+                    🚨 Location Access Required
                   </h3>
-                  <p className="text-sm text-red-600 dark:text-red-300 mb-2">
-                    Location access appears blocked. Try the buttons below to resolve this:
+                  <p className="text-sm text-red-600 dark:text-red-300">
+                    Location tracking is essential for patrol functionality. Try these solutions:
                   </p>
                 </div>
-                <div className="flex gap-2">
+                
+                <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={handleTestLocation}
                     variant="outline"
                     size="sm"
                     className="border-blue-300 text-blue-700 hover:bg-blue-100"
                   >
-                    🧪 Test
+                    🧪 Test Location
                   </Button>
                   <Button
-                    onClick={handleForceLocationRequest}
+                    onClick={handleRequestPermission}
                     variant="outline"
                     size="sm"
                     className="border-green-300 text-green-700 hover:bg-green-100"
                   >
-                    🔄 Request Access
+                    🔄 Request Permission
                   </Button>
+                </div>
+                
+                <div className="text-xs text-red-500">
+                  If these don't work: Go to your browser settings → Privacy & Security → Site Settings → Location → Allow this site
                 </div>
               </div>
             </CardContent>

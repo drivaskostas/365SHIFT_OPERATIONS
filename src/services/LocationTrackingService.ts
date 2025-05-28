@@ -19,9 +19,9 @@ export class LocationTrackingService {
       return;
     }
 
-    // Try to get initial position with aggressive retry
+    // Try to get initial position with a simple, direct approach
     console.log('Attempting to get initial location...');
-    const initialPosition = await this.getCurrentPositionAggressive();
+    const initialPosition = await this.getLocationDirect();
     if (!initialPosition) {
       console.warn('Could not get initial location, but starting tracking anyway');
     } else {
@@ -35,7 +35,7 @@ export class LocationTrackingService {
     this.trackingInterval = setInterval(async () => {
       if (this.isTracking) {
         console.log('Getting location update...');
-        const position = await this.getCurrentPositionAggressive();
+        const position = await this.getLocationDirect();
         if (position) {
           await this.updateLocation(guardId, position);
         } else {
@@ -114,79 +114,12 @@ export class LocationTrackingService {
     }
   }
 
-  // More aggressive position retrieval with forced permission requests
-  private static async getCurrentPositionAggressive(): Promise<{ latitude: number; longitude: number } | null> {
-    console.log('🔄 Starting aggressive location retrieval...');
-    
-    // Strategy 1: Immediate quick attempt
-    console.log('📍 Strategy 1: Quick cached location');
-    let position = await this.getCurrentPosition({
-      enableHighAccuracy: false,
-      timeout: 3000,
-      maximumAge: 600000 // 10 minutes - use cached if available
-    });
-    
-    if (position) {
-      console.log('✅ Quick cached location success:', position);
-      return position;
-    }
-
-    // Strategy 2: Force fresh permission request with low accuracy
-    console.log('📍 Strategy 2: Fresh permission request (low accuracy)');
-    position = await this.getCurrentPosition({
-      enableHighAccuracy: false,
-      timeout: 10000,
-      maximumAge: 0 // Force fresh request
-    });
-    
-    if (position) {
-      console.log('✅ Fresh low accuracy success:', position);
-      return position;
-    }
-
-    // Strategy 3: High accuracy attempt
-    console.log('📍 Strategy 3: High accuracy attempt');
-    position = await this.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0
-    });
-    
-    if (position) {
-      console.log('✅ High accuracy success:', position);
-      return position;
-    }
-
-    // Strategy 4: Last resort - very permissive settings
-    console.log('📍 Strategy 4: Last resort - very permissive');
-    position = await this.getCurrentPosition({
-      enableHighAccuracy: false,
-      timeout: 30000,
-      maximumAge: 1800000 // 30 minutes
-    });
-    
-    if (position) {
-      console.log('✅ Last resort success:', position);
-      return position;
-    }
-
-    console.log('❌ All aggressive strategies failed');
-    return null;
-  }
-
-  private static getCurrentPosition(options: PositionOptions): Promise<{ latitude: number; longitude: number } | null> {
+  // Simple, direct location request
+  private static async getLocationDirect(): Promise<{ latitude: number; longitude: number } | null> {
     return new Promise((resolve) => {
-      console.log('📍 Requesting position with options:', options);
-
-      const timeout = setTimeout(() => {
-        console.log('⏰ Position request timed out');
-        resolve(null);
-      }, options.timeout || 10000);
-
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          clearTimeout(timeout);
-          console.log('✅ Position obtained:', {
+          console.log('✅ Location obtained:', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy: position.coords.accuracy
@@ -197,17 +130,14 @@ export class LocationTrackingService {
           });
         },
         (error) => {
-          clearTimeout(timeout);
-          console.error('❌ Geolocation error:', {
-            code: error.code,
-            message: error.message,
-            PERMISSION_DENIED: error.code === 1,
-            POSITION_UNAVAILABLE: error.code === 2,
-            TIMEOUT: error.code === 3
-          });
+          console.error('❌ Location error:', error.message);
           resolve(null);
         },
-        options
+        {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 0 // Force fresh request
+        }
       );
     });
   }
@@ -229,17 +159,42 @@ export class LocationTrackingService {
     return 'unknown';
   }
 
-  // Simplified test method that forces a fresh permission request
-  static async testLocationAccess(): Promise<{ success: boolean; position?: any; error?: any }> {
-    console.log('🧪 Testing location access with fresh permission request...');
+  // Force browser to show fresh permission dialog
+  static async requestLocationPermission(): Promise<boolean> {
+    console.log('🔄 Requesting fresh location permission...');
     
     return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve({ success: false, error: 'Geolocation not supported' });
-        return;
-      }
+      // Use watchPosition briefly to force a permission dialog
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          console.log('✅ Permission granted and location obtained');
+          navigator.geolocation.clearWatch(watchId);
+          resolve(true);
+        },
+        (error) => {
+          console.error('❌ Permission request failed:', error.message);
+          navigator.geolocation.clearWatch(watchId);
+          resolve(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
+      
+      // Clear watch after 5 seconds regardless
+      setTimeout(() => {
+        navigator.geolocation.clearWatch(watchId);
+      }, 5000);
+    });
+  }
 
-      // Force a fresh permission request by using maximumAge: 0
+  // Test location access with immediate feedback
+  static async testLocationNow(): Promise<{ success: boolean; position?: any; error?: any }> {
+    console.log('🧪 Testing location access now...');
+    
+    return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           console.log('✅ Test successful:', position);
@@ -264,31 +219,8 @@ export class LocationTrackingService {
         },
         {
           enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 0 // This forces a fresh permission request
-        }
-      );
-    });
-  }
-
-  // Force a fresh permission dialog
-  static async forcePermissionRequest(): Promise<boolean> {
-    console.log('🔄 Forcing fresh permission request...');
-    
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          console.log('✅ Permission granted, location obtained');
-          resolve(true);
-        },
-        (error) => {
-          console.error('❌ Permission denied or error:', error);
-          resolve(false);
-        },
-        {
-          enableHighAccuracy: true, // This often triggers a fresh permission dialog
           timeout: 5000,
-          maximumAge: 0 // Force fresh request
+          maximumAge: 0
         }
       );
     });
