@@ -31,6 +31,7 @@ interface EmergencyReport {
   resolved_by?: string;
   guard_name?: string;
   involved_persons?: string;
+  notes?: any[];
 }
 
 interface EmergencyReportWithProfile extends EmergencyReport {
