@@ -4,17 +4,19 @@ import type { PatrolObservation } from '@/types/database'
 
 export class ObservationService {
   static async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
+    console.log('🔄 ObservationService: Getting current location...');
+    
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        console.warn('Geolocation is not supported by this browser');
+        console.warn('⚠️ Geolocation is not supported by this browser');
         resolve(null);
         return;
       }
 
-      // First try with high accuracy
+      // First try with high accuracy and short timeout
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('Observation location obtained:', {
+          console.log('✅ High accuracy location obtained for observation:', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy: position.coords.accuracy
@@ -25,11 +27,12 @@ export class ObservationService {
           });
         },
         (error) => {
-          console.warn('High accuracy location failed for observation, trying with lower accuracy:', error);
-          // Fallback to lower accuracy
+          console.warn('⚠️ High accuracy location failed for observation, trying with lower accuracy:', error);
+          
+          // Fallback to lower accuracy with longer timeout
           navigator.geolocation.getCurrentPosition(
             (position) => {
-              console.log('Fallback observation location obtained:', {
+              console.log('✅ Fallback location obtained for observation:', {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
                 accuracy: position.coords.accuracy
@@ -40,7 +43,7 @@ export class ObservationService {
               });
             },
             (fallbackError) => {
-              console.error('Observation location access denied or failed:', fallbackError);
+              console.error('❌ All location attempts failed for observation:', fallbackError);
               resolve(null);
             },
             { 
@@ -69,30 +72,54 @@ export class ObservationService {
     imageUrl?: string,
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolObservation> {
-    // Always get fresh location if not provided
-    console.log('Attempting to get location for observation...');
-    const currentLocation = location || await this.getCurrentLocation();
-    console.log('Location for observation:', currentLocation);
+    console.log('📝 Creating observation with data:', {
+      guardId,
+      patrolId,
+      teamId,
+      title,
+      description,
+      severity,
+      imageUrl: imageUrl ? 'provided' : 'none',
+      location: location ? `${location.latitude}, ${location.longitude}` : 'none'
+    });
+
+    // Use provided location or try to get fresh location
+    let finalLocation = location;
+    if (!finalLocation) {
+      console.log('🔄 No location provided, attempting to get fresh location...');
+      finalLocation = await this.getCurrentLocation();
+    }
+
+    console.log('📍 Final location for observation:', finalLocation);
+
+    const observationData = {
+      guard_id: guardId,
+      patrol_id: patrolId,
+      team_id: teamId,
+      title,
+      description,
+      severity,
+      status: 'pending',
+      image_url: imageUrl,
+      latitude: finalLocation?.latitude || null,
+      longitude: finalLocation?.longitude || null,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('💾 Inserting observation data:', observationData);
 
     const { data, error } = await supabase
       .from('patrol_observations')
-      .insert({
-        guard_id: guardId,
-        patrol_id: patrolId,
-        team_id: teamId,
-        title,
-        description,
-        severity,
-        status: 'pending',
-        image_url: imageUrl,
-        latitude: currentLocation?.latitude,
-        longitude: currentLocation?.longitude,
-        timestamp: new Date().toISOString()
-      })
+      .insert(observationData)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Database error creating observation:', error);
+      throw error;
+    }
+
+    console.log('✅ Observation created successfully:', data);
     return data
   }
 

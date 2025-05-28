@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Camera, MapPin, Clock, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,12 +29,15 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (user) {
       loadActivePatrol();
+      getCurrentLocation();
     }
   }, [user]);
 
@@ -47,6 +49,36 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
       }
     };
   }, [stream]);
+
+  const getCurrentLocation = async () => {
+    console.log('🔄 Getting current location for observation...');
+    setLocationStatus('loading');
+    
+    try {
+      const location = await ObservationService.getCurrentLocation();
+      if (location) {
+        console.log('✅ Location obtained for observation:', location);
+        setCurrentLocation(location);
+        setLocationStatus('success');
+      } else {
+        console.warn('⚠️ Could not get location for observation');
+        setLocationStatus('error');
+        toast({
+          title: "Location Warning",
+          description: "Could not get your location. Observation will be submitted without coordinates.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error getting location for observation:', error);
+      setLocationStatus('error');
+      toast({
+        title: "Location Error",
+        description: "Failed to get your location. Please ensure location permissions are enabled.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadActivePatrol = async () => {
     if (!user) return;
@@ -127,8 +159,11 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
     e.preventDefault();
     if (!user || !title || !description) return;
 
+    console.log('📝 Submitting observation with location:', currentLocation);
+
     setIsSubmitting(true);
     try {
+      // Use the current location we captured when the component loaded
       await ObservationService.createObservation(
         user.id,
         activePatrol?.id,
@@ -136,12 +171,15 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
         title,
         description,
         severity,
-        photos[0] || undefined
+        photos[0] || undefined,
+        currentLocation || undefined
       );
       
       toast({
         title: "Observation Reported",
-        description: "Your patrol observation has been submitted with location data.",
+        description: currentLocation 
+          ? "Your patrol observation has been submitted with location coordinates."
+          : "Your patrol observation has been submitted (location not available).",
       });
       
       onBack();
@@ -174,14 +212,38 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-gray-500" />
-                <span>{t('location.auto_captured')}</span>
+                <MapPin className={`h-4 w-4 ${
+                  locationStatus === 'success' ? 'text-green-500' : 
+                  locationStatus === 'error' ? 'text-red-500' : 'text-gray-500'
+                }`} />
+                <span>
+                  {locationStatus === 'loading' && 'Getting location...'}
+                  {locationStatus === 'success' && 'Location captured'}
+                  {locationStatus === 'error' && 'Location unavailable'}
+                </span>
+                {currentLocation && (
+                  <span className="text-xs text-gray-400">
+                    ({currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)})
+                  </span>
+                )}
               </div>
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-gray-500" />
                 <span>{new Date().toLocaleTimeString()}</span>
               </div>
             </div>
+            {locationStatus === 'error' && (
+              <div className="mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={getCurrentLocation}
+                  className="text-xs"
+                >
+                  Retry Location
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
