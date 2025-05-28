@@ -62,6 +62,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
     totalIncidents: 0
   });
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [locationPermissionStatus, setLocationPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -74,8 +75,25 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       fetchRecentActivities();
       checkActivePatrol();
       fetchAvailableSites();
+      checkLocationPermission();
     }
   }, [profile?.id]);
+
+  const checkLocationPermission = async () => {
+    if ('permissions' in navigator) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        setLocationPermissionStatus(permission.state);
+        
+        // Listen for permission changes
+        permission.addEventListener('change', () => {
+          setLocationPermissionStatus(permission.state);
+        });
+      } catch (error) {
+        console.error('Error checking location permission:', error);
+      }
+    }
+  };
 
   const checkActivePatrol = async () => {
     if (!profile?.id) return;
@@ -368,6 +386,43 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
         </div>
       </div>
 
+      {/* Location Permission Warning */}
+      {locationPermissionStatus === 'denied' && (
+        <div className="mb-6">
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                <div>
+                  <h3 className="font-semibold text-orange-800">Location Access Required</h3>
+                  <p className="text-sm text-orange-700">
+                    Location tracking is disabled. Please enable location permissions in your browser settings to track your position during patrols.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {locationPermissionStatus === 'prompt' && !isTracking && (
+        <div className="mb-6">
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <MapPin className="h-5 w-5 text-blue-500" />
+                <div>
+                  <h3 className="font-semibold text-blue-800">Location Permission Needed</h3>
+                  <p className="text-sm text-blue-700">
+                    Starting a patrol will request location access for position tracking.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Patrol Control */}
       <div className="mb-6">
         <Card>
@@ -383,6 +438,11 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                 {isTracking && (
                   <p className="text-xs text-green-600 mt-1">
                     Location updates every minute
+                  </p>
+                )}
+                {activePatrol && locationPermissionStatus === 'denied' && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    Location tracking disabled - enable location permissions
                   </p>
                 )}
               </div>

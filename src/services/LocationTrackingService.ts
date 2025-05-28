@@ -11,6 +11,13 @@ export class LocationTrackingService {
       return;
     }
 
+    // First, request permission explicitly
+    const hasPermission = await this.requestLocationPermission();
+    if (!hasPermission) {
+      console.warn('Location permission denied, cannot start tracking');
+      return;
+    }
+
     console.log('Starting location tracking for guard:', guardId);
     this.isTracking = true;
 
@@ -35,6 +42,52 @@ export class LocationTrackingService {
     }
   }
 
+  private static async requestLocationPermission(): Promise<boolean> {
+    if (!navigator.geolocation) {
+      console.error('Geolocation is not supported by this browser');
+      return false;
+    }
+
+    try {
+      // Check current permission status
+      if ('permissions' in navigator) {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        console.log('Current geolocation permission:', permission.state);
+        
+        if (permission.state === 'denied') {
+          console.warn('Geolocation permission is denied');
+          return false;
+        }
+        
+        if (permission.state === 'granted') {
+          return true;
+        }
+      }
+
+      // Try to get position to trigger permission request
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            console.log('Location permission granted');
+            resolve(true);
+          },
+          (error) => {
+            console.warn('Location permission denied or failed:', error.message);
+            resolve(false);
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 0
+          }
+        );
+      });
+    } catch (error) {
+      console.error('Error checking location permission:', error);
+      return false;
+    }
+  }
+
   private static async updateLocation(guardId: string): Promise<void> {
     try {
       // Get current position
@@ -47,12 +100,12 @@ export class LocationTrackingService {
 
       console.log('Updating location for guard:', guardId, position);
 
-      // Check if guardian_geocodes record exists for this guard - using guardian_id not guard_id
+      // Check if guardian_geocodes record exists for this guard
       const { data: existingRecord } = await supabase
         .from('guardian_geocodes')
         .select('id')
-        .eq('guardian_id', guardId)  // Fixed: using guardian_id instead of guard_id
-        .single();
+        .eq('guardian_id', guardId)
+        .maybeSingle();
 
       if (existingRecord) {
         // Update existing record
@@ -64,7 +117,7 @@ export class LocationTrackingService {
             geocode_status: 'success',
             updated_at: new Date().toISOString()
           })
-          .eq('guardian_id', guardId);  // Fixed: using guardian_id instead of guard_id
+          .eq('guardian_id', guardId);
 
         if (error) {
           console.error('Error updating location:', error);
@@ -76,7 +129,7 @@ export class LocationTrackingService {
         const { error } = await supabase
           .from('guardian_geocodes')
           .insert({
-            guardian_id: guardId,  // Fixed: using guardian_id instead of guard_id
+            guardian_id: guardId,
             latitude: position.latitude,
             longitude: position.longitude,
             geocode_status: 'success',
@@ -111,13 +164,13 @@ export class LocationTrackingService {
           });
         },
         (error) => {
-          console.error('Error getting location:', error);
+          console.error('Error getting location:', error.message);
           resolve(null);
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 60000 // Cache for 1 minute
+          maximumAge: 300000 // Cache for 5 minutes
         }
       );
     });
