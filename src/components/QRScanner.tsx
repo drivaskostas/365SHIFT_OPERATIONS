@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, ArrowLeft, Flashlight, CheckCircle, AlertTriangle, Info, List, PlayCircle } from 'lucide-react';
+import { Camera, ArrowLeft, Flashlight, CheckCircle, AlertTriangle, Info, List, PlayCircle, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -202,14 +202,17 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     
     setIsScanning(false);
     setLastQRData(qrData);
-    addDebugLog(`🔍 SCAN START - Processing QR data: ${qrData}`);
+    addDebugLog(`🔍 ENHANCED SCAN START - Processing QR data: ${qrData}`);
     addDebugLog(`📍 Active Patrol: ${activePatrol.id}, Site: ${activePatrol.site_id}`);
     
     try {
-      // Enhanced QR data parsing with JSON support
+      // ENHANCED: Trigger comprehensive database debugging first
+      addDebugLog(`🔧 STEP 1: Running comprehensive database investigation...`);
+      
+      // Use the enhanced validation which includes deep debugging
       addDebugLog(`📋 Raw QR data: "${qrData}"`);
       
-      // Use the new parsing method to handle JSON QR codes
+      // Parse the QR data
       const parsedQR = PatrolService.parseQRData(qrData);
       addDebugLog(`📋 Parsed QR result: ${JSON.stringify(parsedQR)}`);
       
@@ -218,23 +221,19 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       
       if (parsedQR) {
         if (parsedQR.checkpointId && parsedQR.siteId) {
-          // JSON QR code with both checkpoint and site ID
           checkpointId = parsedQR.checkpointId;
           siteId = parsedQR.siteId;
           addDebugLog(`✅ Using JSON QR data - Checkpoint: ${checkpointId}, Site: ${siteId}`);
           
-          // Log additional data if present
           if (parsedQR.additionalData) {
             addDebugLog(`📝 Additional QR data: ${JSON.stringify(parsedQR.additionalData)}`);
           }
           
-          // Verify the site ID matches the active patrol
           if (siteId !== activePatrol.site_id) {
             addDebugLog(`⚠️ Site ID mismatch - QR Site: ${siteId}, Patrol Site: ${activePatrol.site_id}`);
             throw new Error(`This checkpoint belongs to a different site. Expected: ${activePatrol.site_id}, Found: ${siteId}`);
           }
         } else if (parsedQR.checkpointId) {
-          // Plain UUID format
           checkpointId = parsedQR.checkpointId;
           siteId = activePatrol.site_id;
           addDebugLog(`✅ Using plain UUID with patrol site - Checkpoint: ${checkpointId}, Site: ${siteId}`);
@@ -242,7 +241,6 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           throw new Error('Invalid QR code format - missing checkpoint ID');
         }
       } else {
-        // Fallback to treating the entire string as checkpoint ID
         checkpointId = qrData.trim();
         siteId = activePatrol.site_id;
         addDebugLog(`⚠️ Fallback parsing - treating as plain checkpoint ID: ${checkpointId}`);
@@ -250,16 +248,12 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       
       addDebugLog(`🎯 Final validation parameters - Checkpoint: "${checkpointId}", Site: "${siteId}"`);
       
-      // Enhanced validation with detailed logging
-      addDebugLog(`🔧 Running comprehensive validation debug...`);
-      await PatrolService.debugValidationStep(checkpointId, siteId);
-      
-      // Validate checkpoint belongs to the current patrol site
-      addDebugLog(`🔍 Starting checkpoint validation...`);
+      // ENHANCED: Run the enhanced validation with comprehensive debugging
+      addDebugLog(`🔍 Starting enhanced checkpoint validation...`);
       const checkpoint = await PatrolService.validateCheckpoint(checkpointId, siteId);
       
       if (!checkpoint) {
-        addDebugLog(`❌ Checkpoint validation failed`);
+        addDebugLog(`❌ Enhanced validation failed`);
         addDebugLog(`🔧 Available checkpoints in current site:`);
         availableCheckpoints.forEach(cp => {
           addDebugLog(`  - ${cp.id} (${cp.name})`);
@@ -267,7 +261,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         throw new Error(`Invalid checkpoint or checkpoint not found at this site. Checkpoint ID: ${checkpointId}, Site ID: ${siteId}`);
       }
       
-      addDebugLog(`✅ Checkpoint validated successfully: ${checkpoint.name} at ${checkpoint.location}`);
+      addDebugLog(`✅ Enhanced validation successful: ${checkpoint.name} at ${checkpoint.location}`);
       
       // Get current location
       addDebugLog('📍 Getting current location...');
@@ -298,7 +292,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       }, 3000);
       
     } catch (error: any) {
-      addDebugLog(`❌ SCAN FAILED: ${error.message}`);
+      addDebugLog(`❌ ENHANCED SCAN FAILED: ${error.message}`);
       toast({
         title: "Scan Failed",
         description: error.message || "Failed to record checkpoint visit.",
@@ -354,11 +348,40 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     }
   };
 
-  // Test with your specific JSON format
+  // Enhanced test with your specific JSON format
   const handleTestYourQR = () => {
     const yourQRData = '{"type":"checkpoint","siteId":"c5ca9f8d-7f57-4a62-bf70-0acccddbe9b8","checkpointId":"06d783a6-b1c1-49d4-a7ab-73d70201ffe5","name":"advasdcasc","location":"ascascasc"}';
-    addDebugLog(`🎯 TESTING YOUR QR - Using: ${yourQRData}`);
+    addDebugLog(`🎯 TESTING YOUR EXACT QR - Using: ${yourQRData}`);
     handleScanSuccess(yourQRData);
+  };
+
+  // Enhanced database debugging trigger
+  const handleDatabaseDeepDive = async () => {
+    if (!activePatrol) {
+      addDebugLog('❌ No active patrol for database investigation');
+      return;
+    }
+    
+    addDebugLog('🔬 DEEP DATABASE INVESTIGATION STARTING...');
+    
+    try {
+      // Get all checkpoints globally
+      addDebugLog('🔍 Step 1: Getting ALL checkpoints in database...');
+      const allCheckpoints = await PatrolService.debugGetAllCheckpoints();
+      
+      // Get checkpoints for current site
+      addDebugLog('🔍 Step 2: Getting checkpoints for current site...');
+      const siteCheckpoints = await PatrolService.debugGetAllCheckpoints(activePatrol.site_id);
+      
+      // Run the enhanced validation for your specific checkpoint
+      addDebugLog('🔍 Step 3: Testing validation for your specific checkpoint...');
+      await PatrolService.debugValidationStep('06d783a6-b1c1-49d4-a7ab-73d70201ffe5', activePatrol.site_id);
+      
+      addDebugLog('✅ Deep database investigation complete - check console logs for detailed results');
+      
+    } catch (error) {
+      addDebugLog(`❌ Database investigation failed: ${error}`);
+    }
   };
 
   // Quick scan from available checkpoints
@@ -391,7 +414,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         <Button variant="ghost" onClick={onBack} className="text-white">
           <ArrowLeft className="h-6 w-6" />
         </Button>
-        <h1 className="text-lg font-semibold">Scan Checkpoint</h1>
+        <h1 className="text-lg font-semibold">Enhanced QR Scanner</h1>
         <div className="flex gap-2">
           <Button 
             variant="ghost" 
@@ -460,7 +483,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleQuickScan(checkpoint.id)}
+                      onClick={() => handleScanSuccess(checkpoint.id)}
                       className="text-white border-white h-6 px-2"
                       disabled={!isScanning}
                     >
@@ -474,7 +497,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         </div>
       )}
 
-      {/* Debug Info */}
+      {/* Enhanced Debug Info */}
       {showDebugInfo && debugInfo.length > 0 && (
         <div className="px-4 pb-2">
           <Alert className="bg-gray-900/50 border-gray-700">
@@ -486,7 +509,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
                     log.includes('❌') ? 'text-red-300' :
                     log.includes('✅') ? 'text-green-300' :
                     log.includes('⚠️') ? 'text-yellow-300' :
-                    log.includes('🔧') ? 'text-blue-300' :
+                    log.includes('🔧') || log.includes('🔍') || log.includes('🔬') ? 'text-blue-300' :
+                    log.includes('🎯') ? 'text-purple-300' :
                     'text-gray-300'
                   }>{log}</div>
                 ))}
@@ -554,16 +578,17 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         )}
       </div>
 
-      {/* Instructions */}
+      {/* Enhanced Instructions and Testing */}
       <div className="p-4 bg-black/90">
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
-          <h3 className="font-semibold mb-2">Instructions:</h3>
+          <h3 className="font-semibold mb-2">Enhanced Debugging Instructions:</h3>
           <ul className="text-sm space-y-1 text-gray-300">
             <li>• Hold phone steady over QR code</li>
             <li>• Supports JSON format: {"{"}"type":"checkpoint","checkpointId":"...","siteId":"..."{"}"}</li>
             <li>• Also supports plain UUID format</li>
-            <li>• Use debug info to see parsing details</li>
-            <li>• Test your specific QR code with the "Test Your QR" button</li>
+            <li>• Enhanced validation shows detailed database state</li>
+            <li>• Use "Database Deep Dive" to investigate checkpoint data</li>
+            <li>• All database queries are logged for debugging</li>
           </ul>
         </div>
         
@@ -588,14 +613,25 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           </Button>
         </div>
         
-        <Button 
-          onClick={() => setShowDebugInfo(!showDebugInfo)} 
-          variant="outline"
-          className="w-full text-white border-white" 
-          size="sm"
-        >
-          {showDebugInfo ? 'Hide' : 'Show'} Debug Info
-        </Button>
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <Button 
+            onClick={handleDatabaseDeepDive}
+            className="bg-orange-600 hover:bg-orange-700" 
+            size="sm"
+            disabled={!activePatrol}
+          >
+            <Bug className="h-4 w-4 mr-1" />
+            Database Deep Dive
+          </Button>
+          <Button 
+            onClick={() => setShowDebugInfo(!showDebugInfo)} 
+            variant="outline"
+            className="text-white border-white" 
+            size="sm"
+          >
+            {showDebugInfo ? 'Hide' : 'Show'} Debug Info
+          </Button>
+        </div>
       </div>
     </div>
   );
