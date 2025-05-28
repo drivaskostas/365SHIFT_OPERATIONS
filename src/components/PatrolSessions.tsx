@@ -175,29 +175,29 @@ const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Patrol Session</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedPatrol.status)}`}>
+              <span className="truncate">Patrol Session</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedPatrol.status)} whitespace-nowrap`}>
                 {selectedPatrol.status.toUpperCase()}
               </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
+              <div className="min-w-0">
                 <p className="text-gray-600 dark:text-gray-300">Start Time</p>
-                <p className="font-medium">{new Date(selectedPatrol.start_time).toLocaleString()}</p>
+                <p className="font-medium truncate">{new Date(selectedPatrol.start_time).toLocaleString()}</p>
               </div>
               {selectedPatrol.end_time && (
-                <div>
+                <div className="min-w-0">
                   <p className="text-gray-600 dark:text-gray-300">End Time</p>
-                  <p className="font-medium">{new Date(selectedPatrol.end_time).toLocaleString()}</p>
+                  <p className="font-medium truncate">{new Date(selectedPatrol.end_time).toLocaleString()}</p>
                 </div>
               )}
-              <div>
+              <div className="min-w-0">
                 <p className="text-gray-600 dark:text-gray-300">Duration</p>
-                <p className="font-medium">{formatDuration(selectedPatrol.start_time, selectedPatrol.end_time)}</p>
+                <p className="font-medium truncate">{formatDuration(selectedPatrol.start_time, selectedPatrol.end_time)}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-gray-600 dark:text-gray-300">Checkpoints</p>
                 <p className="font-medium">{selectedPatrol.checkpointVisits.length}</p>
               </div>
@@ -221,23 +221,23 @@ const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {
               <Card key={visit.id}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full flex-shrink-0">
                         <span className="text-blue-600 font-medium text-sm">{index + 1}</span>
                       </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900 dark:text-white">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-gray-900 dark:text-white truncate">
                           {visit.checkpoint?.name || 'Unknown Checkpoint'}
                         </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
                           {visit.checkpoint?.location}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <div className="flex items-center space-x-2">
                         <Clock className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600 dark:text-gray-300">
+                        <span className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
                           {new Date(visit.timestamp).toLocaleTimeString()}
                         </span>
                       </div>
@@ -245,7 +245,7 @@ const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {
                         visit.status === 'completed' 
                           ? 'text-green-600 bg-green-100' 
                           : 'text-yellow-600 bg-yellow-100'
-                      }`}>
+                      } whitespace-nowrap`}>
                         {visit.status === 'completed' ? (
                           <CheckCircle className="h-3 w-3 mr-1" />
                         ) : (
@@ -257,13 +257,13 @@ const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {
                   </div>
                   {visit.notes && (
                     <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{visit.notes}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 break-words">{visit.notes}</p>
                     </div>
                   )}
                   {visit.latitude && visit.longitude && (
                     <div className="mt-2 flex items-center space-x-1 text-xs text-gray-500">
-                      <MapPin className="h-3 w-3" />
-                      <span>{visit.latitude.toFixed(6)}, {visit.longitude.toFixed(6)}</span>
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{visit.latitude.toFixed(6)}, {visit.longitude.toFixed(6)}</span>
                     </div>
                   )}
                 </CardContent>
@@ -311,27 +311,27 @@ const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-2">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg mb-2 truncate">
                       Patrol Session #{patrol.id.slice(-8)}
                     </CardTitle>
                     <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{new Date(patrol.start_time).toLocaleDateString()}</span>
+                      <div className="flex items-center space-x-1 min-w-0">
+                        <Calendar className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{new Date(patrol.start_time).toLocaleDateString()}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{new Date(patrol.start_time).toLocaleTimeString()}</span>
+                      <div className="flex items-center space-x-1 min-w-0">
+                        <Clock className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{new Date(patrol.start_time).toLocaleTimeString()}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <MapPin className="h-4 w-4" />
-                        <span>{patrol.guardian_sites?.name || 'Unknown Site'}</span>
+                      <div className="flex items-center space-x-1 min-w-0">
+                        <MapPin className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{patrol.guardian_sites?.name || 'Unknown Site'}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col space-y-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(patrol.status)}`}>
+                  <div className="flex flex-col space-y-2 flex-shrink-0">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(patrol.status)} whitespace-nowrap`}>
                       {patrol.status.toUpperCase()}
                     </span>
                   </div>
@@ -339,15 +339,15 @@ const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-gray-600 dark:text-gray-300">Duration</p>
-                    <p className="font-medium">{formatDuration(patrol.start_time, patrol.end_time)}</p>
+                    <p className="font-medium truncate">{formatDuration(patrol.start_time, patrol.end_time)}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-gray-600 dark:text-gray-300">Checkpoints</p>
                     <p className="font-medium">{patrol.checkpointVisits.length}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-gray-600 dark:text-gray-300">Completed</p>
                     <p className="font-medium">
                       {patrol.checkpointVisits.filter(v => v.status === 'completed').length}
