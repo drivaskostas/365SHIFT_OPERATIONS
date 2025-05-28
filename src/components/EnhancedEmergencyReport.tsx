@@ -183,6 +183,10 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
     }
   };
 
+  const handleEmergencyCall = () => {
+    window.location.href = 'tel:100';
+  };
+
   return (
     <div className="min-h-screen bg-red-50 dark:bg-red-900/20">
       {/* Header */}
@@ -438,9 +442,13 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                 <h3 className="font-semibold text-blue-800 dark:text-blue-200">{t('emergency.need_help')}</h3>
                 <p className="text-sm text-blue-700 dark:text-blue-300">{t('emergency.call_emergency')}</p>
               </div>
-              <Button variant="outline" className="border-blue-300 text-blue-700">
+              <Button 
+                variant="outline" 
+                className="border-blue-300 text-blue-700"
+                onClick={handleEmergencyCall}
+              >
                 <Phone className="h-4 w-4 mr-2" />
-                {t('emergency.call_911')}
+                100
               </Button>
             </div>
           </CardContent>
