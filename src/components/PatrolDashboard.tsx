@@ -4,6 +4,8 @@ import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import TeamObservations from '@/components/TeamObservations';
 import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
@@ -12,17 +14,77 @@ interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
 }
 
+interface DashboardStats {
+  totalPatrols: number;
+  totalObservations: number;
+  totalIncidents: number;
+}
+
 const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const { t } = useLanguage();
+  const { profile } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showObservations, setShowObservations] = useState(false);
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
   const [showEmergencyReports, setShowEmergencyReports] = useState(false);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalPatrols: 0,
+    totalObservations: 0,
+    totalIncidents: 0
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchDashboardStats();
+    }
+  }, [profile?.id]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      // Get user's team memberships
+      const { data: teamMemberships } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', profile?.id);
+
+      if (!teamMemberships || teamMemberships.length === 0) {
+        return;
+      }
+
+      const teamIds = teamMemberships.map(tm => tm.team_id);
+
+      // Fetch patrol sessions count
+      const { count: patrolCount } = await supabase
+        .from('patrol_sessions')
+        .select('*', { count: 'exact' })
+        .in('team_id', teamIds);
+
+      // Fetch observations count
+      const { count: observationsCount } = await supabase
+        .from('patrol_observations')
+        .select('*', { count: 'exact' })
+        .in('team_id', teamIds);
+
+      // Fetch emergency reports count
+      const { count: incidentsCount } = await supabase
+        .from('emergency_reports')
+        .select('*', { count: 'exact' })
+        .in('team_id', teamIds);
+
+      setStats({
+        totalPatrols: patrolCount || 0,
+        totalObservations: observationsCount || 0,
+        totalIncidents: incidentsCount || 0
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    }
+  };
 
   const quickActions = [
     {
@@ -114,7 +176,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                   {t('dashboard.patrol_rounds')}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">12</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPatrols}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-500" />
             </div>
@@ -128,7 +190,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                   {t('dashboard.observations')}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">3</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalObservations}</p>
               </div>
               <AlertTriangle className="h-8 w-8 text-yellow-500" />
             </div>
@@ -142,7 +204,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                   {t('dashboard.incidents')}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">1</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalIncidents}</p>
               </div>
               <Shield className="h-8 w-8 text-red-500" />
             </div>
