@@ -20,6 +20,26 @@ const translations = {
     'nav.scan': 'Scan',
     'nav.report': 'Report',
     
+    // Dashboard
+    'dashboard.welcome': 'Welcome, Security Officer',
+    'dashboard.on_duty': 'On Duty',
+    'dashboard.scan_description': 'Scan QR checkpoints',
+    'dashboard.report_description': 'Log observations',
+    'dashboard.emergency': 'Emergency',
+    'dashboard.emergency_description': 'Report emergencies',
+    'dashboard.patrol_rounds': 'Patrol Rounds',
+    'dashboard.observations': 'Observations',
+    'dashboard.incidents': 'Incidents',
+    'dashboard.status': 'Status',
+    'dashboard.active': 'Active',
+    'dashboard.recent_activity': 'Recent Activity',
+    'dashboard.checkpoint_scanned': 'Checkpoint Scanned',
+    'dashboard.observation_logged': 'Observation Logged',
+    'dashboard.patrol_started': 'Patrol Started',
+    'dashboard.night_shift': 'Night Shift',
+    'dashboard.minutes_ago': 'minutes ago',
+    'dashboard.hour_ago': 'hour ago',
+    
     // Emergency types
     'emergency.unsafe_area': 'Unsafe Area',
     'emergency.theft_attempt': 'Theft Attempt',
@@ -121,6 +141,26 @@ const translations = {
     'nav.dashboard': 'Πίνακας Ελέγχου',
     'nav.scan': 'Σάρωση',
     'nav.report': 'Αναφορά',
+    
+    // Dashboard
+    'dashboard.welcome': 'Καλώς ήρθατε, Αξιωματικέ Ασφαλείας',
+    'dashboard.on_duty': 'Σε Υπηρεσία',
+    'dashboard.scan_description': 'Σάρωση σημείων ελέγχου QR',
+    'dashboard.report_description': 'Καταγραφή παρατηρήσεων',
+    'dashboard.emergency': 'Έκτακτη Ανάγκη',
+    'dashboard.emergency_description': 'Αναφορά εκτάκτων αναγκών',
+    'dashboard.patrol_rounds': 'Περιπολίες',
+    'dashboard.observations': 'Παρατηρήσεις',
+    'dashboard.incidents': 'Περιστατικά',
+    'dashboard.status': 'Κατάσταση',
+    'dashboard.active': 'Ενεργός',
+    'dashboard.recent_activity': 'Πρόσφατη Δραστηριότητα',
+    'dashboard.checkpoint_scanned': 'Σημείο Ελέγχου Σαρώθηκε',
+    'dashboard.observation_logged': 'Παρατήρηση Καταγράφηκε',
+    'dashboard.patrol_started': 'Περιπολία Ξεκίνησε',
+    'dashboard.night_shift': 'Νυχτερινή Βάρδια',
+    'dashboard.minutes_ago': 'λεπτά πριν',
+    'dashboard.hour_ago': 'ώρα πριν',
     
     // Emergency types
     'emergency.unsafe_area': 'Ανασφαλής Χώρος',

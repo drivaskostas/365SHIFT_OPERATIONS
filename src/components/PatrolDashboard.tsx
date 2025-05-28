@@ -1,326 +1,187 @@
 
 import { useState, useEffect } from 'react';
-import { Shield, Camera, AlertTriangle, MapPin, Clock, Play, Square, Users, Building2 } from 'lucide-react';
+import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
-import { useAuth } from '@/hooks/useAuth';
-import { PatrolService } from '@/services/PatrolService';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
-import type { PatrolSession, GuardianSite } from '@/types/database';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
 }
 
 const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
-  const { user, profile } = useAuth();
-  const { toast } = useToast();
-  const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
-  const [availableSites, setAvailableSites] = useState<GuardianSite[]>([]);
-  const [selectedSite, setSelectedSite] = useState<string>('');
-  const [backgroundTracking, setBackgroundTracking] = useState(false);
-  const [patrolProgress, setPatrolProgress] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [userTeamId, setUserTeamId] = useState<string | null>(null);
+  const { t } = useLanguage();
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    if (user) {
-      loadActivePatrol();
-      loadAvailableSites();
-      loadUserTeam();
-    }
-  }, [user]);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  useEffect(() => {
-    if (activePatrol) {
-      loadPatrolProgress();
+  const quickActions = [
+    {
+      id: 'scanner',
+      title: t('nav.scan'),
+      description: t('dashboard.scan_description'),
+      icon: Camera,
+      color: 'bg-blue-500',
+      action: () => onNavigate('scanner')
+    },
+    {
+      id: 'observation',
+      title: t('nav.report'),
+      description: t('dashboard.report_description'),
+      icon: AlertTriangle,
+      color: 'bg-yellow-500',
+      action: () => onNavigate('observation')
+    },
+    {
+      id: 'emergency',
+      title: t('dashboard.emergency'),
+      description: t('dashboard.emergency_description'),
+      icon: Shield,
+      color: 'bg-red-500',
+      action: () => onNavigate('emergency')
     }
-  }, [activePatrol]);
-
-  const loadUserTeam = async () => {
-    if (!user) return;
-    
-    try {
-      const { data: teamMember } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('profile_id', user.id)
-        .maybeSingle();
-      
-      if (teamMember) {
-        setUserTeamId(teamMember.team_id);
-      }
-    } catch (error) {
-      console.error('Error loading user team:', error);
-    }
-  };
-
-  const loadActivePatrol = async () => {
-    if (!user) return;
-    
-    try {
-      const patrol = await PatrolService.getActivePatrol(user.id);
-      setActivePatrol(patrol);
-    } catch (error) {
-      console.error('Error loading active patrol:', error);
-    }
-  };
-
-  const loadAvailableSites = async () => {
-    if (!user) return;
-    
-    try {
-      const sites = await PatrolService.getAvailableSites(user.id);
-      setAvailableSites(sites);
-      if (sites.length > 0 && !selectedSite) {
-        setSelectedSite(sites[0].id);
-      } else if (sites.length === 0) {
-        toast({
-          title: "No Sites Assigned",
-          description: "You are not assigned to any sites. Please contact your supervisor.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error loading sites:', error);
-      toast({
-        title: "Error Loading Sites",
-        description: "Failed to load assigned sites.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const loadPatrolProgress = async () => {
-    if (!activePatrol) return;
-    
-    try {
-      const progress = await PatrolService.getPatrolProgress(activePatrol.id);
-      setPatrolProgress(progress.progress);
-    } catch (error) {
-      console.error('Error loading patrol progress:', error);
-    }
-  };
-
-  const handleStartPatrol = async () => {
-    if (!user || !selectedSite) return;
-    
-    setLoading(true);
-    try {
-      const patrol = await PatrolService.startPatrol(selectedSite, user.id, userTeamId || undefined);
-      setActivePatrol(patrol);
-      toast({
-        title: "Patrol Started",
-        description: "Your patrol session has begun successfully.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to start patrol",
-        description: error.message || "Unable to start patrol session.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEndPatrol = async () => {
-    if (!activePatrol) return;
-    
-    setLoading(true);
-    try {
-      await PatrolService.endPatrol(activePatrol.id);
-      setActivePatrol(null);
-      setPatrolProgress(0);
-      toast({
-        title: "Patrol Ended",
-        description: "Your patrol session has been completed.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to end patrol",
-        description: error.message || "Unable to end patrol session.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQRScanClick = () => {
-    if (!activePatrol) {
-      toast({
-        title: "No Active Patrol",
-        description: "Please start a patrol before scanning checkpoints.",
-        variant: "destructive",
-      });
-      return;
-    }
-    onNavigate('scanner');
-  };
-
-  const selectedSiteData = availableSites.find(site => site.id === selectedSite);
+  ];
 
   return (
-    <div className="p-4 space-y-6 pb-20">
-      {/* Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Patrol Status</span>
-            <Badge variant={activePatrol ? "default" : "secondary"}>
-              {activePatrol ? "Active" : "Idle"}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {activePatrol ? (
-            <>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Progress</span>
-                  <span>{patrolProgress}%</span>
-                </div>
-                <Progress value={patrolProgress} className="w-full" />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">
-                    Started: {new Date(activePatrol.start_time).toLocaleTimeString()}
-                  </span>
-                </div>
-                <Button 
-                  onClick={handleEndPatrol} 
-                  variant="destructive" 
-                  size="sm"
-                  disabled={loading}
-                >
-                  <Square className="h-4 w-4 mr-1" />
-                  End Patrol
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="space-y-4">
-              {availableSites.length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Select Site</label>
-                  <select 
-                    value={selectedSite} 
-                    onChange={(e) => setSelectedSite(e.target.value)}
-                    className="w-full p-2 border rounded-md bg-background"
-                  >
-                    {availableSites.map(site => (
-                      <option key={site.id} value={site.id}>
-                        {site.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <Button 
-                onClick={handleStartPatrol} 
-                className="w-full" 
-                size="lg"
-                disabled={loading || !selectedSite}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                {loading ? 'Starting...' : 'Start Patrol'}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+      {/* Welcome Section */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          {t('dashboard.welcome')}
+        </h1>
+        <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
+          <div className="flex items-center space-x-1">
+            <Clock className="h-4 w-4" />
+            <span>{currentTime.toLocaleTimeString()}</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <MapPin className="h-4 w-4" />
+            <span>{t('dashboard.on_duty')}</span>
+          </div>
+        </div>
+      </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="cursor-pointer">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {quickActions.map((action) => (
+          <Card key={action.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-6" onClick={action.action}>
+              <div className="flex items-center space-x-4">
+                <div className={`${action.color} p-3 rounded-full`}>
+                  <action.icon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                    {action.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    {action.description}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <Card>
           <CardContent className="p-4">
-            <Button 
-              onClick={handleQRScanClick}
-              className="w-full h-20 bg-green-600 hover:bg-green-700 text-sm font-medium"
-            >
-              <Camera className="h-6 w-6 mr-2" />
-              <span className="text-center">Scan QR</span>
-            </Button>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  {t('dashboard.patrol_rounds')}
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">12</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-green-500" />
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
-            <Button 
-              onClick={() => onNavigate('observation')} 
-              className="w-full h-20 bg-orange-600 hover:bg-orange-700 text-sm font-medium"
-            >
-              <AlertTriangle className="h-6 w-6 mr-2" />
-              <span className="text-center">Patrol<br />Observation</span>
-            </Button>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  {t('dashboard.observations')}
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">3</p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  {t('dashboard.incidents')}
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">1</p>
+              </div>
+              <Shield className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  {t('dashboard.status')}
+                </p>
+                <p className="text-sm font-bold text-green-600">{t('dashboard.active')}</p>
+              </div>
+              <User className="h-8 w-8 text-blue-500" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Emergency Button */}
-      <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
-        <CardContent className="p-4">
-          <Button 
-            onClick={() => onNavigate('emergency')} 
-            className="w-full h-20 bg-red-600 hover:bg-red-700 text-white text-sm font-medium"
-            size="lg"
-          >
-            <AlertTriangle className="h-6 w-6 mr-2" />
-            <span className="text-center">EMERGENCY<br />REPORT</span>
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Settings */}
+      {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
+          <CardTitle>{t('dashboard.recent_activity')}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="text-sm font-medium">Background Tracking</div>
-              <div className="text-xs text-gray-500">Keep location tracking active</div>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{t('dashboard.checkpoint_scanned')}</p>
+                <p className="text-xs text-gray-500">Building A - East Entrance</p>
+              </div>
+              <span className="text-xs text-gray-500">2 {t('dashboard.minutes_ago')}</span>
             </div>
-            <Switch 
-              checked={backgroundTracking} 
-              onCheckedChange={setBackgroundTracking}
-            />
+            
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{t('dashboard.observation_logged')}</p>
+                <p className="text-xs text-gray-500">{t('emergency.suspicious_incident')}</p>
+              </div>
+              <span className="text-xs text-gray-500">15 {t('dashboard.minutes_ago')}</span>
+            </div>
+            
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{t('dashboard.patrol_started')}</p>
+                <p className="text-xs text-gray-500">{t('dashboard.night_shift')}</p>
+              </div>
+              <span className="text-xs text-gray-500">1 {t('dashboard.hour_ago')}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* Site Information */}
-      {selectedSiteData && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Assignment</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Building2 className="h-4 w-4 text-gray-500" />
-              <span className="text-sm">{selectedSiteData.name}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <MapPin className="h-4 w-4 text-gray-500" />
-              <span className="text-sm">{selectedSiteData.address}</span>
-            </div>
-            {profile && (
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4 text-gray-500" />
-                <span className="text-sm">Guard: {profile.full_name || profile.first_name}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
