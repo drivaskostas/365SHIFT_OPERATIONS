@@ -115,7 +115,7 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
       notesArray = notes;
     } else if (typeof notes === 'object' && notes !== null) {
       // If it's an object, try to extract meaningful content
-      notesArray = Object.values(notes).filter(note => note && typeof note === 'string');
+      notesArray = Object.values(notes).filter(note => note && (typeof note === 'string' || (typeof note === 'object' && note.text)));
     } else if (typeof notes === 'string' && notes.trim()) {
       notesArray = [notes];
     }
@@ -129,11 +129,34 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
           <span className="text-sm font-medium text-gray-700">Notes:</span>
         </div>
         <div className="space-y-1">
-          {notesArray.map((note, index) => (
-            <p key={index} className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-              {note}
-            </p>
-          ))}
+          {notesArray.map((note, index) => {
+            // Handle different note formats
+            let noteText = '';
+            let noteAuthor = '';
+            let noteTimestamp = '';
+            
+            if (typeof note === 'string') {
+              noteText = note;
+            } else if (typeof note === 'object' && note !== null) {
+              noteText = note.text || '';
+              noteAuthor = note.author || '';
+              noteTimestamp = note.timestamp || '';
+            }
+            
+            if (!noteText.trim()) return null;
+            
+            return (
+              <div key={index} className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                <p className="mb-1">{noteText}</p>
+                {(noteAuthor || noteTimestamp) && (
+                  <div className="text-xs text-gray-500 flex items-center space-x-2">
+                    {noteAuthor && <span>By: {noteAuthor}</span>}
+                    {noteTimestamp && <span>At: {new Date(noteTimestamp).toLocaleString()}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
