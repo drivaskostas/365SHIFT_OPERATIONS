@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
 import TeamObservations from '@/components/TeamObservations';
+import PatrolSessions from '@/components/PatrolSessions';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -13,6 +15,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
   const { t } = useLanguage();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showObservations, setShowObservations] = useState(false);
+  const [showPatrolSessions, setShowPatrolSessions] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -48,6 +51,10 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
   if (showObservations) {
     return <TeamObservations onBack={() => setShowObservations(false)} />;
+  }
+
+  if (showPatrolSessions) {
+    return <PatrolSessions onBack={() => setShowPatrolSessions(false)} />;
   }
 
   return (
@@ -94,7 +101,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
 
       {/* Status Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card>
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowPatrolSessions(true)}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
