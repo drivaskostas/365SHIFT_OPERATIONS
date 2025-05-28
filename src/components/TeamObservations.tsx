@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, AlertTriangle, User, Clock, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import ObservationDetailModal from './ObservationDetailModal';
 
 interface PatrolObservation {
   id: string;
@@ -30,6 +30,8 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
   const { profile } = useAuth();
   const [observations, setObservations] = useState<PatrolObservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedObservation, setSelectedObservation] = useState<PatrolObservation | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (profile?.id) {
@@ -167,6 +169,16 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
     );
   };
 
+  const handleObservationClick = (observation: PatrolObservation) => {
+    setSelectedObservation(observation);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedObservation(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
@@ -206,7 +218,11 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
       ) : (
         <div className="space-y-4">
           {observations.map((observation) => (
-            <Card key={observation.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+            <Card 
+              key={observation.id} 
+              className="hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
+              onClick={() => handleObservationClick(observation)}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -261,6 +277,13 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
           ))}
         </div>
       )}
+
+      {/* Observation Detail Modal */}
+      <ObservationDetailModal
+        observation={selectedObservation}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 };
