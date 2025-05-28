@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, MapPin, AlertTriangle, User, Clock, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -115,7 +114,11 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
       notesArray = notes;
     } else if (typeof notes === 'object' && notes !== null) {
       // If it's an object, try to extract meaningful content
-      notesArray = Object.values(notes).filter(note => note && (typeof note === 'string' || (typeof note === 'object' && note.text)));
+      notesArray = Object.values(notes).filter(note => {
+        if (typeof note === 'string') return note;
+        if (typeof note === 'object' && note !== null && 'text' in note) return note;
+        return false;
+      });
     } else if (typeof notes === 'string' && notes.trim()) {
       notesArray = [notes];
     }
@@ -138,9 +141,10 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
             if (typeof note === 'string') {
               noteText = note;
             } else if (typeof note === 'object' && note !== null) {
-              noteText = note.text || '';
-              noteAuthor = note.author || '';
-              noteTimestamp = note.timestamp || '';
+              const noteObj = note as Record<string, any>;
+              noteText = noteObj.text || '';
+              noteAuthor = noteObj.author || '';
+              noteTimestamp = noteObj.timestamp || '';
             }
             
             if (!noteText.trim()) return null;
