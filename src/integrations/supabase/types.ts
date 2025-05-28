@@ -1536,6 +1536,7 @@ export type Database = {
           image_url: string | null
           latitude: number | null
           longitude: number | null
+          notes: Json | null
           patrol_id: string | null
           resolved_at: string | null
           resolved_by: string | null
@@ -1555,6 +1556,7 @@ export type Database = {
           image_url?: string | null
           latitude?: number | null
           longitude?: number | null
+          notes?: Json | null
           patrol_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -1574,6 +1576,7 @@ export type Database = {
           image_url?: string | null
           latitude?: number | null
           longitude?: number | null
+          notes?: Json | null
           patrol_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null

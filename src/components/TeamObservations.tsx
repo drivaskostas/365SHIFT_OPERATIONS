@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, MapPin, AlertTriangle, User, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, AlertTriangle, User, Clock, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -18,6 +18,7 @@ interface PatrolObservation {
   latitude?: number;
   longitude?: number;
   image_url?: string;
+  notes?: any;
 }
 
 interface TeamObservationsProps {
@@ -103,6 +104,39 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
       default:
         return 'text-gray-600 bg-gray-100';
     }
+  };
+
+  const renderNotes = (notes: any) => {
+    if (!notes) return null;
+    
+    // Handle both array format and other formats
+    let notesArray = [];
+    if (Array.isArray(notes)) {
+      notesArray = notes;
+    } else if (typeof notes === 'object' && notes !== null) {
+      // If it's an object, try to extract meaningful content
+      notesArray = Object.values(notes).filter(note => note && typeof note === 'string');
+    } else if (typeof notes === 'string' && notes.trim()) {
+      notesArray = [notes];
+    }
+
+    if (notesArray.length === 0) return null;
+
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="flex items-center space-x-2 mb-2">
+          <FileText className="h-4 w-4 text-gray-500" />
+          <span className="text-sm font-medium text-gray-700">Notes:</span>
+        </div>
+        <div className="space-y-1">
+          {notesArray.map((note, index) => (
+            <p key={index} className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+              {note}
+            </p>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -193,6 +227,7 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
                     />
                   </div>
                 )}
+                {renderNotes(observation.notes)}
               </CardContent>
             </Card>
           ))}
