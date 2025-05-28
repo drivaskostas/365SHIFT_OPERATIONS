@@ -6,7 +6,7 @@ import LoginScreen from '@/components/LoginScreen';
 import PatrolDashboard from '@/components/PatrolDashboard';
 import QRScanner from '@/components/QRScanner';
 import PatrolObservation from '@/components/PatrolObservation';
-import EmergencyReport from '@/components/EmergencyReport';
+import EnhancedEmergencyReport from '@/components/EnhancedEmergencyReport';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -53,7 +53,7 @@ function AppContent() {
       case 'observation':
         return <PatrolObservation onBack={() => setCurrentScreen('dashboard')} />;
       case 'emergency':
-        return <EmergencyReport onBack={() => setCurrentScreen('dashboard')} />;
+        return <EnhancedEmergencyReport onBack={() => setCurrentScreen('dashboard')} />;
       default:
         return <PatrolDashboard onNavigate={setCurrentScreen} />;
     }
