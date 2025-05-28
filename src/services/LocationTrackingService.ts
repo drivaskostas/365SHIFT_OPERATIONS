@@ -19,14 +19,14 @@ export class LocationTrackingService {
       return;
     }
 
-    // Try to get initial position with a simple, direct approach
+    // Try to get initial position
     console.log('Attempting to get initial location...');
-    const initialPosition = await this.getLocationDirect();
-    if (!initialPosition) {
-      console.warn('Could not get initial location, but starting tracking anyway');
-    } else {
+    const initialPosition = await this.getLocationWithRetry();
+    if (initialPosition) {
       console.log('Initial location obtained successfully:', initialPosition);
-      await this.updateLocation(guardId, initialPosition);
+      await this.updateGuardLocation(guardId, initialPosition);
+    } else {
+      console.warn('Could not get initial location, but starting tracking anyway');
     }
 
     this.isTracking = true;
@@ -35,9 +35,9 @@ export class LocationTrackingService {
     this.trackingInterval = setInterval(async () => {
       if (this.isTracking) {
         console.log('Getting location update...');
-        const position = await this.getLocationDirect();
+        const position = await this.getLocationWithRetry();
         if (position) {
-          await this.updateLocation(guardId, position);
+          await this.updateGuardLocation(guardId, position);
         } else {
           console.warn('Failed to get location update');
         }
@@ -57,72 +57,75 @@ export class LocationTrackingService {
     }
   }
 
-  private static async updateLocation(guardId: string, position: { latitude: number; longitude: number }): Promise<void> {
+  private static async updateGuardLocation(guardId: string, position: { latitude: number; longitude: number }): Promise<void> {
     try {
-      console.log('Updating location for guard:', guardId, position);
+      console.log('Updating guard location:', guardId, position);
 
-      // Check if guardian_geocodes record exists for this guard
-      const { data: existingRecord, error: selectError } = await supabase
-        .from('guardian_geocodes')
-        .select('id')
-        .eq('guardian_id', guardId)
-        .maybeSingle();
+      // Insert into guard_locations table (the correct table for location tracking)
+      const { data, error } = await supabase
+        .from('guard_locations')
+        .insert({
+          guard_id: guardId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          on_duty: true,
+          tracking_type: 'patrol',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select();
 
-      if (selectError) {
-        console.error('Error checking existing location record:', selectError);
-        return;
-      }
-
-      if (existingRecord) {
-        // Update existing record
-        const { error } = await supabase
-          .from('guardian_geocodes')
-          .update({
-            latitude: position.latitude,
-            longitude: position.longitude,
-            geocode_status: 'success',
-            updated_at: new Date().toISOString()
-          })
-          .eq('guardian_id', guardId);
-
-        if (error) {
-          console.error('Error updating location:', error);
-        } else {
-          console.log('Location updated successfully');
-        }
+      if (error) {
+        console.error('Error saving location to guard_locations:', error);
+        throw error;
       } else {
-        // Create new record
-        const { error } = await supabase
-          .from('guardian_geocodes')
-          .insert({
-            guardian_id: guardId,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            geocode_status: 'success',
-            address: null,
-            formatted_address: null
-          });
-
-        if (error) {
-          console.error('Error creating location record:', error);
-        } else {
-          console.log('Location record created successfully');
-        }
+        console.log('Location saved successfully to guard_locations:', data);
       }
     } catch (error) {
-      console.error('Error in location tracking:', error);
+      console.error('Error in location tracking database operation:', error);
+      // Don't throw here to avoid breaking the tracking loop
     }
   }
 
-  // Simple, direct location request
-  private static async getLocationDirect(): Promise<{ latitude: number; longitude: number } | null> {
+  // Enhanced location retrieval with multiple fallback strategies
+  private static async getLocationWithRetry(): Promise<{ latitude: number; longitude: number } | null> {
+    // Strategy 1: High accuracy, short timeout
+    let position = await this.getLocationDirect({
+      enableHighAccuracy: true,
+      timeout: 5000,
+      maximumAge: 0
+    });
+    
+    if (position) return position;
+
+    // Strategy 2: Lower accuracy, longer timeout
+    position = await this.getLocationDirect({
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 60000
+    });
+    
+    if (position) return position;
+
+    // Strategy 3: Any cached location within 5 minutes
+    position = await this.getLocationDirect({
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 300000
+    });
+    
+    return position;
+  }
+
+  private static async getLocationDirect(options: PositionOptions): Promise<{ latitude: number; longitude: number } | null> {
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           console.log('✅ Location obtained:', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
+            accuracy: position.coords.accuracy,
+            timestamp: position.timestamp
           });
           resolve({
             latitude: position.coords.latitude,
@@ -130,14 +133,14 @@ export class LocationTrackingService {
           });
         },
         (error) => {
-          console.error('❌ Location error:', error.message);
+          console.error('❌ Location error:', {
+            code: error.code,
+            message: error.message,
+            options: options
+          });
           resolve(null);
         },
-        {
-          enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 0 // Force fresh request
-        }
+        options
       );
     });
   }
@@ -159,40 +162,80 @@ export class LocationTrackingService {
     return 'unknown';
   }
 
-  // Force browser to show fresh permission dialog
+  // Force fresh permission request with cache busting
   static async requestLocationPermission(): Promise<boolean> {
-    console.log('🔄 Requesting fresh location permission...');
+    console.log('🔄 Requesting fresh location permission with cache busting...');
     
     return new Promise((resolve) => {
-      // Use watchPosition briefly to force a permission dialog
-      const watchId = navigator.geolocation.watchPosition(
+      // Use a very aggressive approach to force permission dialog
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 3000,
+        maximumAge: 0 // Force fresh request, no cache
+      };
+
+      navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('✅ Permission granted and location obtained');
-          navigator.geolocation.clearWatch(watchId);
+          console.log('✅ Permission granted and location obtained:', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
           resolve(true);
         },
         (error) => {
-          console.error('❌ Permission request failed:', error.message);
-          navigator.geolocation.clearWatch(watchId);
-          resolve(false);
+          console.error('❌ Permission request failed:', {
+            code: error.code,
+            message: error.message,
+            PERMISSION_DENIED: error.code === 1,
+            POSITION_UNAVAILABLE: error.code === 2,
+            TIMEOUT: error.code === 3
+          });
+          
+          // If it's a permission denied error, try to clear any cached permissions
+          if (error.code === 1) {
+            console.log('🔄 Permission denied, trying cache clearing approach...');
+            // For Chrome, try to use a watchPosition briefly to reset state
+            const watchId = navigator.geolocation.watchPosition(
+              (pos) => {
+                console.log('✅ Watch position success, clearing and resolving true');
+                navigator.geolocation.clearWatch(watchId);
+                resolve(true);
+              },
+              (watchError) => {
+                console.error('❌ Watch position also failed:', watchError.message);
+                navigator.geolocation.clearWatch(watchId);
+                resolve(false);
+              },
+              { enableHighAccuracy: false, timeout: 2000, maximumAge: 0 }
+            );
+            
+            // Clear watch after 2 seconds
+            setTimeout(() => {
+              navigator.geolocation.clearWatch(watchId);
+            }, 2000);
+          } else {
+            resolve(false);
+          }
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
-        }
+        options
       );
-      
-      // Clear watch after 5 seconds regardless
-      setTimeout(() => {
-        navigator.geolocation.clearWatch(watchId);
-      }, 5000);
     });
   }
 
-  // Test location access with immediate feedback
-  static async testLocationNow(): Promise<{ success: boolean; position?: any; error?: any }> {
-    console.log('🧪 Testing location access now...');
+  // Test location access with detailed feedback
+  static async testLocationNow(): Promise<{ success: boolean; position?: any; error?: any; debugInfo?: any }> {
+    console.log('🧪 Testing location access with detailed debugging...');
+    
+    const debugInfo = {
+      browser: navigator.userAgent,
+      permissions: 'permissions' in navigator,
+      geolocation: 'geolocation' in navigator,
+      isSecureContext: window.isSecureContext,
+      protocol: window.location.protocol
+    };
+
+    console.log('Debug info:', debugInfo);
     
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
@@ -203,8 +246,10 @@ export class LocationTrackingService {
             position: {
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy
-            }
+              accuracy: position.coords.accuracy,
+              timestamp: position.timestamp
+            },
+            debugInfo
           });
         },
         (error) => {
@@ -213,16 +258,43 @@ export class LocationTrackingService {
             success: false, 
             error: {
               code: error.code,
-              message: error.message
-            }
+              message: error.message,
+              PERMISSION_DENIED: error.code === 1,
+              POSITION_UNAVAILABLE: error.code === 2,
+              TIMEOUT: error.code === 3
+            },
+            debugInfo
           });
         },
         {
           enableHighAccuracy: false,
           timeout: 5000,
-          maximumAge: 0
+          maximumAge: 0 // Force fresh request
         }
       );
     });
+  }
+
+  // Get recent location data from database
+  static async getRecentLocations(guardId: string, limit: number = 10): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('guard_locations')
+        .select('*')
+        .eq('guard_id', guardId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching recent locations:', error);
+        return [];
+      }
+
+      console.log('Recent locations from database:', data);
+      return data || [];
+    } catch (error) {
+      console.error('Error in getRecentLocations:', error);
+      return [];
+    }
   }
 }
