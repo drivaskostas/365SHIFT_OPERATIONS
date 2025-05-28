@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, Phone, MapPin, Clock, Send } from 'lucide-react';
+
+import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, AlertTriangle, Phone, MapPin, Clock, Send, Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,14 +23,28 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('critical');
+  const [photo, setPhoto] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (user) {
       loadActivePatrol();
     }
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup camera stream when component unmounts
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
 
   const loadActivePatrol = async () => {
     if (!user) return;
@@ -40,6 +55,70 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
     } catch (error) {
       console.error('Error loading active patrol:', error);
     }
+  };
+
+  const startCamera = async () => {
+    try {
+      setIsCapturing(true);
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment', // Use back camera on mobile
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      
+      setStream(mediaStream);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play();
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      toast({
+        title: "Camera Error",
+        description: "Unable to access camera. Please check permissions.",
+        variant: "destructive",
+      });
+      setIsCapturing(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    if (!context) return;
+
+    // Set canvas size to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw the video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert to base64 image
+    const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    setPhoto(photoDataUrl);
+
+    // Stop camera
+    stopCamera();
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsCapturing(false);
+  };
+
+  const removePhoto = () => {
+    setPhoto(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,7 +134,8 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
         activePatrol?.team_id,
         title,
         description,
-        severity
+        severity,
+        photo || undefined
         // Location will be automatically captured by the service
       );
       
@@ -166,6 +246,70 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
                 />
               </div>
 
+              {/* Photo Section */}
+              <div className="space-y-2">
+                <Label>Evidence Photo</Label>
+                
+                {isCapturing ? (
+                  <div className="space-y-4">
+                    <div className="relative bg-black rounded-lg overflow-hidden">
+                      <video
+                        ref={videoRef}
+                        className="w-full h-64 object-cover"
+                        playsInline
+                        muted
+                      />
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button 
+                        type="button"
+                        onClick={capturePhoto}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Take Photo
+                      </Button>
+                      <Button 
+                        type="button"
+                        onClick={stopCamera}
+                        variant="outline"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : photo ? (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <img 
+                        src={photo} 
+                        alt="Captured emergency evidence" 
+                        className="w-full h-48 object-cover rounded-lg"
+                      />
+                      <Button
+                        type="button"
+                        onClick={removePhoto}
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button 
+                    type="button"
+                    onClick={startCamera}
+                    variant="outline" 
+                    className="w-full h-16 border-dashed border-red-300"
+                  >
+                    <Camera className="h-6 w-6 mr-2" />
+                    Capture Photo
+                  </Button>
+                )}
+              </div>
+
               {/* Submit Button */}
               <Button 
                 type="submit"
@@ -200,6 +344,9 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Hidden canvas for photo capture */}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 };
