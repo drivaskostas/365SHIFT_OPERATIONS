@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export class LocationTrackingService {
@@ -163,6 +162,41 @@ export class LocationTrackingService {
       }
     }
     return 'unknown';
+  }
+
+  // Add the missing requestLocationPermission method
+  static async requestLocationPermission(): Promise<boolean> {
+    console.log('🔄 Requesting location permission...');
+    
+    try {
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          console.log('❌ Permission request timeout');
+          resolve(false);
+        }, 10000);
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            clearTimeout(timeout);
+            console.log('✅ Permission granted successfully!', position.coords);
+            resolve(true);
+          },
+          (error) => {
+            clearTimeout(timeout);
+            console.error('❌ Permission request failed:', error);
+            resolve(false);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 0
+          }
+        );
+      });
+    } catch (error) {
+      console.error('❌ Error in permission request:', error);
+      return false;
+    }
   }
 
   // Aggressive Chrome permission reset mechanism
