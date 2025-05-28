@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase'
 import type { PatrolSession, GuardianSite, PatrolCheckpointVisit, GuardianCheckpoint } from '@/types/database'
 
@@ -249,42 +248,120 @@ export class PatrolService {
   }
 
   static async validateCheckpoint(checkpointId: string, siteId: string): Promise<GuardianCheckpoint | null> {
-    console.log('Validating checkpoint:', { checkpointId, siteId });
+    console.log('🔍 VALIDATION START - Enhanced Debug Logging');
+    console.log('📍 Input Parameters:', { 
+      checkpointId: checkpointId,
+      checkpointIdType: typeof checkpointId,
+      checkpointIdLength: checkpointId?.length,
+      siteId: siteId,
+      siteIdType: typeof siteId,
+      siteIdLength: siteId?.length
+    });
     
-    // First, let's check if the checkpoint exists at all
-    const { data: allCheckpoints, error: allError } = await supabase
-      .from('guardian_checkpoints')
-      .select('*')
-      .eq('id', checkpointId);
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     
-    console.log('All checkpoints with this ID:', allCheckpoints);
+    if (!uuidRegex.test(checkpointId)) {
+      console.error('❌ VALIDATION FAILED - Invalid checkpoint UUID format:', checkpointId);
+      console.log('Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+      return null;
+    }
     
-    // Now check if it belongs to the specific site
-    const { data, error } = await supabase
-      .from('guardian_checkpoints')
-      .select('*')
-      .eq('id', checkpointId)
-      .eq('site_id', siteId)
-      .eq('active', true)
-      .maybeSingle()
-
-    if (error) {
-      console.error('Error validating checkpoint:', error);
+    if (!uuidRegex.test(siteId)) {
+      console.error('❌ VALIDATION FAILED - Invalid site UUID format:', siteId);
+      console.log('Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+      return null;
+    }
+    
+    try {
+      // Step 1: Check if checkpoint exists at all
+      console.log('🔍 Step 1: Checking if checkpoint exists globally...');
+      const { data: globalCheckpoint, error: globalError } = await supabase
+        .from('guardian_checkpoints')
+        .select('*')
+        .eq('id', checkpointId)
+        .maybeSingle();
+      
+      console.log('🔍 Global checkpoint query result:', {
+        data: globalCheckpoint,
+        error: globalError,
+        found: !!globalCheckpoint
+      });
+      
+      if (globalError) {
+        console.error('❌ Database error in global checkpoint check:', globalError);
+        throw globalError;
+      }
+      
+      if (!globalCheckpoint) {
+        console.error('❌ VALIDATION FAILED - Checkpoint does not exist anywhere in database');
+        console.log('Available checkpoints can be found by running debugGetAllCheckpoints()');
+        return null;
+      }
+      
+      // Step 2: Check if checkpoint belongs to the correct site
+      console.log('🔍 Step 2: Checking if checkpoint belongs to site...');
+      console.log('Checkpoint site_id:', globalCheckpoint.site_id);
+      console.log('Expected site_id:', siteId);
+      console.log('Site IDs match:', globalCheckpoint.site_id === siteId);
+      
+      if (globalCheckpoint.site_id !== siteId) {
+        console.error('❌ VALIDATION FAILED - Checkpoint belongs to different site');
+        console.log('Checkpoint belongs to site:', globalCheckpoint.site_id);
+        console.log('Expected site:', siteId);
+        return null;
+      }
+      
+      // Step 3: Check if checkpoint is active
+      console.log('🔍 Step 3: Checking if checkpoint is active...');
+      console.log('Checkpoint active status:', globalCheckpoint.active);
+      
+      if (!globalCheckpoint.active) {
+        console.error('❌ VALIDATION FAILED - Checkpoint is inactive');
+        return null;
+      }
+      
+      // Step 4: Final validation with full query
+      console.log('🔍 Step 4: Final validation with complete query...');
+      const { data: validatedCheckpoint, error: validationError } = await supabase
+        .from('guardian_checkpoints')
+        .select('*')
+        .eq('id', checkpointId)
+        .eq('site_id', siteId)
+        .eq('active', true)
+        .maybeSingle();
+      
+      console.log('🔍 Final validation result:', {
+        data: validatedCheckpoint,
+        error: validationError,
+        found: !!validatedCheckpoint
+      });
+      
+      if (validationError) {
+        console.error('❌ Database error in final validation:', validationError);
+        throw validationError;
+      }
+      
+      if (validatedCheckpoint) {
+        console.log('✅ VALIDATION SUCCESS - Checkpoint is valid!');
+        console.log('Validated checkpoint details:', {
+          id: validatedCheckpoint.id,
+          name: validatedCheckpoint.name,
+          location: validatedCheckpoint.location,
+          site_id: validatedCheckpoint.site_id,
+          active: validatedCheckpoint.active
+        });
+      } else {
+        console.error('❌ VALIDATION FAILED - Final query returned no results');
+        console.log('This should not happen if previous steps passed');
+      }
+      
+      return validatedCheckpoint;
+      
+    } catch (error) {
+      console.error('❌ VALIDATION ERROR - Exception during validation:', error);
       throw error;
     }
-    
-    if (!data) {
-      console.error('Checkpoint validation failed:', {
-        checkpointId,
-        siteId,
-        foundCheckpoints: allCheckpoints,
-        reason: allCheckpoints?.length === 0 ? 'Checkpoint ID not found' : 'Checkpoint belongs to different site or is inactive'
-      });
-    } else {
-      console.log('Checkpoint validation successful:', data);
-    }
-    
-    return data;
   }
 
   static async getPatrolProgress(patrolId: string): Promise<{
@@ -334,14 +411,22 @@ export class PatrolService {
       query = query.eq('site_id', siteId);
     }
     
-    const { data, error } = await query;
+    const { data, error } = await query.order('name');
     
     if (error) {
-      console.error('Error getting checkpoints:', error);
+      console.error('Failed to get checkpoints:', error);
       throw error;
     }
     
     console.log('All checkpoints:', data);
+    console.table(data?.map(cp => ({
+      id: cp.id,
+      name: cp.name,
+      location: cp.location,
+      site_id: cp.site_id,
+      active: cp.active
+    })));
+    
     return data || [];
   }
 
@@ -355,11 +440,39 @@ export class PatrolService {
       .maybeSingle();
     
     if (error) {
-      console.error('Error getting site info:', error);
+      console.error('Failed to get site info:', error);
       throw error;
     }
     
     console.log('Site info:', data);
     return data;
+  }
+
+  static async debugValidationStep(checkpointId: string, siteId: string): Promise<void> {
+    console.log('Running step-by-step validation debug...');
+    
+    try {
+      // Get site info
+      const site = await this.debugGetSiteInfo(siteId);
+      console.log('Site exists:', !!site, site?.name);
+      
+      // Get all checkpoints for site
+      const siteCheckpoints = await this.debugGetAllCheckpoints(siteId);
+      console.log('Checkpoints in site:', siteCheckpoints.length);
+      
+      // Check if our checkpoint is in the list
+      const foundCheckpoint = siteCheckpoints.find(cp => cp.id === checkpointId);
+      console.log('Target checkpoint found in site:', !!foundCheckpoint);
+      
+      if (foundCheckpoint) {
+        console.log('Checkpoint details:', foundCheckpoint);
+      } else {
+        console.log('Available checkpoint IDs in site:');
+        siteCheckpoints.forEach(cp => console.log(`  - ${cp.id} (${cp.name})`));
+      }
+      
+    } catch (error) {
+      console.error('Validation debug failed:', error);
+    }
   }
 }
