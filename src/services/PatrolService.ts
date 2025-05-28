@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase'
 import type { PatrolSession, GuardianSite, PatrolCheckpointVisit, GuardianCheckpoint } from '@/types/database'
 
@@ -59,6 +60,8 @@ export class PatrolService {
   }
 
   static async startPatrol(siteId: string, guardId: string, teamId?: string): Promise<PatrolSession> {
+    console.log('Starting patrol for guard:', guardId, 'at site:', siteId);
+    
     // First verify the guard is assigned to this site
     const { data: siteGuard, error: assignmentError } = await supabase
       .from('site_guards')
@@ -67,11 +70,17 @@ export class PatrolService {
       .eq('site_id', siteId)
       .maybeSingle()
 
-    if (assignmentError) throw assignmentError
+    if (assignmentError) {
+      console.error('Error checking site assignment:', assignmentError);
+      throw assignmentError;
+    }
     
     if (!siteGuard) {
-      throw new Error('You are not assigned to this site. Please contact your supervisor.')
+      console.error('Guard not assigned to site:', { guardId, siteId });
+      throw new Error('You are not assigned to this site. Please contact your supervisor.');
     }
+
+    console.log('Guard assignment verified:', siteGuard);
 
     // Get the guard's team assignment if teamId is not provided
     let resolvedTeamId = teamId;
@@ -87,6 +96,7 @@ export class PatrolService {
         // Continue without team_id rather than failing
       } else if (teamMember) {
         resolvedTeamId = teamMember.team_id
+        console.log('Resolved team ID:', resolvedTeamId);
       }
     }
 
@@ -109,8 +119,13 @@ export class PatrolService {
       .select()
       .single()
 
-    if (error) throw error
-    return data
+    if (error) {
+      console.error('Error creating patrol session:', error);
+      throw error;
+    }
+    
+    console.log('Patrol session created:', data);
+    return data;
   }
 
   static async endPatrol(patrolId: string): Promise<PatrolSession> {
@@ -138,6 +153,8 @@ export class PatrolService {
   }
 
   static async getActivePatrol(guardId: string): Promise<PatrolSession | null> {
+    console.log('Checking for active patrol for guard:', guardId);
+    
     const { data, error } = await supabase
       .from('patrol_sessions')
       .select('*')
@@ -147,24 +164,38 @@ export class PatrolService {
       .limit(1)
       .maybeSingle()
 
-    if (error) throw error
-    return data
+    if (error) {
+      console.error('Error fetching active patrol:', error);
+      throw error;
+    }
+    
+    console.log('Active patrol result:', data);
+    return data;
   }
 
   static async getAvailableSites(guardId: string): Promise<GuardianSite[]> {
+    console.log('Getting available sites for guard:', guardId);
+    
     // First get the site IDs assigned to the guard
     const { data: siteAssignments, error: assignmentError } = await supabase
       .from('site_guards')
       .select('site_id')
       .eq('guard_id', guardId)
 
-    if (assignmentError) throw assignmentError
+    if (assignmentError) {
+      console.error('Error fetching site assignments:', assignmentError);
+      throw assignmentError;
+    }
+    
+    console.log('Site assignments:', siteAssignments);
     
     if (!siteAssignments || siteAssignments.length === 0) {
-      return []
+      console.log('No site assignments found');
+      return [];
     }
 
-    const siteIds = siteAssignments.map(assignment => assignment.site_id)
+    const siteIds = siteAssignments.map(assignment => assignment.site_id);
+    console.log('Site IDs:', siteIds);
 
     // Then get the actual site details
     const { data, error } = await supabase
@@ -174,8 +205,13 @@ export class PatrolService {
       .in('id', siteIds)
       .order('name')
 
-    if (error) throw error
-    return data || []
+    if (error) {
+      console.error('Error fetching site details:', error);
+      throw error;
+    }
+    
+    console.log('Available sites:', data);
+    return data || [];
   }
 
   static async recordCheckpointVisit(
@@ -183,6 +219,8 @@ export class PatrolService {
     checkpointId: string,
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolCheckpointVisit> {
+    console.log('Recording checkpoint visit:', { patrolId, checkpointId, location });
+    
     // Always get fresh location for checkpoint visits
     console.log('Attempting to get location for checkpoint visit...');
     const currentLocation = location || await this.getCurrentLocation();
@@ -201,11 +239,27 @@ export class PatrolService {
       .select()
       .single()
 
-    if (error) throw error
-    return data
+    if (error) {
+      console.error('Error recording checkpoint visit:', error);
+      throw error;
+    }
+    
+    console.log('Checkpoint visit recorded:', data);
+    return data;
   }
 
   static async validateCheckpoint(checkpointId: string, siteId: string): Promise<GuardianCheckpoint | null> {
+    console.log('Validating checkpoint:', { checkpointId, siteId });
+    
+    // First, let's check if the checkpoint exists at all
+    const { data: allCheckpoints, error: allError } = await supabase
+      .from('guardian_checkpoints')
+      .select('*')
+      .eq('id', checkpointId);
+    
+    console.log('All checkpoints with this ID:', allCheckpoints);
+    
+    // Now check if it belongs to the specific site
     const { data, error } = await supabase
       .from('guardian_checkpoints')
       .select('*')
@@ -214,8 +268,23 @@ export class PatrolService {
       .eq('active', true)
       .maybeSingle()
 
-    if (error) throw error
-    return data
+    if (error) {
+      console.error('Error validating checkpoint:', error);
+      throw error;
+    }
+    
+    if (!data) {
+      console.error('Checkpoint validation failed:', {
+        checkpointId,
+        siteId,
+        foundCheckpoints: allCheckpoints,
+        reason: allCheckpoints?.length === 0 ? 'Checkpoint ID not found' : 'Checkpoint belongs to different site or is inactive'
+      });
+    } else {
+      console.log('Checkpoint validation successful:', data);
+    }
+    
+    return data;
   }
 
   static async getPatrolProgress(patrolId: string): Promise<{
@@ -253,5 +322,44 @@ export class PatrolService {
       visitedCheckpoints: visitedCheckpoints || 0,
       progress
     }
+  }
+
+  // New debugging methods
+  static async debugGetAllCheckpoints(siteId?: string): Promise<GuardianCheckpoint[]> {
+    console.log('Getting all checkpoints for debugging:', siteId);
+    
+    let query = supabase.from('guardian_checkpoints').select('*');
+    
+    if (siteId) {
+      query = query.eq('site_id', siteId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error getting checkpoints:', error);
+      throw error;
+    }
+    
+    console.log('All checkpoints:', data);
+    return data || [];
+  }
+
+  static async debugGetSiteInfo(siteId: string): Promise<GuardianSite | null> {
+    console.log('Getting site info for debugging:', siteId);
+    
+    const { data, error } = await supabase
+      .from('guardian_sites')
+      .select('*')
+      .eq('id', siteId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error getting site info:', error);
+      throw error;
+    }
+    
+    console.log('Site info:', data);
+    return data;
   }
 }

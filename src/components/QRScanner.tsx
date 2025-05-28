@@ -1,7 +1,9 @@
+
 import { useState, useRef, useEffect } from 'react';
-import { Camera, ArrowLeft, Flashlight, CheckCircle } from 'lucide-react';
+import { Camera, ArrowLeft, Flashlight, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { PatrolService } from '@/services/PatrolService';
 import { useToast } from '@/hooks/use-toast';
@@ -21,11 +23,21 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [testMode, setTestMode] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<number | null>(null);
+
+  const addDebugLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logMessage = `[${timestamp}] ${message}`;
+    console.log('QR Scanner Debug:', logMessage);
+    setDebugInfo(prev => [...prev.slice(-4), logMessage]); // Keep last 5 logs
+  };
 
   useEffect(() => {
     if (user) {
@@ -46,10 +58,13 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     if (!user) return;
     
     try {
+      addDebugLog(`Loading active patrol for user: ${user.id}`);
       const patrol = await PatrolService.getActivePatrol(user.id);
       if (patrol) {
         setActivePatrol(patrol);
+        addDebugLog(`Active patrol found: ${patrol.id} for site: ${patrol.site_id}`);
       } else {
+        addDebugLog('No active patrol found');
         toast({
           title: "No Active Patrol",
           description: "Please start a patrol before scanning checkpoints.",
@@ -58,6 +73,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         onBack();
       }
     } catch (error) {
+      addDebugLog(`Error loading active patrol: ${error}`);
       console.error('Error loading active patrol:', error);
       onBack();
     }
@@ -65,6 +81,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 
   const startCamera = async () => {
     try {
+      addDebugLog('Starting camera...');
       // Stop any existing stream first
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -86,6 +103,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           if (videoRef.current) {
             videoRef.current.play().then(() => {
               setIsVideoReady(true);
+              addDebugLog('Camera started successfully');
               startScanningLoop();
             }).catch(err => {
               console.error('Error playing video:', err);
@@ -97,6 +115,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       setCameraError(null);
     } catch (error) {
       console.error('Camera error:', error);
+      addDebugLog(`Camera error: ${error}`);
       setCameraError('Unable to access camera. Please check permissions.');
     }
   };
@@ -114,6 +133,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
     }
+    
+    addDebugLog('Starting QR scan loop');
     
     // Set up scanning loop
     scanIntervalRef.current = window.setInterval(() => {
@@ -133,11 +154,12 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         });
         
         if (code) {
-          console.log("QR code detected:", code.data);
+          addDebugLog(`QR code detected: ${code.data}`);
           handleScanSuccess(code.data);
         }
       } catch (err) {
         console.error("QR scanning error:", err);
+        addDebugLog(`QR scanning error: ${err}`);
       }
     }, 200); // scan every 200ms
   };
@@ -157,34 +179,56 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   };
 
   const handleScanSuccess = async (qrData: string) => {
-    if (!activePatrol) return;
+    if (!activePatrol) {
+      addDebugLog('No active patrol found during scan');
+      return;
+    }
     
     setIsScanning(false);
+    addDebugLog(`Processing QR data: ${qrData} for patrol: ${activePatrol.id}`);
     
     try {
       // Attempt to parse QR data - could be JSON or plain text
-      let checkpointId = qrData;
+      let checkpointId = qrData.trim();
+      let parsedData = null;
+      
       try {
         // Check if it's a JSON string with a checkpointId field
-        const parsedData = JSON.parse(qrData);
+        parsedData = JSON.parse(qrData);
+        addDebugLog(`Parsed JSON data: ${JSON.stringify(parsedData)}`);
+        
         if (parsedData.checkpointId) {
           checkpointId = parsedData.checkpointId;
+          addDebugLog(`Extracted checkpoint ID from JSON: ${checkpointId}`);
+        } else if (parsedData.id) {
+          checkpointId = parsedData.id;
+          addDebugLog(`Using ID field as checkpoint ID: ${checkpointId}`);
         }
       } catch (e) {
         // Not JSON, assume the string itself is the checkpoint ID
+        addDebugLog(`QR data is not JSON, using as checkpoint ID: ${checkpointId}`);
       }
       
-      // Get current location - PatrolService will handle this automatically
-      const location = await PatrolService.getCurrentLocation();
+      addDebugLog(`Final checkpoint ID: ${checkpointId}`);
+      addDebugLog(`Validating checkpoint for site: ${activePatrol.site_id}`);
       
       // Validate checkpoint belongs to the current patrol site
       const checkpoint = await PatrolService.validateCheckpoint(checkpointId, activePatrol.site_id);
       
       if (!checkpoint) {
-        throw new Error('Invalid checkpoint or checkpoint not found at this site');
+        addDebugLog(`Checkpoint validation failed - not found or not for this site`);
+        throw new Error(`Invalid checkpoint or checkpoint not found at this site. Checkpoint ID: ${checkpointId}, Site ID: ${activePatrol.site_id}`);
       }
       
+      addDebugLog(`Checkpoint validated: ${checkpoint.name} at ${checkpoint.location}`);
+      
+      // Get current location - PatrolService will handle this automatically
+      addDebugLog('Getting current location...');
+      const location = await PatrolService.getCurrentLocation();
+      addDebugLog(`Location obtained: ${location ? `${location.latitude}, ${location.longitude}` : 'No location'}`);
+      
       // Record the visit with location
+      addDebugLog(`Recording checkpoint visit for patrol: ${activePatrol.id}, checkpoint: ${checkpointId}`);
       await PatrolService.recordCheckpointVisit(
         activePatrol.id,
         checkpointId,
@@ -192,6 +236,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       );
       
       setScanResult(`${checkpoint.name} - ${checkpoint.location}`);
+      addDebugLog(`Checkpoint visit recorded successfully`);
       
       toast({
         title: "Checkpoint Scanned",
@@ -202,9 +247,11 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       setTimeout(() => {
         setScanResult(null);
         setIsScanning(true);
+        addDebugLog('Ready for next scan');
       }, 3000);
       
     } catch (error: any) {
+      addDebugLog(`Scan failed: ${error.message}`);
       toast({
         title: "Scan Failed",
         description: error.message || "Failed to record checkpoint visit.",
@@ -247,9 +294,9 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 
   // Manual scan for testing
   const handleManualScan = () => {
-    // Only use this for testing when no camera is available
     const testCheckpointId = prompt('Enter checkpoint ID for testing:');
     if (testCheckpointId) {
+      addDebugLog(`Manual test scan with ID: ${testCheckpointId}`);
       handleScanSuccess(testCheckpointId);
     }
   };
@@ -279,14 +326,54 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           <ArrowLeft className="h-6 w-6" />
         </Button>
         <h1 className="text-lg font-semibold">Scan Checkpoint</h1>
-        <Button 
-          variant="ghost" 
-          onClick={toggleFlashlight}
-          className={`text-white ${flashlightOn ? 'bg-yellow-600' : ''}`}
-        >
-          <Flashlight className="h-6 w-6" />
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="ghost" 
+            onClick={() => setShowDebugInfo(!showDebugInfo)}
+            className="text-white"
+            size="sm"
+          >
+            <Info className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            onClick={toggleFlashlight}
+            className={`text-white ${flashlightOn ? 'bg-yellow-600' : ''}`}
+          >
+            <Flashlight className="h-6 w-6" />
+          </Button>
+        </div>
       </div>
+
+      {/* Active Patrol Info */}
+      {activePatrol && (
+        <div className="px-4 pb-2">
+          <Alert className="bg-blue-900/50 border-blue-700">
+            <Info className="h-4 w-4" />
+            <AlertDescription className="text-white">
+              Active patrol for site: {activePatrol.site_id}
+              <br />
+              Patrol ID: {activePatrol.id}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Debug Info */}
+      {showDebugInfo && debugInfo.length > 0 && (
+        <div className="px-4 pb-2">
+          <Alert className="bg-gray-900/50 border-gray-700">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-white">
+              <div className="text-xs font-mono space-y-1">
+                {debugInfo.map((log, index) => (
+                  <div key={index}>{log}</div>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Camera View */}
       <div className="relative flex-1 bg-gray-800">
@@ -354,18 +441,27 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             <li>• Hold phone steady over QR code</li>
             <li>• Ensure good lighting or use flashlight</li>
             <li>• Wait for automatic scan detection</li>
+            <li>• Check debug info if scanning fails</li>
           </ul>
         </div>
         
         <div className="flex gap-2">
           <Button 
             onClick={handleManualScan} 
-            className="w-full bg-yellow-600 hover:bg-yellow-700" 
+            className="flex-1 bg-yellow-600 hover:bg-yellow-700" 
             size="lg"
             disabled={!isScanning || !activePatrol}
           >
             <Camera className="h-5 w-5 mr-2" />
             Manual Test
+          </Button>
+          <Button 
+            onClick={() => setTestMode(!testMode)} 
+            variant="outline"
+            className="text-white border-white" 
+            size="lg"
+          >
+            Debug
           </Button>
         </div>
       </div>
