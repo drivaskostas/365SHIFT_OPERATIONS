@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, AlertTriangle, Phone, MapPin, Clock, Send, Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,7 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('critical');
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -103,7 +102,7 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
 
     // Convert to base64 image
     const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-    setPhoto(photoDataUrl);
+    setPhotos(prev => [...prev, photoDataUrl]);
 
     // Stop camera
     stopCamera();
@@ -117,8 +116,8 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
     setIsCapturing(false);
   };
 
-  const removePhoto = () => {
-    setPhoto(null);
+  const removePhoto = (index: number) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,7 +126,8 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
 
     setIsSubmitting(true);
     try {
-      // EmergencyService will automatically get current location
+      // For now, we'll send the first photo to maintain compatibility with the existing service
+      // In the future, the service could be updated to handle multiple photos
       await EmergencyService.createEmergencyReport(
         user.id,
         activePatrol?.id,
@@ -135,7 +135,7 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
         title,
         description,
         severity,
-        photo || undefined
+        photos[0] || undefined
         // Location will be automatically captured by the service
       );
       
@@ -246,9 +246,33 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
                 />
               </div>
 
-              {/* Photo Section */}
+              {/* Photos Section */}
               <div className="space-y-2">
-                <Label>Evidence Photo</Label>
+                <Label>Evidence Photos ({photos.length}/5)</Label>
+                
+                {/* Display captured photos */}
+                {photos.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {photos.map((photo, index) => (
+                      <div key={index} className="relative">
+                        <img 
+                          src={photo} 
+                          alt={`Emergency evidence ${index + 1}`} 
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => removePhoto(index)}
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 
                 {isCapturing ? (
                   <div className="space-y-4">
@@ -278,34 +302,16 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
                       </Button>
                     </div>
                   </div>
-                ) : photo ? (
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <img 
-                        src={photo} 
-                        alt="Captured emergency evidence" 
-                        className="w-full h-48 object-cover rounded-lg"
-                      />
-                      <Button
-                        type="button"
-                        onClick={removePhoto}
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
                 ) : (
                   <Button 
                     type="button"
                     onClick={startCamera}
                     variant="outline" 
                     className="w-full h-16 border-dashed border-red-300"
+                    disabled={photos.length >= 5}
                   >
                     <Camera className="h-6 w-6 mr-2" />
-                    Capture Photo
+                    {photos.length === 0 ? 'Capture Photos' : 'Add Another Photo'}
                   </Button>
                 )}
               </div>
