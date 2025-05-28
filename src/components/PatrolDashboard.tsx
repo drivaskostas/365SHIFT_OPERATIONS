@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -56,7 +55,7 @@ const PatrolDashboard = ({ onNavigate }: PatrolDashboardProps) => {
       {/* Welcome Section */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          {t('dashboard.welcome')}
+          {t('dashboard.welcome_simple')}
         </h1>
         <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
           <div className="flex items-center space-x-1">

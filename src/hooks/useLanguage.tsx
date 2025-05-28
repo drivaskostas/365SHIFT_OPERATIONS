@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Language = 'en' | 'el';
@@ -22,6 +21,7 @@ const translations = {
     
     // Dashboard
     'dashboard.welcome': 'Welcome, Security Officer',
+    'dashboard.welcome_simple': 'Welcome',
     'dashboard.on_duty': 'On Duty',
     'dashboard.scan_description': 'Scan QR checkpoints',
     'dashboard.report_description': 'Log observations',
@@ -144,6 +144,7 @@ const translations = {
     
     // Dashboard
     'dashboard.welcome': 'Καλώς ήρθατε, Αξιωματικέ Ασφαλείας',
+    'dashboard.welcome_simple': 'Καλώς ήρθατε',
     'dashboard.on_duty': 'Σε Υπηρεσία',
     'dashboard.scan_description': 'Σάρωση σημείων ελέγχου QR',
     'dashboard.report_description': 'Καταγραφή παρατηρήσεων',
@@ -262,13 +263,11 @@ const translations = {
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>('en');
 
-  // Initialize language from localStorage or browser preference
   useEffect(() => {
     const savedLanguage = localStorage.getItem('sentinel-language') as Language;
     if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'el')) {
       setLanguageState(savedLanguage);
     } else {
-      // Detect browser language
       const browserLang = navigator.language.toLowerCase();
       if (browserLang.startsWith('el')) {
         setLanguageState('el');
