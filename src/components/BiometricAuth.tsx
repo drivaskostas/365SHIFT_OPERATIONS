@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Fingerprint, Scan, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { Fingerprint, Scan, AlertCircle, CheckCircle, Info, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BiometricAuthService } from '@/services/BiometricAuthService';
@@ -22,6 +22,7 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [hasCredentials, setHasCredentials] = useState(false);
   const [checkingCredentials, setCheckingCredentials] = useState(true);
+  const [testingSupport, setTestingSupport] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -37,8 +38,51 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
   }, [userEmail, mode]);
 
   const checkBiometricSupport = async () => {
+    console.log('Checking biometric support...');
     const supported = await BiometricAuthService.isSupported();
+    console.log('Biometric support result:', supported);
     setIsSupported(supported);
+  };
+
+  const testBiometricSupport = async () => {
+    setTestingSupport(true);
+    setError(null);
+    
+    try {
+      console.log('=== TESTING BIOMETRIC SUPPORT ===');
+      console.log('1. Checking WebAuthn availability...');
+      
+      if (!window.PublicKeyCredential) {
+        setError('WebAuthn is not supported in this browser');
+        return;
+      }
+      
+      console.log('2. WebAuthn is available');
+      console.log('3. Checking platform authenticator...');
+      
+      if (!window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+        setError('Platform authenticator check not available');
+        return;
+      }
+      
+      const available = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      console.log('4. Platform authenticator available:', available);
+      
+      if (available) {
+        toast({
+          title: "Biometric Support Test",
+          description: "✅ Your device supports biometric authentication!",
+        });
+        setIsSupported(true);
+      } else {
+        setError('Platform authenticator not available. Make sure Face ID or Touch ID is enabled in your device settings.');
+      }
+    } catch (error) {
+      console.error('Biometric support test failed:', error);
+      setError(`Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setTestingSupport(false);
+    }
   };
 
   const checkExistingCredentials = async () => {
@@ -48,10 +92,9 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
     }
 
     setCheckingCredentials(true);
-    setError(null); // Clear any previous errors
+    setError(null);
     
     try {
-      // First get user profile to get user ID
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id')
@@ -59,8 +102,7 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
         .single();
 
       if (profileError) {
-        console.error('Profile lookup error:', profileError);
-        // Don't show error to user, just assume no credentials
+        console.log('Profile lookup failed:', profileError);
         setHasCredentials(false);
         setCheckingCredentials(false);
         return;
@@ -69,12 +111,12 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
       if (profileData?.id) {
         const hasCredentials = await BiometricAuthService.hasBiometricCredentials(profileData.id);
         setHasCredentials(hasCredentials);
+        console.log('User has credentials:', hasCredentials);
       } else {
         setHasCredentials(false);
       }
     } catch (error) {
       console.error('Error checking credentials:', error);
-      // Don't show error to user, just assume no credentials and allow them to try
       setHasCredentials(false);
     } finally {
       setCheckingCredentials(false);
@@ -90,6 +132,7 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
     setIsLoading(true);
     setError(null);
 
+    console.log('=== STARTING BIOMETRIC LOGIN ===');
     const result = await BiometricAuthService.authenticateWithBiometric(userEmail);
     
     if (result.success && result.userId) {
@@ -112,6 +155,7 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
     setIsLoading(true);
     setError(null);
 
+    console.log('=== STARTING BIOMETRIC REGISTRATION ===');
     const result = await BiometricAuthService.registerBiometric(userId, userEmail);
     
     if (result.success) {
@@ -131,12 +175,30 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
 
   if (!isSupported) {
     return (
-      <Alert className="border-amber-200 bg-amber-50">
-        <Info className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-800">
-          Biometric authentication is not supported on this device or browser. On iPhone, make sure you have Face ID or Touch ID enabled in your device settings.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-4">
+        <Alert className="border-amber-200 bg-amber-50">
+          <Info className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Biometric authentication appears to be unavailable. This could be because:
+            <ul className="mt-2 list-disc list-inside space-y-1">
+              <li>Face ID or Touch ID is not enabled in your device settings</li>
+              <li>Your browser doesn't support WebAuthn</li>
+              <li>You're using an incompatible device</li>
+            </ul>
+          </AlertDescription>
+        </Alert>
+        
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={testBiometricSupport}
+          disabled={testingSupport}
+        >
+          <TestTube className="h-4 w-4 mr-2" />
+          {testingSupport ? 'Testing Support...' : 'Test Biometric Support'}
+        </Button>
+      </div>
     );
   }
 
@@ -176,6 +238,15 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
              checkingCredentials ? 'Checking credentials...' : 
              'Sign in with Biometrics'}
           </Button>
+          
+          {!hasCredentials && !checkingCredentials && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                No biometric credentials found. Please sign in with password first, then enable biometric authentication in Settings.
+              </AlertDescription>
+            </Alert>
+          )}
         </>
       ) : (
         <Button
@@ -192,7 +263,7 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
 
       <div className="text-xs text-gray-500 text-center">
         {mode === 'login' 
-          ? 'Use your fingerprint, face, or device PIN to sign in securely. If this is your first time, please sign in with email/password first to enable biometric authentication.'
+          ? 'Use your fingerprint, face, or device PIN to sign in securely.'
           : 'Enable biometric authentication for faster and more secure sign-ins'
         }
       </div>

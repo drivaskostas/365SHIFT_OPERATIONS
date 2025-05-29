@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 
 export interface BiometricCredential {
@@ -8,13 +9,25 @@ export interface BiometricCredential {
 
 export class BiometricAuthService {
   private static readonly RP_NAME = 'Sentinel Guard';
-  private static readonly RP_ID = window.location.hostname;
+  private static readonly RP_ID = window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname;
 
   static async isSupported(): Promise<boolean> {
     try {
-      return !!(window.PublicKeyCredential && 
-                typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' &&
-                await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+      // Check if WebAuthn is supported
+      if (!window.PublicKeyCredential) {
+        console.log('WebAuthn not supported');
+        return false;
+      }
+
+      // Check if platform authenticator is available (Touch ID/Face ID)
+      if (!window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+        console.log('Platform authenticator check not available');
+        return false;
+      }
+
+      const available = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      console.log('Platform authenticator available:', available);
+      return available;
     } catch (error) {
       console.error('Error checking biometric support:', error);
       return false;
@@ -44,13 +57,29 @@ export class BiometricAuthService {
 
   static async registerBiometric(userId: string, userEmail: string): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('Starting biometric registration for user:', userId);
+      
       if (!await this.isSupported()) {
         return { success: false, error: 'Biometric authentication is not supported on this device' };
       }
 
-      // Generate challenge
+      // Generate a proper challenge
       const challenge = new Uint8Array(32);
       crypto.getRandomValues(challenge);
+      console.log('Generated challenge');
+
+      // Get existing credentials to exclude them
+      const { data: existingCreds } = await supabase
+        .from('user_biometric_credentials')
+        .select('credential_id')
+        .eq('user_id', userId)
+        .eq('active', true);
+
+      const excludeCredentials = existingCreds?.map(cred => ({
+        id: new TextEncoder().encode(cred.credential_id),
+        type: 'public-key' as const,
+        transports: ['internal'] as AuthenticatorTransport[]
+      })) || [];
 
       // Create credential creation options
       const credentialCreationOptions: CredentialCreationOptions = {
@@ -69,15 +98,18 @@ export class BiometricAuthService {
             { alg: -7, type: 'public-key' }, // ES256
             { alg: -257, type: 'public-key' }, // RS256
           ],
+          excludeCredentials,
           authenticatorSelection: {
             authenticatorAttachment: 'platform',
             userVerification: 'required',
             requireResidentKey: false,
           },
           timeout: 60000,
-          attestation: 'direct',
+          attestation: 'none', // Changed from 'direct' to 'none' for better iOS compatibility
         },
       };
+
+      console.log('Creating credential with options:', credentialCreationOptions);
 
       // Create credential
       const credential = await navigator.credentials.create(credentialCreationOptions) as PublicKeyCredential;
@@ -86,10 +118,9 @@ export class BiometricAuthService {
         return { success: false, error: 'Failed to create biometric credential' };
       }
 
-      // Properly cast the response to get access to getPublicKey method
+      console.log('Credential created successfully:', credential.id);
+
       const attestationResponse = credential.response as AuthenticatorAttestationResponse;
-      
-      // Get the public key using the getPublicKey method
       const publicKeyBuffer = attestationResponse.getPublicKey();
       
       if (!publicKeyBuffer) {
@@ -112,11 +143,15 @@ export class BiometricAuthService {
         return { success: false, error: 'Failed to save biometric credential' };
       }
 
+      console.log('Biometric credential stored successfully');
       return { success: true };
     } catch (error) {
       console.error('Biometric registration error:', error);
       if (error instanceof Error && error.name === 'NotAllowedError') {
         return { success: false, error: 'Biometric authentication was cancelled or not allowed' };
+      }
+      if (error instanceof Error && error.name === 'InvalidStateError') {
+        return { success: false, error: 'A biometric credential already exists for this account' };
       }
       return { success: false, error: 'Failed to register biometric authentication' };
     }
@@ -124,11 +159,13 @@ export class BiometricAuthService {
 
   static async authenticateWithBiometric(userEmail: string): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
+      console.log('Starting biometric authentication for:', userEmail);
+      
       if (!await this.isSupported()) {
         return { success: false, error: 'Biometric authentication is not supported on this device' };
       }
 
-      // First get the user ID from profiles table using email
+      // Get user profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id')
@@ -137,12 +174,13 @@ export class BiometricAuthService {
 
       if (profileError || !profileData) {
         console.error('Profile lookup error:', profileError);
-        return { success: false, error: 'User not found. Please sign in with password first to set up biometric authentication.' };
+        return { success: false, error: 'User not found' };
       }
 
       const userId = profileData.id;
+      console.log('Found user ID:', userId);
 
-      // Now get user's biometric credentials
+      // Get user's biometric credentials
       const { data: credentials, error: fetchError } = await supabase
         .from('user_biometric_credentials')
         .select('credential_id, user_id, public_key, counter')
@@ -151,12 +189,14 @@ export class BiometricAuthService {
 
       if (fetchError) {
         console.error('Database error checking credentials:', fetchError);
-        return { success: false, error: 'Unable to check biometric credentials. Please try signing in with password.' };
+        return { success: false, error: 'Unable to check biometric credentials' };
       }
 
       if (!credentials || credentials.length === 0) {
-        return { success: false, error: 'No biometric credentials found for this user. Please set up biometric authentication first by signing in with your password and enabling it in Settings.' };
+        return { success: false, error: 'No biometric credentials found. Please set up biometric authentication first.' };
       }
+
+      console.log('Found credentials:', credentials.length);
 
       // Generate challenge
       const challenge = new Uint8Array(32);
@@ -176,12 +216,16 @@ export class BiometricAuthService {
         },
       };
 
+      console.log('Requesting biometric authentication...');
+
       // Get assertion
       const assertion = await navigator.credentials.get(credentialRequestOptions) as PublicKeyCredential;
       
       if (!assertion) {
         return { success: false, error: 'Biometric authentication failed' };
       }
+
+      console.log('Biometric authentication successful:', assertion.id);
 
       // Find matching credential
       const matchingCredential = credentials.find(cred => 
@@ -192,7 +236,7 @@ export class BiometricAuthService {
         return { success: false, error: 'Invalid credential' };
       }
 
-      // Update counter
+      // Update counter and last used
       await supabase
         .from('user_biometric_credentials')
         .update({ 
@@ -201,16 +245,17 @@ export class BiometricAuthService {
         })
         .eq('credential_id', assertion.id);
 
+      console.log('Biometric authentication completed successfully');
       return { success: true, userId: matchingCredential.user_id };
     } catch (error) {
       console.error('Biometric authentication error:', error);
       if (error instanceof Error && error.name === 'NotAllowedError') {
-        return { success: false, error: 'Biometric authentication was cancelled or not allowed' };
+        return { success: false, error: 'Biometric authentication was cancelled' };
       }
       if (error instanceof Error && error.name === 'SecurityError') {
-        return { success: false, error: 'Biometric authentication failed due to security restrictions. Please try again.' };
+        return { success: false, error: 'Security error during biometric authentication' };
       }
-      return { success: false, error: 'Biometric authentication failed. Please try signing in with password.' };
+      return { success: false, error: 'Biometric authentication failed' };
     }
   }
 
