@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User, Settings as SettingsIcon, Fingerprint, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,10 +6,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { BiometricAuthService } from '@/services/BiometricAuthService';
 import BiometricAuth from '@/components/BiometricAuth';
+import { useNavigate } from 'react-router-dom';
 
 const Settings = () => {
   const { user, profile, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [checkingBiometrics, setCheckingBiometrics] = useState(true);
 
@@ -71,13 +72,19 @@ const Settings = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
+      navigate('/');
     } catch (error) {
       console.error('Sign out error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
   const goBack = () => {
-    window.history.back();
+    navigate('/');
   };
 
   if (!user || !profile) {
