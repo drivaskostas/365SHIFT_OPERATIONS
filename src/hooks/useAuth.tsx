@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
@@ -130,8 +129,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Only log session-related errors, don't throw them
       if (error) {
         console.log('Supabase signout response:', error.message)
-        // Don't throw error for "Session not found" - this means we're already signed out
-        if (!error.message.includes('Session not found') && !error.message.includes('session id') && !error.message.includes("doesn't exist")) {
+        // Don't throw error for session-related issues
+        if (!error.message.includes('Session not found') && 
+            !error.message.includes('session id') && 
+            !error.message.includes("doesn't exist") &&
+            !error.message.includes('Auth session missing')) {
           throw error
         }
       }
@@ -145,13 +147,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('User signed out successfully')
     } catch (error) {
       console.error('Sign out error:', error)
-      // Even if there's an error, clear the local state
+      // For any remaining errors, just clear state and don't re-throw
       setUser(null)
       setProfile(null)
       setSession(null)
       setLoading(false)
-      setSigningOut(false)
-      throw error
     } finally {
       setSigningOut(false)
     }
