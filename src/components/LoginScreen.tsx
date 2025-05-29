@@ -45,6 +45,17 @@ const LoginScreen = () => {
           return;
         }
 
+        // Store shift information in localStorage for patrol creation
+        if (shiftValidation.assignedSite && shiftValidation.assignedTeam) {
+          localStorage.setItem('guardShiftInfo', JSON.stringify({
+            siteId: shiftValidation.assignedSite.id,
+            teamId: shiftValidation.assignedTeam.id,
+            siteName: shiftValidation.assignedSite.name,
+            teamName: shiftValidation.assignedTeam.name,
+            shift: shiftValidation.currentShift
+          }));
+        }
+
         // Show success message with shift info
         toast({
           title: "Welcome back!",
@@ -148,7 +159,7 @@ const LoginScreen = () => {
               <span className="text-sm font-medium">Shift-Based Access</span>
             </div>
             <p className="text-xs text-blue-600 mt-1">
-              You can only login during your assigned shift times or 30 minutes before your shift starts.
+              You can only login during your assigned shift times or 30 minutes before your shift starts. Patrols are restricted to your assigned site.
             </p>
           </div>
         </CardContent>

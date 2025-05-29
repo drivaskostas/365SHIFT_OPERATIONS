@@ -6,6 +6,8 @@ export class ShiftValidationService {
     canLogin: boolean
     message?: string
     currentShift?: any
+    assignedSite?: any
+    assignedTeam?: any
   }> {
     const now = new Date()
     const currentTime = now.toISOString()
@@ -20,7 +22,12 @@ export class ShiftValidationService {
           start_date,
           end_date,
           location,
-          assigned_guards
+          assigned_guards,
+          team_id,
+          teams:team_id (
+            id,
+            name
+          )
         `)
         .contains('assigned_guards', [guardId])
         .lte('start_date', new Date(now.getTime() + 30 * 60 * 1000).toISOString()) // 30 min grace period
@@ -52,22 +59,39 @@ export class ShiftValidationService {
       })
 
       if (currentShift) {
+        // Get the site information for this team
+        const { data: siteData, error: siteError } = await supabase
+          .from('guardian_sites')
+          .select('*')
+          .eq('team_id', currentShift.team_id)
+          .eq('active', true)
+          .single()
+
+        if (siteError && siteError.code !== 'PGRST116') {
+          console.error('Error fetching site data:', siteError)
+        }
+
         const shiftStart = new Date(currentShift.start_date)
         const shiftEnd = new Date(currentShift.end_date)
         
+        let message = ''
         if (now < shiftStart) {
           const minutesUntilStart = Math.ceil((shiftStart.getTime() - now.getTime()) / (1000 * 60))
-          return {
-            canLogin: true,
-            message: `Your shift "${currentShift.title}" starts in ${minutesUntilStart} minutes at ${shiftStart.toLocaleTimeString()}.`,
-            currentShift
-          }
+          message = `Your shift "${currentShift.title}" starts in ${minutesUntilStart} minutes at ${shiftStart.toLocaleTimeString()}.`
         } else {
-          return {
-            canLogin: true,
-            message: `Welcome to your shift "${currentShift.title}" at ${currentShift.location}.`,
-            currentShift
-          }
+          message = `Welcome to your shift "${currentShift.title}" at ${currentShift.location}.`
+        }
+
+        if (siteData) {
+          message += ` You can start patrols at ${siteData.name}.`
+        }
+
+        return {
+          canLogin: true,
+          message,
+          currentShift,
+          assignedSite: siteData,
+          assignedTeam: currentShift.teams
         }
       }
 
@@ -82,5 +106,23 @@ export class ShiftValidationService {
         message: 'Unable to verify shift access. Please try again or contact your supervisor.'
       }
     }
+  }
+
+  static async getGuardActiveShiftSite(guardId: string): Promise<{
+    siteId?: string
+    teamId?: string
+    shiftInfo?: any
+  }> {
+    const validation = await this.validateGuardShiftAccess(guardId)
+    
+    if (validation.canLogin && validation.assignedSite) {
+      return {
+        siteId: validation.assignedSite.id,
+        teamId: validation.assignedTeam?.id,
+        shiftInfo: validation.currentShift
+      }
+    }
+    
+    return {}
   }
 }

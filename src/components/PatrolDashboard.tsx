@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { supabase } from '@/integrations/supabase/client';
 import { PatrolService } from '@/services/PatrolService';
+import { ShiftValidationService } from '@/services/ShiftValidationService';
 import TeamObservations from '@/components/TeamObservations';
 import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
@@ -75,6 +76,7 @@ const PatrolDashboard = ({
     browser: string;
     instructions: string[];
   } | null>(null);
+  const [guardShiftInfo, setGuardShiftInfo] = useState<any>(null);
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -84,10 +86,20 @@ const PatrolDashboard = ({
       fetchDashboardStats();
       fetchRecentActivities();
       checkActivePatrol();
-      fetchAvailableSites();
+      loadGuardShiftInfo();
       checkLocationPermission();
     }
   }, [profile?.id]);
+  const loadGuardShiftInfo = () => {
+    const shiftInfo = localStorage.getItem('guardShiftInfo');
+    if (shiftInfo) {
+      try {
+        setGuardShiftInfo(JSON.parse(shiftInfo));
+      } catch (error) {
+        console.error('Error parsing shift info:', error);
+      }
+    }
+  };
   const checkLocationPermission = async () => {
     if ('permissions' in navigator) {
       try {
@@ -116,11 +128,39 @@ const PatrolDashboard = ({
   };
   const fetchAvailableSites = async () => {
     if (!profile?.id) return;
-    try {
-      const sites = await PatrolService.getAvailableSites(profile.id);
-      setAvailableSites(sites);
-    } catch (error) {
-      console.error('Error fetching available sites:', error);
+    
+    // Check if guard has shift-based site assignment
+    const shiftInfo = await ShiftValidationService.getGuardActiveShiftSite(profile.id);
+    
+    if (shiftInfo.siteId) {
+      // Get only the site where the guard has an active shift
+      try {
+        const { data: site, error } = await supabase
+          .from('guardian_sites')
+          .select('*')
+          .eq('id', shiftInfo.siteId)
+          .eq('active', true)
+          .single();
+
+        if (error) {
+          console.error('Error fetching shift-assigned site:', error);
+          setAvailableSites([]);
+        } else {
+          setAvailableSites([site]);
+        }
+      } catch (error) {
+        console.error('Error fetching available sites:', error);
+        setAvailableSites([]);
+      }
+    } else {
+      // Fallback to old logic if no active shift
+      try {
+        const sites = await PatrolService.getAvailableSites(profile.id);
+        setAvailableSites(sites);
+      } catch (error) {
+        console.error('Error fetching available sites:', error);
+        setAvailableSites([]);
+      }
     }
   };
   const handleStartPatrol = async () => {
@@ -132,23 +172,39 @@ const PatrolDashboard = ({
       });
       return;
     }
-    if (availableSites.length === 0) {
+
+    // Check for active shift and get site assignment
+    const shiftValidation = await ShiftValidationService.validateGuardShiftAccess(profile.id);
+    
+    if (!shiftValidation.canLogin) {
       toast({
-        title: "No Sites Available",
-        description: "You are not assigned to any sites. Please contact your supervisor.",
+        title: "No Active Shift",
+        description: shiftValidation.message || "You don't have an active shift to start a patrol.",
         variant: "destructive"
       });
       return;
     }
 
-    // For now, use the first available site. In a real app, you might want to show a selection dialog
-    const siteId = availableSites[0].id;
+    if (!shiftValidation.assignedSite) {
+      toast({
+        title: "No Site Assignment",
+        description: "No site is assigned for your current shift. Please contact your supervisor.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const patrol = await PatrolService.startPatrol(siteId, profile.id);
+      const patrol = await PatrolService.startPatrol(
+        shiftValidation.assignedSite.id, 
+        profile.id, 
+        shiftValidation.assignedTeam?.id
+      );
+      
       setActivePatrol(patrol);
       toast({
         title: "Patrol Started",
-        description: `Patrol started at ${availableSites[0].name}. Location tracking will begin shortly.`
+        description: `Patrol started at ${shiftValidation.assignedSite.name} for ${shiftValidation.assignedTeam?.name || 'your team'}. Location tracking will begin shortly.`
       });
       fetchDashboardStats();
       fetchRecentActivities();
@@ -514,10 +570,18 @@ const PatrolDashboard = ({
             <MapPin className="h-4 w-4" />
             <span>{activePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
           </div>
-          {isTracking && <div className="flex items-center space-x-1 text-green-600">
+          {guardShiftInfo && (
+            <div className="flex items-center space-x-1 text-green-600">
+              <Shield className="h-4 w-4" />
+              <span>{guardShiftInfo.siteName}</span>
+            </div>
+          )}
+          {isTracking && (
+            <div className="flex items-center space-x-1 text-green-600">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span>Location Tracking Active</span>
-            </div>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -597,22 +661,42 @@ const PatrolDashboard = ({
                   Patrol Status
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
-                  {activePatrol ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : 'No active patrol'}
+                  {activePatrol 
+                    ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` 
+                    : guardShiftInfo 
+                      ? `Ready to patrol at ${guardShiftInfo.siteName}`
+                      : 'No active shift assigned'
+                  }
                 </p>
-                {isTracking && <p className="text-xs text-green-600 mt-1">
+                {guardShiftInfo && !activePatrol && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    📍 Current shift: {guardShiftInfo.teamName} - {guardShiftInfo.siteName}
+                  </p>
+                )}
+                {isTracking && (
+                  <p className="text-xs text-green-600 mt-1">
                     📍 Location updates every minute
-                  </p>}
+                  </p>
+                )}
               </div>
               <div className="flex gap-2 flex-shrink-0">
                 {!activePatrol}
-                <Button onClick={activePatrol ? handleEndPatrol : handleStartPatrol} className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} disabled={!activePatrol && availableSites.length === 0}>
-                  {activePatrol ? <>
+                <Button 
+                  onClick={activePatrol ? handleEndPatrol : handleStartPatrol} 
+                  className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} 
+                  disabled={!activePatrol && !guardShiftInfo}
+                >
+                  {activePatrol ? (
+                    <>
                       <Square className="h-4 w-4 mr-2" />
                       End Patrol
-                    </> : <>
+                    </>
+                  ) : (
+                    <>
                       <Play className="h-4 w-4 mr-2" />
                       Start Patrol
-                    </>}
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
