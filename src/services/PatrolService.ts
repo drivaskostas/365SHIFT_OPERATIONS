@@ -115,22 +115,50 @@ export class PatrolService {
   }
 
   static async startPatrol(siteId: string, guardId: string, teamId?: string): Promise<PatrolSession> {
-    // First verify the guard is assigned to this site
+    // If teamId is provided, validate that the guard is assigned to the correct site for this team
+    let resolvedSiteId = siteId;
+    let resolvedTeamId = teamId;
+    
+    if (teamId) {
+      console.log('🔍 Looking up site for team:', teamId);
+      
+      // Get the site assigned to this specific team
+      const { data: teamSite, error: teamSiteError } = await supabase
+        .from('guardian_sites')
+        .select('id, name, team_id')
+        .eq('team_id', teamId)
+        .eq('active', true)
+        .maybeSingle();
+
+      if (teamSiteError) {
+        console.error('❌ Error fetching team site:', teamSiteError);
+        throw new Error('Failed to validate team site assignment');
+      }
+
+      if (teamSite) {
+        resolvedSiteId = teamSite.id;
+        console.log('✅ Resolved site ID for team:', teamSite.name, '- Site ID:', resolvedSiteId);
+      } else {
+        console.log('⚠️ No active site found for team:', teamId);
+        throw new Error('No active site found for your current team assignment');
+      }
+    }
+
+    // Verify the guard is assigned to this specific site
     const { data: siteGuard, error: assignmentError } = await supabase
       .from('site_guards')
       .select('*')
       .eq('guard_id', guardId)
-      .eq('site_id', siteId)
+      .eq('site_id', resolvedSiteId)
       .maybeSingle()
 
     if (assignmentError) throw assignmentError
     
     if (!siteGuard) {
-      throw new Error('You are not assigned to this site. Please contact your supervisor.')
+      throw new Error(`You are not assigned to this site. Please contact your supervisor. Expected site: ${resolvedSiteId}`)
     }
 
     // Get the guard's team assignment if teamId is not provided
-    let resolvedTeamId = teamId;
     if (!resolvedTeamId) {
       const { data: teamMember, error: teamError } = await supabase
         .from('team_members')
@@ -147,15 +175,17 @@ export class PatrolService {
     }
 
     // Get current location with retries
-    console.log('Attempting to get location for patrol start...');
+    console.log('📍 Attempting to get location for patrol start...');
     const location = await this.getCurrentLocation();
-    console.log('Location for patrol start:', location);
+    console.log('📍 Location for patrol start:', location);
+
+    console.log('🚀 Starting patrol with resolved site ID:', resolvedSiteId, 'and team ID:', resolvedTeamId);
 
     const { data, error } = await supabase
       .from('patrol_sessions')
       .insert({
         guard_id: guardId,
-        site_id: siteId,
+        site_id: resolvedSiteId, // Use the resolved site ID
         team_id: resolvedTeamId,
         start_time: new Date().toISOString(),
         status: 'active',
@@ -166,6 +196,8 @@ export class PatrolService {
       .single()
 
     if (error) throw error
+    
+    console.log('✅ Patrol started successfully:', data);
     return data
   }
 
@@ -208,6 +240,39 @@ export class PatrolService {
   }
 
   static async getAvailableSites(guardId: string): Promise<GuardianSite[]> {
+    // Get shift information to determine the correct site
+    const shiftInfo = localStorage.getItem('guardShiftInfo');
+    
+    if (shiftInfo) {
+      try {
+        const parsedShiftInfo = JSON.parse(shiftInfo);
+        console.log('📋 Using shift info to determine available site:', parsedShiftInfo);
+        
+        // Return only the site assigned for the current shift
+        const { data: assignedSite, error } = await supabase
+          .from('guardian_sites')
+          .select('*')
+          .eq('id', parsedShiftInfo.siteId)
+          .eq('active', true)
+          .maybeSingle();
+
+        if (error) {
+          console.error('❌ Error fetching assigned site:', error);
+          throw error;
+        }
+
+        if (assignedSite) {
+          console.log('✅ Returning assigned site for current shift:', assignedSite.name);
+          return [assignedSite];
+        }
+      } catch (error) {
+        console.error('❌ Error parsing shift info:', error);
+      }
+    }
+
+    // Fallback to original logic if no shift info available
+    console.log('⚠️ No shift info found, falling back to all assigned sites');
+    
     // First get the site IDs assigned to the guard
     const { data: siteAssignments, error: assignmentError } = await supabase
       .from('site_guards')
