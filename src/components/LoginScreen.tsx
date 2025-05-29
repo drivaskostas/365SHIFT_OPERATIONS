@@ -18,15 +18,10 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [shiftWarning, setShiftWarning] = useState<string | null>(null);
-  const {
-    signIn
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { signIn } = useAuth();
+  const { toast } = useToast();
 
   const handleBiometricSuccess = async (userId: string) => {
-    // Sign in the user directly with the validated userId
     try {
       // Get user data from profiles table
       const { data: profile, error: profileError } = await supabase
@@ -44,6 +39,14 @@ const LoginScreen = () => {
         return;
       }
 
+      // Create a custom session for biometric login
+      // Since we can't directly create a Supabase session, we'll use a workaround
+      // by signing in with a temporary approach or handling it through the auth context
+      
+      // For now, we'll validate the user and show success, but the user will need
+      // to use email/password for the actual Supabase session
+      // This is a limitation of the current Supabase auth system
+      
       // Validate shift access
       const shiftValidation = await ShiftValidationService.validateGuardShiftAccess(userId);
       if (!shiftValidation.canLogin) {
@@ -62,12 +65,14 @@ const LoginScreen = () => {
         }));
       }
 
-      // Since we're using biometric auth, we need to manually trigger the auth state change
-      // This is a simplified approach - in production you might want to use a custom session
+      // Show success message but note that full session creation requires email/password
       toast({
-        title: "Welcome back!",
-        description: shiftValidation.message || "Successfully signed in with biometric authentication."
+        title: "Biometric authentication verified",
+        description: "Please complete login with your email and password for full access.",
       });
+
+      // Auto-fill the email field
+      setEmail(profile.email);
 
     } catch (error: any) {
       console.error("Biometric login error:", error);
@@ -89,11 +94,7 @@ const LoginScreen = () => {
       await signIn(email, password);
 
       // Get the current user to validate their shift access
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         // Validate shift access
         const shiftValidation = await ShiftValidationService.validateGuardShiftAccess(user.id);
@@ -133,7 +134,8 @@ const LoginScreen = () => {
     }
   };
 
-  return <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-900 to-gray-900">
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-900 to-gray-900">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
@@ -145,12 +147,14 @@ const LoginScreen = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {shiftWarning && <Alert className="mb-4 border-amber-200 bg-amber-50">
+          {shiftWarning && (
+            <Alert className="mb-4 border-amber-200 bg-amber-50">
               <AlertCircle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-800">
                 {shiftWarning}
               </AlertDescription>
-            </Alert>}
+            </Alert>
+          )}
 
           {/* Biometric Authentication Section */}
           <div className="mb-4">
@@ -176,7 +180,15 @@ const LoginScreen = () => {
               <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input id="email" type="email" placeholder="guard@example.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="guard@example.com" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className="pl-10" 
+                  required 
+                />
               </div>
             </div>
             
@@ -184,14 +196,32 @@ const LoginScreen = () => {
               <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} className="pl-10 pr-10" required />
-                <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)}>
+                <Input 
+                  id="password" 
+                  type={showPassword ? 'text' : 'password'} 
+                  placeholder="Enter your password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  className="pl-10 pr-10" 
+                  required 
+                />
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" 
+                  onClick={() => setShowPassword(!showPassword)}
+                >
                   {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                 </Button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading || !email || !password}>
+            <Button 
+              type="submit" 
+              className="w-full bg-blue-600 hover:bg-blue-700" 
+              disabled={isLoading || !email || !password}
+            >
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
@@ -218,6 +248,8 @@ const LoginScreen = () => {
           </div>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default LoginScreen;

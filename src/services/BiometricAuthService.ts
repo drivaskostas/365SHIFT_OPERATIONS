@@ -17,6 +17,22 @@ export class BiometricAuthService {
               await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
   }
 
+  static async hasBiometricCredentials(userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('user_biometric_credentials')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('active', true)
+        .limit(1);
+
+      return !error && data && data.length > 0;
+    } catch (error) {
+      console.error('Error checking biometric credentials:', error);
+      return false;
+    }
+  }
+
   static async registerBiometric(userId: string, userEmail: string): Promise<{ success: boolean; error?: string }> {
     try {
       if (!await this.isSupported()) {
