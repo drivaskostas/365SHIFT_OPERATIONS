@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { Shield, Camera, AlertTriangle, User, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import LoginScreen from '@/components/LoginScreen';
 import PatrolDashboard from '@/components/PatrolDashboard';
 import QRScanner from '@/components/QRScanner';
@@ -37,6 +39,7 @@ function AppContent() {
   const {
     t
   } = useLanguage();
+  const navigate = useNavigate();
   const [currentScreen, setCurrentScreen] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(true);
   useEffect(() => {
@@ -53,6 +56,11 @@ function AppContent() {
       console.error('Sign out error:', error);
     }
   };
+
+  const handleSettingsClick = () => {
+    navigate('/settings');
+  };
+
   const renderScreen = () => {
     if (loading) {
       return <div className="min-h-screen flex items-center justify-center">
@@ -91,7 +99,7 @@ function AppContent() {
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <LanguageToggle />
-              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-white hover:bg-blue-800" title={t('button.sign_out')}>
+              <Button variant="ghost" size="sm" onClick={handleSettingsClick} className="text-white hover:bg-blue-800" title="Settings">
                 <User className="h-4 w-4" />
               </Button>
             </div>
