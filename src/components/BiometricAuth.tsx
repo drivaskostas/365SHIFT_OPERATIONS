@@ -95,20 +95,28 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
     setError(null);
     
     try {
+      console.log('=== CHECKING EXISTING CREDENTIALS ===');
+      console.log('Email to check:', userEmail);
+      
       // First try to get current user
       const { data: { user: currentUser } } = await supabase.auth.getUser();
+      console.log('Current user:', currentUser?.id, currentUser?.email);
       
       let targetUserId: string | null = null;
 
       if (currentUser && currentUser.email === userEmail) {
         targetUserId = currentUser.id;
+        console.log('Using current user ID:', targetUserId);
       } else {
         // Try profiles table lookup
+        console.log('Looking up user in profiles table...');
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id')
+          .select('id, email')
           .eq('email', userEmail)
           .single();
+
+        console.log('Profile lookup result:', { profileData, profileError });
 
         if (profileError) {
           console.log('Profile lookup failed:', profileError);
@@ -121,10 +129,12 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
       }
 
       if (targetUserId) {
+        console.log('Checking credentials for user:', targetUserId);
         const hasCredentials = await BiometricAuthService.hasBiometricCredentials(targetUserId);
+        console.log('Has credentials result:', hasCredentials);
         setHasCredentials(hasCredentials);
-        console.log('User has credentials:', hasCredentials);
       } else {
+        console.log('No user ID found');
         setHasCredentials(false);
       }
     } catch (error) {

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 
 export interface BiometricCredential {
@@ -36,19 +35,27 @@ export class BiometricAuthService {
 
   static async hasBiometricCredentials(userId: string): Promise<boolean> {
     try {
+      console.log('=== CHECKING BIOMETRIC CREDENTIALS ===');
+      console.log('Checking credentials for user ID:', userId);
+      
       const { data, error } = await supabase
         .from('user_biometric_credentials')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('active', true)
-        .limit(1);
+        .select('id, credential_id, user_id, active, created_at')
+        .eq('user_id', userId);
 
+      console.log('Database response:', { data, error });
+      
       if (error) {
         console.error('Database error checking credentials:', error);
         return false;
       }
 
-      return data && data.length > 0;
+      const activeCredentials = data?.filter(cred => cred.active !== false) || [];
+      console.log('Total credentials found:', data?.length || 0);
+      console.log('Active credentials:', activeCredentials.length);
+      console.log('Credentials details:', activeCredentials);
+
+      return activeCredentials.length > 0;
     } catch (error) {
       console.error('Error checking biometric credentials:', error);
       return false;
@@ -159,6 +166,7 @@ export class BiometricAuthService {
 
   static async authenticateWithBiometric(userEmail: string): Promise<{ success: boolean; userId?: string; error?: string }> {
     try {
+      console.log('=== STARTING BIOMETRIC AUTHENTICATION ===');
       console.log('Starting biometric authentication for:', userEmail);
       
       if (!await this.isSupported()) {
@@ -176,17 +184,17 @@ export class BiometricAuthService {
         console.log('Using current authenticated user ID:', userId);
       } else {
         // Try to find user in profiles table
+        console.log('Looking up user in profiles table...');
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id')
+          .select('id, email')
           .eq('email', userEmail)
           .single();
 
+        console.log('Profile lookup result:', { profileData, profileError });
+
         if (profileError) {
-          console.log('Profile lookup failed, trying auth.users:', profileError);
-          
-          // If profile lookup fails, we can't proceed with biometric auth
-          // because we need the user_id for credential lookup
+          console.log('Profile lookup failed:', profileError);
           return { success: false, error: 'User profile not found. Please sign in with password first to set up biometric authentication.' };
         }
 
@@ -199,23 +207,29 @@ export class BiometricAuthService {
 
       console.log('Found user ID:', userId);
 
-      // Get user's biometric credentials
+      // Get user's biometric credentials with detailed logging
+      console.log('Fetching biometric credentials...');
       const { data: credentials, error: fetchError } = await supabase
         .from('user_biometric_credentials')
-        .select('credential_id, user_id, public_key, counter')
-        .eq('user_id', userId)
-        .eq('active', true);
+        .select('credential_id, user_id, public_key, counter, active, created_at')
+        .eq('user_id', userId);
+
+      console.log('Credentials fetch result:', { credentials, fetchError });
 
       if (fetchError) {
         console.error('Database error checking credentials:', fetchError);
         return { success: false, error: 'Unable to check biometric credentials' };
       }
 
-      if (!credentials || credentials.length === 0) {
+      // Filter for active credentials
+      const activeCredentials = credentials?.filter(cred => cred.active !== false) || [];
+      console.log('Active credentials found:', activeCredentials.length);
+
+      if (activeCredentials.length === 0) {
         return { success: false, error: 'No biometric credentials found. Please set up biometric authentication in Settings first.' };
       }
 
-      console.log('Found credentials:', credentials.length);
+      console.log('Found credentials:', activeCredentials.length);
 
       // Generate challenge
       const challenge = new Uint8Array(32);
@@ -225,7 +239,7 @@ export class BiometricAuthService {
       const credentialRequestOptions: CredentialRequestOptions = {
         publicKey: {
           challenge,
-          allowCredentials: credentials.map(cred => ({
+          allowCredentials: activeCredentials.map(cred => ({
             id: new TextEncoder().encode(cred.credential_id),
             type: 'public-key',
             transports: ['internal'],
@@ -247,7 +261,7 @@ export class BiometricAuthService {
       console.log('Biometric authentication successful:', assertion.id);
 
       // Find matching credential
-      const matchingCredential = credentials.find(cred => 
+      const matchingCredential = activeCredentials.find(cred => 
         cred.credential_id === assertion.id
       );
 
