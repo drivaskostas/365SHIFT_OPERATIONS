@@ -61,10 +61,13 @@ export class BiometricAuthService {
         return { success: false, error: 'Failed to create biometric credential' };
       }
 
-      // Properly cast the response to get access to publicKey
+      // Properly cast the response to get access to getPublicKey method
       const attestationResponse = credential.response as AuthenticatorAttestationResponse;
       
-      if (!attestationResponse.publicKey) {
+      // Get the public key using the getPublicKey method
+      const publicKeyBuffer = attestationResponse.getPublicKey();
+      
+      if (!publicKeyBuffer) {
         return { success: false, error: 'Failed to retrieve public key from credential' };
       }
 
@@ -74,7 +77,7 @@ export class BiometricAuthService {
         .insert({
           user_id: userId,
           credential_id: credential.id,
-          public_key: btoa(String.fromCharCode(...new Uint8Array(attestationResponse.publicKey))),
+          public_key: btoa(String.fromCharCode(...new Uint8Array(publicKeyBuffer))),
           counter: 0,
           created_at: new Date().toISOString(),
         });
