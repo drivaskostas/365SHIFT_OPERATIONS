@@ -106,6 +106,9 @@ export class BiometricAuthService {
       return { success: true };
     } catch (error) {
       console.error('Biometric registration error:', error);
+      if (error instanceof Error && error.name === 'NotAllowedError') {
+        return { success: false, error: 'Biometric authentication was cancelled or not allowed' };
+      }
       return { success: false, error: 'Failed to register biometric authentication' };
     }
   }
@@ -116,7 +119,7 @@ export class BiometricAuthService {
         return { success: false, error: 'Biometric authentication is not supported on this device' };
       }
 
-      // Get user's credentials from database - fixed query to properly join with profiles
+      // Get user's credentials from database
       const { data: credentials, error: fetchError } = await supabase
         .from('user_biometric_credentials')
         .select(`
@@ -129,8 +132,13 @@ export class BiometricAuthService {
         .eq('profiles.email', userEmail)
         .eq('active', true);
 
-      if (fetchError || !credentials || credentials.length === 0) {
-        return { success: false, error: 'No biometric credentials found for this user' };
+      if (fetchError) {
+        console.error('Database error checking credentials:', fetchError);
+        return { success: false, error: 'Unable to check biometric credentials' };
+      }
+
+      if (!credentials || credentials.length === 0) {
+        return { success: false, error: 'No biometric credentials found for this user. Please set up biometric authentication first.' };
       }
 
       // Generate challenge
@@ -179,6 +187,9 @@ export class BiometricAuthService {
       return { success: true, userId: matchingCredential.user_id };
     } catch (error) {
       console.error('Biometric authentication error:', error);
+      if (error instanceof Error && error.name === 'NotAllowedError') {
+        return { success: false, error: 'Biometric authentication was cancelled or not allowed' };
+      }
       return { success: false, error: 'Biometric authentication failed' };
     }
   }
