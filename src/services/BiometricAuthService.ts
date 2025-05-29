@@ -61,13 +61,20 @@ export class BiometricAuthService {
         return { success: false, error: 'Failed to create biometric credential' };
       }
 
+      // Properly cast the response to get access to publicKey
+      const attestationResponse = credential.response as AuthenticatorAttestationResponse;
+      
+      if (!attestationResponse.publicKey) {
+        return { success: false, error: 'Failed to retrieve public key from credential' };
+      }
+
       // Store credential in Supabase
       const { error } = await supabase
         .from('user_biometric_credentials')
         .insert({
           user_id: userId,
           credential_id: credential.id,
-          public_key: btoa(String.fromCharCode(...new Uint8Array(credential.response.publicKey!))),
+          public_key: btoa(String.fromCharCode(...new Uint8Array(attestationResponse.publicKey))),
           counter: 0,
           created_at: new Date().toISOString(),
         });
@@ -93,7 +100,7 @@ export class BiometricAuthService {
       // Get user's credentials from database
       const { data: credentials, error: fetchError } = await supabase
         .from('user_biometric_credentials')
-        .select('credential_id, user_id, public_key')
+        .select('credential_id, user_id, public_key, counter')
         .eq('profiles.email', userEmail)
         .eq('active', true);
 
@@ -139,7 +146,7 @@ export class BiometricAuthService {
       await supabase
         .from('user_biometric_credentials')
         .update({ 
-          counter: matchingCredential.counter + 1,
+          counter: (matchingCredential.counter || 0) + 1,
           last_used: new Date().toISOString()
         })
         .eq('credential_id', assertion.id);
