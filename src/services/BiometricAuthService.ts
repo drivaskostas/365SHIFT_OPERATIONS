@@ -165,19 +165,38 @@ export class BiometricAuthService {
         return { success: false, error: 'Biometric authentication is not supported on this device' };
       }
 
-      // Get user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', userEmail)
-        .single();
+      // First try to get the current authenticated user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      let userId: string | null = null;
 
-      if (profileError || !profileData) {
-        console.error('Profile lookup error:', profileError);
-        return { success: false, error: 'User not found' };
+      if (currentUser && currentUser.email === userEmail) {
+        // Use the current authenticated user's ID
+        userId = currentUser.id;
+        console.log('Using current authenticated user ID:', userId);
+      } else {
+        // Try to find user in profiles table
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', userEmail)
+          .single();
+
+        if (profileError) {
+          console.log('Profile lookup failed, trying auth.users:', profileError);
+          
+          // If profile lookup fails, we can't proceed with biometric auth
+          // because we need the user_id for credential lookup
+          return { success: false, error: 'User profile not found. Please sign in with password first to set up biometric authentication.' };
+        }
+
+        userId = profileData?.id;
       }
 
-      const userId = profileData.id;
+      if (!userId) {
+        return { success: false, error: 'Unable to identify user. Please sign in with password first.' };
+      }
+
       console.log('Found user ID:', userId);
 
       // Get user's biometric credentials
@@ -193,7 +212,7 @@ export class BiometricAuthService {
       }
 
       if (!credentials || credentials.length === 0) {
-        return { success: false, error: 'No biometric credentials found. Please set up biometric authentication first.' };
+        return { success: false, error: 'No biometric credentials found. Please set up biometric authentication in Settings first.' };
       }
 
       console.log('Found credentials:', credentials.length);
