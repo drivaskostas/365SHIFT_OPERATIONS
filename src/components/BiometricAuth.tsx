@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Fingerprint, Scan, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,20 +48,33 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
     }
 
     setCheckingCredentials(true);
+    setError(null); // Clear any previous errors
+    
     try {
       // First get user profile to get user ID
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('email', userEmail)
         .single();
 
+      if (profileError) {
+        console.error('Profile lookup error:', profileError);
+        // Don't show error to user, just assume no credentials
+        setHasCredentials(false);
+        setCheckingCredentials(false);
+        return;
+      }
+
       if (profileData?.id) {
         const hasCredentials = await BiometricAuthService.hasBiometricCredentials(profileData.id);
         setHasCredentials(hasCredentials);
+      } else {
+        setHasCredentials(false);
       }
     } catch (error) {
       console.error('Error checking credentials:', error);
+      // Don't show error to user, just assume no credentials and allow them to try
       setHasCredentials(false);
     } finally {
       setCheckingCredentials(false);
@@ -150,28 +164,18 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
 
       {mode === 'login' ? (
         <>
-          {checkingCredentials ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              disabled
-            >
-              <Fingerprint className="h-4 w-4 mr-2" />
-              Checking biometric credentials...
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleBiometricLogin}
-              disabled={isLoading || !userEmail}
-            >
-              <Fingerprint className="h-4 w-4 mr-2" />
-              {isLoading ? 'Authenticating...' : 'Sign in with Biometrics'}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleBiometricLogin}
+            disabled={isLoading || !userEmail || checkingCredentials}
+          >
+            <Fingerprint className="h-4 w-4 mr-2" />
+            {isLoading ? 'Authenticating...' : 
+             checkingCredentials ? 'Checking credentials...' : 
+             'Sign in with Biometrics'}
+          </Button>
         </>
       ) : (
         <Button

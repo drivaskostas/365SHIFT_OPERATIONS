@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 
 export interface BiometricCredential {
@@ -12,9 +11,14 @@ export class BiometricAuthService {
   private static readonly RP_ID = window.location.hostname;
 
   static async isSupported(): Promise<boolean> {
-    return !!(window.PublicKeyCredential && 
-              typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' &&
-              await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+    try {
+      return !!(window.PublicKeyCredential && 
+                typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' &&
+                await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+    } catch (error) {
+      console.error('Error checking biometric support:', error);
+      return false;
+    }
   }
 
   static async hasBiometricCredentials(userId: string): Promise<boolean> {
@@ -26,7 +30,12 @@ export class BiometricAuthService {
         .eq('active', true)
         .limit(1);
 
-      return !error && data && data.length > 0;
+      if (error) {
+        console.error('Database error checking credentials:', error);
+        return false;
+      }
+
+      return data && data.length > 0;
     } catch (error) {
       console.error('Error checking biometric credentials:', error);
       return false;
@@ -142,7 +151,7 @@ export class BiometricAuthService {
 
       if (fetchError) {
         console.error('Database error checking credentials:', fetchError);
-        return { success: false, error: 'Unable to check biometric credentials' };
+        return { success: false, error: 'Unable to check biometric credentials. Please try signing in with password.' };
       }
 
       if (!credentials || credentials.length === 0) {
@@ -198,7 +207,10 @@ export class BiometricAuthService {
       if (error instanceof Error && error.name === 'NotAllowedError') {
         return { success: false, error: 'Biometric authentication was cancelled or not allowed' };
       }
-      return { success: false, error: 'Biometric authentication failed' };
+      if (error instanceof Error && error.name === 'SecurityError') {
+        return { success: false, error: 'Biometric authentication failed due to security restrictions. Please try again.' };
+      }
+      return { success: false, error: 'Biometric authentication failed. Please try signing in with password.' };
     }
   }
 
