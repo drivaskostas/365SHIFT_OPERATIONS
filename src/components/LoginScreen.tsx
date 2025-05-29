@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -79,13 +78,11 @@ const LoginScreen = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="bg-blue-600 p-3 rounded-full">
-              <img 
-                src="/lovable-uploads/1f595242-f32f-4d2b-95fa-e458a1f0a6df.png" 
-                alt="Sentinel Guard Logo" 
-                className="h-8 w-8 object-contain"
-              />
-            </div>
+            <img 
+              src="/lovable-uploads/09a66026-6415-4468-9706-7cadf06736ec.png" 
+              alt="Sentinel Guard Logo" 
+              className="h-12 w-12 object-contain"
+            />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Sentinel Guard</CardTitle>
