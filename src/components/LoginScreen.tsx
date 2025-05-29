@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { ShiftValidationService } from '@/services/ShiftValidationService';
-import BiometricAuth from '@/components/BiometricAuth';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
@@ -18,7 +17,6 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [shiftWarning, setShiftWarning] = useState<string | null>(null);
-  const [authMethod, setAuthMethod] = useState<'none' | 'password' | 'biometric'>('none');
   const { signIn } = useAuth();
   const { toast } = useToast();
 
@@ -29,58 +27,6 @@ const LoginScreen = () => {
       setEmail(savedEmail);
     }
   }, []);
-
-  const handleBiometricSuccess = async (userId: string) => {
-    try {
-      // Get user data from profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', userId)
-        .single();
-
-      if (profileError || !profile) {
-        toast({
-          title: "Authentication failed",
-          description: "Unable to retrieve user information.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validate shift access
-      const shiftValidation = await ShiftValidationService.validateGuardShiftAccess(userId);
-      
-      if (!shiftValidation.canLogin) {
-        setShiftWarning(shiftValidation.message || 'You are not authorized to login at this time.');
-        return;
-      }
-
-      // Store shift information in localStorage for patrol creation
-      if (shiftValidation.assignedSite && shiftValidation.assignedTeam) {
-        localStorage.setItem('guardShiftInfo', JSON.stringify({
-          siteId: shiftValidation.assignedSite.id,
-          teamId: shiftValidation.assignedTeam.id,
-          siteName: shiftValidation.assignedSite.name,
-          teamName: shiftValidation.assignedTeam.name,
-          shift: shiftValidation.currentShift
-        }));
-      }
-
-      toast({
-        title: "Welcome back!",
-        description: shiftValidation.message || "Successfully signed in with biometric authentication."
-      });
-      
-    } catch (error: any) {
-      console.error("Biometric login error:", error);
-      toast({
-        title: "Authentication failed",
-        description: "Unable to complete biometric authentication.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,29 +85,6 @@ const LoginScreen = () => {
     }
   };
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    
-    // Save email for biometric auth
-    localStorage.setItem('lastLoginEmail', email);
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEmail = e.target.value;
-    setEmail(newEmail);
-    // Reset auth method when email changes
-    if (authMethod !== 'none') {
-      setAuthMethod('none');
-    }
-  };
-
-  const handleBackToEmail = () => {
-    setAuthMethod('none');
-    setPassword('');
-    setShiftWarning(null);
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-900 to-gray-900">
       <Card className="w-full max-w-md">
@@ -188,129 +111,60 @@ const LoginScreen = () => {
             </Alert>
           )}
 
-          {/* Email Entry Step */}
-          {authMethod === 'none' && (
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="guard@example.com"
-                    value={email}
-                    onChange={handleEmailChange}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="guard@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  required
+                />
               </div>
-              
-              {email && (
-                <div className="space-y-3">
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setAuthMethod('password')}
-                  >
-                    <Lock className="h-4 w-4 mr-2" />
-                    Continue with Password
-                  </Button>
-                  
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setAuthMethod('biometric')}
-                  >
-                    Continue with Biometrics
-                  </Button>
-                </div>
-              )}
-            </form>
-          )}
-
-          {/* Password Authentication */}
-          {authMethod === 'password' && (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackToEmail}
-                  className="p-1"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-gray-600">{email}</span>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10"
-                    required
-                    autoFocus
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700" 
-                disabled={isLoading || !password}
-              >
-                {isLoading ? 'Signing In...' : 'Sign In'}
-              </Button>
-            </form>
-          )}
-
-          {/* Biometric Authentication */}
-          {authMethod === 'biometric' && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackToEmail}
-                  className="p-1"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-gray-600">{email}</span>
-              </div>
-              
-              <BiometricAuth 
-                userEmail={email} 
-                onSuccess={handleBiometricSuccess} 
-                mode="login" 
-              />
             </div>
-          )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 pr-10"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full bg-blue-600 hover:bg-blue-700" 
+              disabled={isLoading || !email || !password}
+            >
+              {isLoading ? 'Signing In...' : 'Sign In'}
+            </Button>
+          </form>
 
           <div className="mt-6 p-3 bg-blue-50 rounded-lg">
             <div className="flex items-center space-x-2 text-blue-700">
@@ -320,9 +174,6 @@ const LoginScreen = () => {
             <p className="text-xs text-blue-600 mt-1">
               You can only login during your assigned shift times or 30 minutes before your shift starts. 
               Patrols are restricted to your assigned site.
-            </p>
-            <p className="text-xs text-blue-600 mt-2">
-              <strong>Enable Biometrics:</strong> After signing in with password, go to Settings to enable biometric authentication for faster future logins.
             </p>
           </div>
         </CardContent>
