@@ -81,9 +81,9 @@ const LoginScreen = () => {
           <div className="flex justify-center">
             <div className="bg-blue-600 p-3 rounded-full">
               <img 
-                src="/lovable-uploads/d4fa39f2-fe5f-4742-acaa-c8559e691015.png" 
+                src="/lovable-uploads/1f595242-f32f-4d2b-95fa-e458a1f0a6df.png" 
                 alt="Sentinel Guard Logo" 
-                className="h-8 w-8"
+                className="h-8 w-8 object-contain"
               />
             </div>
           </div>
