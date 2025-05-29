@@ -1,4 +1,5 @@
 
+
 import { useState, useRef, useEffect } from 'react';
 import { Camera, ArrowLeft, Flashlight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -66,6 +68,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 
   const startCamera = async () => {
     try {
+      console.log('🎥 Starting camera...');
+      
       // Stop any existing stream first
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -74,8 +78,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 }
         }
       });
       
@@ -84,10 +88,15 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         streamRef.current = stream;
         
         videoRef.current.onloadedmetadata = () => {
+          console.log('📹 Video metadata loaded');
           if (videoRef.current) {
             videoRef.current.play().then(() => {
-              setIsVideoReady(true);
-              startScanningLoop();
+              console.log('▶️ Video playing, waiting for ready state...');
+              // Wait a bit longer for video to be fully ready
+              setTimeout(() => {
+                setIsVideoReady(true);
+                console.log('✅ Video ready, starting scan loop');
+              }, 500);
             }).catch(err => {
               console.error('Error playing video:', err);
               setCameraError('Failed to start video playback');
@@ -103,47 +112,73 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   };
 
   const startScanningLoop = () => {
-    if (!canvasRef.current || !videoRef.current || !isVideoReady) return;
+    if (!canvasRef.current || !videoRef.current || !isVideoReady) {
+      console.log('⚠️ Cannot start scanning - missing requirements');
+      return;
+    }
     
     const canvas = canvasRef.current;
     const video = videoRef.current;
     const ctx = canvas.getContext('2d');
     
-    if (!ctx) return;
+    if (!ctx) {
+      console.log('⚠️ Cannot get canvas context');
+      return;
+    }
     
     // Clear any previous interval
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
     }
     
-    // Set up scanning loop
+    console.log('🔄 Starting QR scan loop...');
+    
+    // Set up scanning loop with more frequent scanning
     scanIntervalRef.current = window.setInterval(() => {
-      if (video.readyState !== video.HAVE_ENOUGH_DATA || !isScanning) {
+      if (!isScanning || isProcessing || video.readyState !== video.HAVE_ENOUGH_DATA) {
         return;
       }
       
-      canvas.height = video.videoHeight;
-      canvas.width = video.videoWidth;
-      
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // Set canvas size to match video
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
       
       try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "dontInvert",
         });
         
-        if (code) {
-          console.log("QR code detected:", code.data);
+        if (code && code.data) {
+          console.log("🎯 QR code detected:", code.data);
           handleScanSuccess(code.data);
         }
       } catch (err) {
-        console.error("QR scanning error:", err);
+        console.error("❌ QR scanning error:", err);
       }
-    }, 200); // scan every 200ms
+    }, 100); // Scan every 100ms for better responsiveness
   };
 
+  // Start scanning when video is ready
+  useEffect(() => {
+    if (isVideoReady && isScanning && !isProcessing) {
+      startScanningLoop();
+    }
+    
+    return () => {
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+      }
+    };
+  }, [isVideoReady, isScanning, isProcessing]);
+
   const stopCamera = () => {
+    console.log('🛑 Stopping camera...');
+    
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -158,13 +193,12 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   };
 
   const handleScanSuccess = async (qrData: string) => {
-    if (!activePatrol) return;
+    if (!activePatrol || isProcessing) return;
     
-    setIsScanning(false);
+    console.log('🔍 Processing QR scan:', qrData);
+    setIsProcessing(true);
     
     try {
-      console.log('🔍 QR Data received:', qrData);
-      
       let checkpointId = qrData;
       let parsedData = null;
       
@@ -218,6 +252,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         location || undefined
       );
       
+      // Stop scanning temporarily and show success
+      setIsScanning(false);
       setScanResult(`${checkpoint.name} - ${checkpoint.location}`);
       
       toast({
@@ -228,7 +264,9 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       // Reset after showing result
       setTimeout(() => {
         setScanResult(null);
+        setIsProcessing(false);
         setIsScanning(true);
+        console.log('🔄 Resuming QR scanning...');
       }, 3000);
       
     } catch (error: any) {
@@ -238,7 +276,12 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         description: error.message || "Failed to record checkpoint visit.",
         variant: "destructive",
       });
-      setIsScanning(true);
+      
+      // Resume scanning after error
+      setTimeout(() => {
+        setIsProcessing(false);
+        console.log('🔄 Resuming scanning after error...');
+      }, 2000);
     }
   };
 
@@ -352,8 +395,18 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         )}
         
         {/* Scanning line */}
-        {isScanning && isVideoReady && (
+        {isScanning && isVideoReady && !isProcessing && (
           <div className="absolute w-full h-1 bg-green-500 animate-pulse top-1/2"></div>
+        )}
+
+        {/* Processing indicator */}
+        {isProcessing && (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <div className="text-white text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <p>Processing QR code...</p>
+            </div>
+          </div>
         )}
 
         {/* Scan Result */}
@@ -390,7 +443,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             onClick={handleManualScan} 
             className="w-full bg-yellow-600 hover:bg-yellow-700" 
             size="lg"
-            disabled={!isScanning || !activePatrol}
+            disabled={isProcessing || !activePatrol}
           >
             <Camera className="h-5 w-5 mr-2" />
             Test Sample QR
@@ -402,3 +455,4 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 };
 
 export default QRScanner;
+
