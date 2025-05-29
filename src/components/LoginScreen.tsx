@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Shield, Mail, Lock, Eye, EyeOff, Clock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,7 +80,11 @@ const LoginScreen = () => {
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="bg-blue-600 p-3 rounded-full">
-              <Shield className="h-8 w-8 text-white" />
+              <img 
+                src="/lovable-uploads/d4fa39f2-fe5f-4742-acaa-c8559e691015.png" 
+                alt="Sentinel Guard Logo" 
+                className="h-8 w-8"
+              />
             </div>
           </div>
           <div>
