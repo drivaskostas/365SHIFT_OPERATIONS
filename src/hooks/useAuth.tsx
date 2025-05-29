@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Stop location tracking when user signs out
         if (event === 'SIGNED_OUT') {
+          setSigningOut(false) // Reset signing out state
           // Dynamic import to avoid circular dependencies
           import('@/services/LocationTrackingService').then(({ LocationTrackingService }) => {
             LocationTrackingService.stopTracking();
@@ -112,8 +114,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    // Prevent multiple signout attempts
+    if (signingOut) {
+      console.log('Sign out already in progress, skipping...')
+      return
+    }
+
+    // If no session exists, just clear state
+    if (!session) {
+      console.log('No session found, clearing state...')
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+      setLoading(false)
+      return
+    }
+
     try {
+      setSigningOut(true)
       console.log('Signing out user...')
+      
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('Supabase signout error:', error)
@@ -129,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('User signed out successfully')
     } catch (error) {
       console.error('Sign out error:', error)
+      setSigningOut(false)
       throw error
     }
   }

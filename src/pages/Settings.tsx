@@ -14,6 +14,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [checkingBiometrics, setCheckingBiometrics] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
 
   // Check if biometrics are already enabled when component mounts
   useEffect(() => {
@@ -70,16 +71,21 @@ const Settings = () => {
   };
 
   const handleSignOut = async () => {
+    if (signingOut) return;
+    
     try {
+      setSigningOut(true);
       await signOut();
       navigate('/');
     } catch (error) {
       console.error('Sign out error:', error);
       toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
+        title: "Sign out failed",
+        description: "There was an error signing out. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setSigningOut(false);
     }
   };
 
@@ -215,9 +221,10 @@ const Settings = () => {
             <Button 
               variant="destructive" 
               onClick={handleSignOut}
+              disabled={signingOut}
               className="w-full"
             >
-              Sign Out
+              {signingOut ? 'Signing Out...' : 'Sign Out'}
             </Button>
           </CardContent>
         </Card>
