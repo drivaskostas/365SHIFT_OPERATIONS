@@ -8,7 +8,7 @@ import PatrolDashboard from '@/components/PatrolDashboard';
 import QRScanner from '@/components/QRScanner';
 import PatrolObservation from '@/components/PatrolObservation';
 import EnhancedEmergencyReport from '@/components/EnhancedEmergencyReport';
-import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { LanguageProvider, useLanguage } from '@/hooks/useLanguage';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -133,10 +133,8 @@ function AppContent() {
 }
 
 const Index = () => {
-  return <AuthProvider>
-      <LanguageProvider>
+  return <LanguageProvider>
         <AppContent />
-      </LanguageProvider>
-    </AuthProvider>;
+      </LanguageProvider>;
 };
 export default Index;
