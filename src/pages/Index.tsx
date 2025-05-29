@@ -26,6 +26,7 @@ function LocationTrackingInitializer() {
   }
   return null;
 }
+
 function AppContent() {
   const {
     user,
@@ -80,7 +81,7 @@ function AppContent() {
       
       <div className="min-h-screen flex flex-col">
         {/* Header */}
-        {user && <header className="bg-blue-900 text-white p-4 flex items-center justify-between py-[73px]">
+        {user && <header className="sticky top-0 z-50 bg-blue-900 text-white p-4 flex items-center justify-between py-[73px]">
             <div className="flex items-center space-x-2">
               <Shield className="h-6 w-6" />
               <h1 className="text-lg font-bold">{t('app.title')}</h1>
@@ -122,6 +123,7 @@ function AppContent() {
       <Toaster />
     </div>;
 }
+
 const Index = () => {
   return <AuthProvider>
       <LanguageProvider>
