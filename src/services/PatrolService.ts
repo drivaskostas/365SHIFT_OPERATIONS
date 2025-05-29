@@ -10,7 +10,7 @@ export class PatrolService {
         return;
       }
 
-      // First try with high accuracy
+      // Reduced timeouts for mobile devices
       navigator.geolocation.getCurrentPosition(
         (position) => {
           console.log('Location obtained:', {
@@ -24,38 +24,94 @@ export class PatrolService {
           });
         },
         (error) => {
-          console.warn('High accuracy location failed, trying with lower accuracy:', error);
-          // Fallback to lower accuracy
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              console.log('Fallback location obtained:', {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy
-              });
-              resolve({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-              });
-            },
-            (fallbackError) => {
-              console.error('Location access denied or failed:', fallbackError);
-              resolve(null);
-            },
-            { 
-              timeout: 15000,
-              enableHighAccuracy: false,
-              maximumAge: 300000 // 5 minutes
-            }
-          );
+          console.warn('Location access failed, will use fallback method:', error);
+          resolve(null);
         },
         { 
-          timeout: 8000,
-          enableHighAccuracy: true,
-          maximumAge: 60000 // 1 minute
+          timeout: 3000, // Reduced from 8000ms
+          enableHighAccuracy: false, // Changed to false for faster response
+          maximumAge: 300000 // 5 minutes
         }
       );
     });
+  }
+
+  static async getLastKnownLocation(guardId: string, patrolId?: string): Promise<{ latitude: number; longitude: number } | null> {
+    try {
+      console.log('🔍 Getting last known location for guard:', guardId, 'patrol:', patrolId);
+      
+      let query = supabase
+        .from('guard_locations')
+        .select('latitude, longitude, created_at')
+        .eq('guard_id', guardId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      // If we have a specific patrol, try to get location from that patrol first
+      if (patrolId) {
+        const patrolQuery = supabase
+          .from('guard_locations')
+          .select('latitude, longitude, created_at')
+          .eq('guard_id', guardId)
+          .eq('patrol_id', patrolId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const { data: patrolLocation, error: patrolError } = await patrolQuery;
+        
+        if (!patrolError && patrolLocation && patrolLocation.length > 0) {
+          console.log('✅ Found location from current patrol:', patrolLocation[0]);
+          return {
+            latitude: Number(patrolLocation[0].latitude),
+            longitude: Number(patrolLocation[0].longitude)
+          };
+        }
+      }
+
+      // Fallback to any recent location from the guard
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('❌ Error fetching last known location:', error);
+        return null;
+      }
+
+      if (data && data.length > 0) {
+        console.log('✅ Found last known location:', data[0]);
+        return {
+          latitude: Number(data[0].latitude),
+          longitude: Number(data[0].longitude)
+        };
+      }
+
+      console.log('⚠️ No location found in guard_locations table');
+      return null;
+    } catch (error) {
+      console.error('❌ Error in getLastKnownLocation:', error);
+      return null;
+    }
+  }
+
+  static async getLocationWithFallback(guardId: string, patrolId?: string): Promise<{ latitude: number; longitude: number } | null> {
+    console.log('📍 Attempting to get location with fallback strategy...');
+    
+    // Try to get current location first (with reduced timeout)
+    const currentLocation = await this.getCurrentLocation();
+    if (currentLocation) {
+      console.log('✅ Got current GPS location');
+      return currentLocation;
+    }
+
+    // Fallback to last known location from database
+    console.log('🔄 GPS failed, trying last known location from database...');
+    const lastKnownLocation = await this.getLastKnownLocation(guardId, patrolId);
+    if (lastKnownLocation) {
+      console.log('✅ Using last known location from database');
+      return lastKnownLocation;
+    }
+
+    console.log('❌ No location available from any source');
+    return null;
   }
 
   static async startPatrol(siteId: string, guardId: string, teamId?: string): Promise<PatrolSession> {
@@ -181,12 +237,24 @@ export class PatrolService {
   static async recordCheckpointVisit(
     patrolId: string,
     checkpointId: string,
-    location?: { latitude: number; longitude: number }
+    location?: { latitude: number; longitude: number },
+    guardId?: string
   ): Promise<PatrolCheckpointVisit> {
-    // Always get fresh location for checkpoint visits
-    console.log('Attempting to get location for checkpoint visit...');
-    const currentLocation = location || await this.getCurrentLocation();
-    console.log('Location for checkpoint visit:', currentLocation);
+    console.log('📍 Recording checkpoint visit - attempting to get location...');
+    
+    let finalLocation = location;
+    
+    if (!finalLocation) {
+      // Use the new fallback strategy
+      if (guardId) {
+        finalLocation = await this.getLocationWithFallback(guardId, patrolId);
+      } else {
+        // Legacy fallback
+        finalLocation = await this.getCurrentLocation();
+      }
+    }
+    
+    console.log('📍 Final location for checkpoint visit:', finalLocation);
 
     const { data, error } = await supabase
       .from('patrol_checkpoint_visits')
@@ -195,8 +263,8 @@ export class PatrolService {
         checkpoint_id: checkpointId,
         timestamp: new Date().toISOString(),
         status: 'completed',
-        latitude: currentLocation?.latitude,
-        longitude: currentLocation?.longitude
+        latitude: finalLocation?.latitude,
+        longitude: finalLocation?.longitude
       })
       .select()
       .single()

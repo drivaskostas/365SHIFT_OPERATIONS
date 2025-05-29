@@ -1,5 +1,3 @@
-
-
 import { useState, useRef, useEffect } from 'react';
 import { Camera, ArrowLeft, Flashlight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -231,10 +229,6 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       
       console.log('🎯 Final checkpointId to validate:', checkpointId);
       
-      // Get current location
-      const location = await PatrolService.getCurrentLocation();
-      console.log('📍 Current location for checkpoint visit:', location);
-      
       // Validate checkpoint belongs to the current patrol site
       console.log('🔐 Validating checkpoint:', checkpointId, 'for site:', activePatrol.site_id);
       const checkpoint = await PatrolService.validateCheckpoint(checkpointId, activePatrol.site_id);
@@ -245,11 +239,12 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       
       console.log('✅ Checkpoint validated:', checkpoint);
       
-      // Record the visit with location
+      // Record the visit with location fallback strategy
       await PatrolService.recordCheckpointVisit(
         activePatrol.id,
         checkpointId,
-        location || undefined
+        undefined, // Let the service handle location
+        user?.id // Pass guardId for fallback location lookup
       );
       
       // Stop scanning temporarily and show success
@@ -258,7 +253,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       
       toast({
         title: "Checkpoint Scanned",
-        description: "Successfully recorded checkpoint visit with location.",
+        description: "Successfully recorded checkpoint visit.",
       });
       
       // Reset after showing result
@@ -455,4 +450,3 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 };
 
 export default QRScanner;
-
