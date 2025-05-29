@@ -9,7 +9,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { ShiftValidationService } from '@/services/ShiftValidationService';
-
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -120,14 +119,7 @@ const LoginScreen = () => {
           </form>
 
           <div className="mt-4">
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => window.open('https://senti.ovitguardly.com/open-app?screen=check-in', '_blank')}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Ovit Guardly
-            </Button>
+            
           </div>
 
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
@@ -143,5 +135,4 @@ const LoginScreen = () => {
       </Card>
     </div>;
 };
-
 export default LoginScreen;
