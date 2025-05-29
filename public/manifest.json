@@ -11,18 +11,13 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "any",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "/icon-192.png",
+      "src": "/lovable-uploads/fa58e69c-3b6b-40c3-8a4b-cc7721944608.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/lovable-uploads/fa58e69c-3b6b-40c3-8a4b-cc7721944608.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -35,14 +30,14 @@
       "short_name": "Patrol",
       "description": "Start a new patrol session",
       "url": "/?action=start-patrol",
-      "icons": [{ "src": "/favicon.ico", "sizes": "96x96" }]
+      "icons": [{ "src": "/lovable-uploads/fa58e69c-3b6b-40c3-8a4b-cc7721944608.png", "sizes": "96x96" }]
     },
     {
       "name": "Emergency Report",
       "short_name": "Emergency",
       "description": "Create emergency report",
       "url": "/?action=emergency",
-      "icons": [{ "src": "/favicon.ico", "sizes": "96x96" }]
+      "icons": [{ "src": "/lovable-uploads/fa58e69c-3b6b-40c3-8a4b-cc7721944608.png", "sizes": "96x96" }]
     }
   ]
 }
