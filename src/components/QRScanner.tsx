@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Camera, ArrowLeft, Flashlight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,10 +48,14 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     if (!user) return;
     
     try {
+      console.log('🔍 Loading active patrol for user:', user.id);
       const patrol = await PatrolService.getActivePatrol(user.id);
+      console.log('📋 Active patrol found:', patrol);
+      
       if (patrol) {
         setActivePatrol(patrol);
       } else {
+        console.log('❌ No active patrol found');
         toast({
           title: "No Active Patrol",
           description: "Please start a patrol before scanning checkpoints.",
@@ -59,7 +64,12 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         onBack();
       }
     } catch (error) {
-      console.error('Error loading active patrol:', error);
+      console.error('❌ Error loading active patrol:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load patrol information. Please try again.",
+        variant: "destructive",
+      });
       onBack();
     }
   };
@@ -191,9 +201,13 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   };
 
   const handleScanSuccess = async (qrData: string) => {
-    if (!activePatrol || isProcessing) return;
+    if (!activePatrol || isProcessing) {
+      console.log('⚠️ No active patrol or already processing');
+      return;
+    }
     
     console.log('🔍 Processing QR scan:', qrData);
+    console.log('📍 Active patrol site ID:', activePatrol.site_id);
     setIsProcessing(true);
     
     try {
@@ -213,7 +227,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           
           // Validate that the QR code is for the correct site
           if (parsedData.siteId && parsedData.siteId !== activePatrol.site_id) {
-            throw new Error(`This checkpoint belongs to a different site. Expected: ${activePatrol.site_id}, Found: ${parsedData.siteId}`);
+            console.log('❌ Site mismatch - Expected:', activePatrol.site_id, 'Found:', parsedData.siteId);
+            throw new Error(`This checkpoint belongs to a different site. Expected site: ${activePatrol.site_id}, but QR code is for site: ${parsedData.siteId}`);
           }
         } else if (parsedData.checkpointId) {
           // Format: {"checkpointId":"..."}
@@ -228,18 +243,19 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       }
       
       console.log('🎯 Final checkpointId to validate:', checkpointId);
+      console.log('🔐 Validating against site:', activePatrol.site_id);
       
       // Validate checkpoint belongs to the current patrol site
-      console.log('🔐 Validating checkpoint:', checkpointId, 'for site:', activePatrol.site_id);
       const checkpoint = await PatrolService.validateCheckpoint(checkpointId, activePatrol.site_id);
       
       if (!checkpoint) {
-        throw new Error('Invalid checkpoint or checkpoint not found at this site');
+        console.log('❌ Checkpoint validation failed for:', checkpointId, 'at site:', activePatrol.site_id);
+        throw new Error(`Invalid checkpoint or checkpoint not found at this site. Checkpoint ID: ${checkpointId}, Expected Site: ${activePatrol.site_id}`);
       }
       
       console.log('✅ Checkpoint validated:', checkpoint);
       
-      // Record the visit with location fallback strategy
+      // Record the visit using the improved location strategy
       await PatrolService.recordCheckpointVisit(
         activePatrol.id,
         checkpointId,
@@ -253,7 +269,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       
       toast({
         title: "Checkpoint Scanned",
-        description: "Successfully recorded checkpoint visit.",
+        description: `Successfully recorded visit to ${checkpoint.name}`,
       });
       
       // Reset after showing result
@@ -353,6 +369,13 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         </Button>
       </div>
 
+      {/* Debug Info */}
+      {activePatrol && (
+        <div className="p-2 bg-blue-900/50 text-xs text-blue-200">
+          Active Patrol: {activePatrol.id} | Site: {activePatrol.site_id}
+        </div>
+      )}
+
       {/* Camera View */}
       <div className="relative flex-1 bg-gray-800">
         <video
@@ -429,7 +452,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             <li>• Hold phone steady over QR code</li>
             <li>• Ensure good lighting or use flashlight</li>
             <li>• Wait for automatic scan detection</li>
-            <li>• Supports structured JSON QR codes</li>
+            <li>• QR must belong to current patrol site</li>
           </ul>
         </div>
         
