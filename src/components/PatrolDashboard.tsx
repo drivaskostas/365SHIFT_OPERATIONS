@@ -128,20 +128,16 @@ const PatrolDashboard = ({
   };
   const fetchAvailableSites = async () => {
     if (!profile?.id) return;
-    
+
     // Check if guard has shift-based site assignment
     const shiftInfo = await ShiftValidationService.getGuardActiveShiftSite(profile.id);
-    
     if (shiftInfo.siteId) {
       // Get only the site where the guard has an active shift
       try {
-        const { data: site, error } = await supabase
-          .from('guardian_sites')
-          .select('*')
-          .eq('id', shiftInfo.siteId)
-          .eq('active', true)
-          .single();
-
+        const {
+          data: site,
+          error
+        } = await supabase.from('guardian_sites').select('*').eq('id', shiftInfo.siteId).eq('active', true).single();
         if (error) {
           console.error('Error fetching shift-assigned site:', error);
           setAvailableSites([]);
@@ -175,7 +171,6 @@ const PatrolDashboard = ({
 
     // Check for active shift and get site assignment
     const shiftValidation = await ShiftValidationService.validateGuardShiftAccess(profile.id);
-    
     if (!shiftValidation.canLogin) {
       toast({
         title: "No Active Shift",
@@ -184,7 +179,6 @@ const PatrolDashboard = ({
       });
       return;
     }
-
     if (!shiftValidation.assignedSite) {
       toast({
         title: "No Site Assignment",
@@ -193,14 +187,8 @@ const PatrolDashboard = ({
       });
       return;
     }
-
     try {
-      const patrol = await PatrolService.startPatrol(
-        shiftValidation.assignedSite.id, 
-        profile.id, 
-        shiftValidation.assignedTeam?.id
-      );
-      
+      const patrol = await PatrolService.startPatrol(shiftValidation.assignedSite.id, profile.id, shiftValidation.assignedTeam?.id);
       setActivePatrol(patrol);
       toast({
         title: "Patrol Started",
@@ -570,18 +558,14 @@ const PatrolDashboard = ({
             <MapPin className="h-4 w-4" />
             <span>{activePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
           </div>
-          {guardShiftInfo && (
-            <div className="flex items-center space-x-1 text-green-600">
+          {guardShiftInfo && <div className="flex items-center space-x-1 text-green-600">
               <Shield className="h-4 w-4" />
               <span>{guardShiftInfo.siteName}</span>
-            </div>
-          )}
-          {isTracking && (
-            <div className="flex items-center space-x-1 text-green-600">
+            </div>}
+          {isTracking && <div className="flex items-center space-x-1 text-green-600">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span>Location Tracking Active</span>
-            </div>
-          )}
+            </div>}
         </div>
       </div>
 
@@ -603,12 +587,8 @@ const PatrolDashboard = ({
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleTestLocation} variant="outline" size="sm" disabled={isTestingLocation} className="border-blue-300 text-blue-700 hover:bg-blue-100">
-                    {isTestingLocation ? '🔄 Testing...' : '🧪 Test Location'}
-                  </Button>
-                  <Button onClick={handleForcePermissionReset} variant="outline" size="sm" disabled={isTestingLocation} className="border-orange-300 text-orange-700 hover:bg-orange-100">
-                    {isTestingLocation ? '🔄 Resetting...' : '🔄 Force Reset Permissions'}
-                  </Button>
+                  
+                  
                 </div>
                 
                 {browserInstructions && <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
@@ -661,42 +641,25 @@ const PatrolDashboard = ({
                   Patrol Status
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
-                  {activePatrol 
-                    ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` 
-                    : guardShiftInfo 
-                      ? `Ready to patrol at ${guardShiftInfo.siteName}`
-                      : 'No active shift assigned'
-                  }
+                  {activePatrol ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : 'No active shift assigned'}
                 </p>
-                {guardShiftInfo && !activePatrol && (
-                  <p className="text-xs text-blue-600 mt-1">
+                {guardShiftInfo && !activePatrol && <p className="text-xs text-blue-600 mt-1">
                     📍 Current shift: {guardShiftInfo.teamName} - {guardShiftInfo.siteName}
-                  </p>
-                )}
-                {isTracking && (
-                  <p className="text-xs text-green-600 mt-1">
+                  </p>}
+                {isTracking && <p className="text-xs text-green-600 mt-1">
                     📍 Location updates every minute
-                  </p>
-                )}
+                  </p>}
               </div>
               <div className="flex gap-2 flex-shrink-0">
                 {!activePatrol}
-                <Button 
-                  onClick={activePatrol ? handleEndPatrol : handleStartPatrol} 
-                  className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} 
-                  disabled={!activePatrol && !guardShiftInfo}
-                >
-                  {activePatrol ? (
-                    <>
+                <Button onClick={activePatrol ? handleEndPatrol : handleStartPatrol} className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} disabled={!activePatrol && !guardShiftInfo}>
+                  {activePatrol ? <>
                       <Square className="h-4 w-4 mr-2" />
                       End Patrol
-                    </>
-                  ) : (
-                    <>
+                    </> : <>
                       <Play className="h-4 w-4 mr-2" />
                       Start Patrol
-                    </>
-                  )}
+                    </>}
                 </Button>
               </div>
             </div>
