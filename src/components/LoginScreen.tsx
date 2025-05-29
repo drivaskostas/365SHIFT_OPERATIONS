@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Clock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -118,6 +118,17 @@ const LoginScreen = () => {
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
+
+          <div className="mt-4">
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => window.open('https://senti.ovitguardly.com/open-app?screen=check-in', '_blank')}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Ovit Guardly
+            </Button>
+          </div>
 
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <div className="flex items-center space-x-2 text-blue-700">
