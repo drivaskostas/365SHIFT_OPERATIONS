@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
@@ -20,10 +19,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id)
       
       // Update session and user state
@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Stop location tracking when user signs out
         if (event === 'SIGNED_OUT') {
+          setSigningOut(false) // Reset signing out state
           // Dynamic import to avoid circular dependencies
           import('@/services/LocationTrackingService').then(({ LocationTrackingService }) => {
             LocationTrackingService.stopTracking();
@@ -112,8 +113,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    // Prevent multiple signout attempts
+    if (signingOut) {
+      console.log('Sign out already in progress, skipping...')
+      return
+    }
+
+    try {
+      setSigningOut(true)
+      console.log('Signing out user...')
+      
+      // Always try to sign out, but don't throw errors if session is already invalid
+      const { error } = await supabase.auth.signOut()
+      
+      // Only log session-related errors, don't throw them
+      if (error) {
+        console.log('Supabase signout response:', error.message)
+        // Don't throw error for session-related issues
+        if (!error.message.includes('Session not found') && 
+            !error.message.includes('session id') && 
+            !error.message.includes("doesn't exist") &&
+            !error.message.includes('Auth session missing')) {
+          throw error
+        }
+      }
+      
+      // Always clear local state regardless of Supabase response
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+      setLoading(false)
+      
+      console.log('User signed out successfully')
+    } catch (error) {
+      console.error('Sign out error:', error)
+      // For any remaining errors, just clear state and don't re-throw
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+      setLoading(false)
+    } finally {
+      setSigningOut(false)
+    }
   }
 
   const value = {
