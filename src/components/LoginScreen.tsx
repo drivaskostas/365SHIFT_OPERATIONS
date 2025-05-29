@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,44 +11,45 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { ShiftValidationService } from '@/services/ShiftValidationService';
 import BiometricAuth from '@/components/BiometricAuth';
+
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [shiftWarning, setShiftWarning] = useState<string | null>(null);
-  const {
-    signIn
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { signIn } = useAuth();
+  const { toast } = useToast();
+
+  // Load saved email from localStorage on component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('lastLoginEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
+  }, []);
+
   const handleBiometricSuccess = async (userId: string) => {
     try {
       // Get user data from profiles table
-      const {
-        data: profile,
-        error: profileError
-      } = await supabase.from('profiles').select('email').eq('id', userId).single();
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .single();
+
       if (profileError || !profile) {
         toast({
           title: "Authentication failed",
           description: "Unable to retrieve user information.",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
-      // Create a custom session for biometric login
-      // Since we can't directly create a Supabase session, we'll use a workaround
-      // by signing in with a temporary approach or handling it through the auth context
-
-      // For now, we'll validate the user and show success, but the user will need
-      // to use email/password for the actual Supabase session
-      // This is a limitation of the current Supabase auth system
-
       // Validate shift access
       const shiftValidation = await ShiftValidationService.validateGuardShiftAccess(userId);
+      
       if (!shiftValidation.canLogin) {
         setShiftWarning(shiftValidation.message || 'You are not authorized to login at this time.');
         return;
@@ -70,35 +72,41 @@ const LoginScreen = () => {
         description: "Please complete login with your email and password for full access."
       });
 
-      // Auto-fill the email field
+      // Auto-fill the email field and save it
       setEmail(profile.email);
+      localStorage.setItem('lastLoginEmail', profile.email);
+      
     } catch (error: any) {
       console.error("Biometric login error:", error);
       toast({
         title: "Authentication failed",
         description: "Unable to complete biometric authentication.",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+
     setIsLoading(true);
     setShiftWarning(null);
+
     try {
+      // Save email for future use
+      localStorage.setItem('lastLoginEmail', email);
+      
       // First, attempt to sign in to get the user
       await signIn(email, password);
 
       // Get the current user to validate their shift access
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
+      
       if (user) {
         // Validate shift access
         const shiftValidation = await ShiftValidationService.validateGuardShiftAccess(user.id);
+        
         if (!shiftValidation.canLogin) {
           // Sign out the user if they don't have valid shift access
           await supabase.auth.signOut();
@@ -127,18 +135,33 @@ const LoginScreen = () => {
       toast({
         title: "Sign in failed",
         description: error.message || "Please check your credentials and try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
       console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
   };
-  return <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-900 to-gray-900">
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    // Save email as user types for biometric auth
+    if (newEmail) {
+      localStorage.setItem('lastLoginEmail', newEmail);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-900 to-gray-900">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src="/lovable-uploads/2f80a624-0bbb-431f-8440-671c1ad9fde4.png" alt="Ovit Security Logo" className="h-16 w-16 object-contain" />
+            <img 
+              src="/lovable-uploads/2f80a624-0bbb-431f-8440-671c1ad9fde4.png" 
+              alt="Ovit Security Logo" 
+              className="h-16 w-16 object-contain" 
+            />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Sentinel Patrol</CardTitle>
@@ -146,16 +169,22 @@ const LoginScreen = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {shiftWarning && <Alert className="mb-4 border-amber-200 bg-amber-50">
+          {shiftWarning && (
+            <Alert className="mb-4 border-amber-200 bg-amber-50">
               <AlertCircle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-800">
                 {shiftWarning}
               </AlertDescription>
-            </Alert>}
+            </Alert>
+          )}
 
           {/* Biometric Authentication Section */}
           <div className="mb-4">
-            <BiometricAuth userEmail={email} onSuccess={handleBiometricSuccess} mode="login" />
+            <BiometricAuth 
+              userEmail={email} 
+              onSuccess={handleBiometricSuccess} 
+              mode="login" 
+            />
           </div>
 
           {/* Divider */}
@@ -164,7 +193,9 @@ const LoginScreen = () => {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with email
+              </span>
             </div>
           </div>
 
@@ -173,7 +204,15 @@ const LoginScreen = () => {
               <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input id="email" type="email" placeholder="guard@example.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="guard@example.com"
+                  value={email}
+                  onChange={handleEmailChange}
+                  className="pl-10"
+                  required
+                />
               </div>
             </div>
             
@@ -181,14 +220,36 @@ const LoginScreen = () => {
               <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} className="pl-10 pr-10" required />
-                <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 pr-10"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
                 </Button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading || !email || !password}>
+            <Button 
+              type="submit" 
+              className="w-full bg-blue-600 hover:bg-blue-700" 
+              disabled={isLoading || !email || !password}
+            >
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
@@ -203,11 +264,14 @@ const LoginScreen = () => {
               <span className="text-sm font-medium">Shift-Based Access</span>
             </div>
             <p className="text-xs text-blue-600 mt-1">
-              You can only login during your assigned shift times or 30 minutes before your shift starts. Patrols are restricted to your assigned site.
+              You can only login during your assigned shift times or 30 minutes before your shift starts. 
+              Patrols are restricted to your assigned site.
             </p>
           </div>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default LoginScreen;
