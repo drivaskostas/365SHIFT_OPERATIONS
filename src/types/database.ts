@@ -102,7 +102,6 @@ export interface Profile {
   avatar_url?: string
   Role?: 'guard' | 'admin' | 'super_admin' | 'client'
   status?: string
-  mobile_phone?: string
   created_at: string
   updated_at: string
 }

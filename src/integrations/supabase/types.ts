@@ -2630,42 +2630,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_biometric_credentials: {
-        Row: {
-          active: boolean
-          counter: number
-          created_at: string
-          credential_id: string
-          id: string
-          last_used: string | null
-          public_key: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          active?: boolean
-          counter?: number
-          created_at?: string
-          credential_id: string
-          id?: string
-          last_used?: string | null
-          public_key: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          active?: boolean
-          counter?: number
-          created_at?: string
-          credential_id?: string
-          id?: string
-          last_used?: string | null
-          public_key?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           created_at: string
