@@ -100,10 +100,16 @@ export class BiometricAuthService {
         return { success: false, error: 'Biometric authentication is not supported on this device' };
       }
 
-      // Get user's credentials from database
+      // Get user's credentials from database - fixed query to properly join with profiles
       const { data: credentials, error: fetchError } = await supabase
         .from('user_biometric_credentials')
-        .select('credential_id, user_id, public_key, counter')
+        .select(`
+          credential_id, 
+          user_id, 
+          public_key, 
+          counter,
+          profiles!inner(email)
+        `)
         .eq('profiles.email', userEmail)
         .eq('active', true);
 
