@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Camera, ArrowLeft, Flashlight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -162,27 +163,53 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     setIsScanning(false);
     
     try {
-      // Attempt to parse QR data - could be JSON or plain text
+      console.log('🔍 QR Data received:', qrData);
+      
       let checkpointId = qrData;
+      let parsedData = null;
+      
+      // Try to parse as JSON first
       try {
-        // Check if it's a JSON string with a checkpointId field
-        const parsedData = JSON.parse(qrData);
-        if (parsedData.checkpointId) {
+        parsedData = JSON.parse(qrData);
+        console.log('📋 Parsed QR JSON:', parsedData);
+        
+        // Handle different JSON formats
+        if (parsedData.type === 'checkpoint' && parsedData.checkpointId) {
+          // Format: {"type":"checkpoint","siteId":"...","checkpointId":"...","name":"...","location":"..."}
           checkpointId = parsedData.checkpointId;
+          console.log('✅ Extracted checkpointId from structured JSON:', checkpointId);
+          
+          // Validate that the QR code is for the correct site
+          if (parsedData.siteId && parsedData.siteId !== activePatrol.site_id) {
+            throw new Error(`This checkpoint belongs to a different site. Expected: ${activePatrol.site_id}, Found: ${parsedData.siteId}`);
+          }
+        } else if (parsedData.checkpointId) {
+          // Format: {"checkpointId":"..."}
+          checkpointId = parsedData.checkpointId;
+          console.log('✅ Extracted checkpointId from simple JSON:', checkpointId);
+        } else {
+          console.log('⚠️ JSON found but no checkpointId field, using raw data');
         }
       } catch (e) {
         // Not JSON, assume the string itself is the checkpoint ID
+        console.log('📝 Not JSON format, using raw string as checkpointId:', qrData);
       }
       
-      // Get current location - PatrolService will handle this automatically
+      console.log('🎯 Final checkpointId to validate:', checkpointId);
+      
+      // Get current location
       const location = await PatrolService.getCurrentLocation();
+      console.log('📍 Current location for checkpoint visit:', location);
       
       // Validate checkpoint belongs to the current patrol site
+      console.log('🔐 Validating checkpoint:', checkpointId, 'for site:', activePatrol.site_id);
       const checkpoint = await PatrolService.validateCheckpoint(checkpointId, activePatrol.site_id);
       
       if (!checkpoint) {
         throw new Error('Invalid checkpoint or checkpoint not found at this site');
       }
+      
+      console.log('✅ Checkpoint validated:', checkpoint);
       
       // Record the visit with location
       await PatrolService.recordCheckpointVisit(
@@ -205,6 +232,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       }, 3000);
       
     } catch (error: any) {
+      console.error('❌ QR Scan failed:', error);
       toast({
         title: "Scan Failed",
         description: error.message || "Failed to record checkpoint visit.",
@@ -247,11 +275,10 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 
   // Manual scan for testing
   const handleManualScan = () => {
-    // Only use this for testing when no camera is available
-    const testCheckpointId = prompt('Enter checkpoint ID for testing:');
-    if (testCheckpointId) {
-      handleScanSuccess(testCheckpointId);
-    }
+    // Test with the exact JSON format from your QR code
+    const testData = '{"type":"checkpoint","siteId":"c5ca9f8d-7f57-4a62-bf70-0acccddbe9b8","checkpointId":"06d783a6-b1c1-49d4-a7ab-73d70201ffe5","name":"advasdcasc","location":"ascascasc"}';
+    console.log('🧪 Testing with sample QR data:', testData);
+    handleScanSuccess(testData);
   };
 
   if (cameraError) {
@@ -354,6 +381,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             <li>• Hold phone steady over QR code</li>
             <li>• Ensure good lighting or use flashlight</li>
             <li>• Wait for automatic scan detection</li>
+            <li>• Supports structured JSON QR codes</li>
           </ul>
         </div>
         
@@ -365,7 +393,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             disabled={!isScanning || !activePatrol}
           >
             <Camera className="h-5 w-5 mr-2" />
-            Manual Test
+            Test Sample QR
           </Button>
         </div>
       </div>
