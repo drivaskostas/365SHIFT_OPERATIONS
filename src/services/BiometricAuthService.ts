@@ -119,17 +119,25 @@ export class BiometricAuthService {
         return { success: false, error: 'Biometric authentication is not supported on this device' };
       }
 
-      // Get user's credentials from database
+      // First get the user ID from profiles table using email
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', userEmail)
+        .single();
+
+      if (profileError || !profileData) {
+        console.error('Profile lookup error:', profileError);
+        return { success: false, error: 'User not found. Please sign in with password first to set up biometric authentication.' };
+      }
+
+      const userId = profileData.id;
+
+      // Now get user's biometric credentials
       const { data: credentials, error: fetchError } = await supabase
         .from('user_biometric_credentials')
-        .select(`
-          credential_id, 
-          user_id, 
-          public_key, 
-          counter,
-          profiles!inner(email)
-        `)
-        .eq('profiles.email', userEmail)
+        .select('credential_id, user_id, public_key, counter')
+        .eq('user_id', userId)
         .eq('active', true);
 
       if (fetchError) {
@@ -138,7 +146,7 @@ export class BiometricAuthService {
       }
 
       if (!credentials || credentials.length === 0) {
-        return { success: false, error: 'No biometric credentials found for this user. Please set up biometric authentication first.' };
+        return { success: false, error: 'No biometric credentials found for this user. Please set up biometric authentication first by signing in with your password and enabling it in Settings.' };
       }
 
       // Generate challenge

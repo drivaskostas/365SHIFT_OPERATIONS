@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Fingerprint, Scan, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BiometricAuthService } from '@/services/BiometricAuthService';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 interface BiometricAuthProps {
   userEmail?: string;
@@ -30,6 +30,8 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
   useEffect(() => {
     if (userEmail && mode === 'login') {
       checkExistingCredentials();
+    } else {
+      setCheckingCredentials(false);
     }
   }, [userEmail, mode]);
 
@@ -46,12 +48,21 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
 
     setCheckingCredentials(true);
     try {
-      // We need to get the user ID first to check for credentials
-      // For now, we'll assume no credentials exist until we successfully authenticate
-      setHasCredentials(false);
-      setCheckingCredentials(false);
+      // First get user profile to get user ID
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', userEmail)
+        .single();
+
+      if (profileData?.id) {
+        const hasCredentials = await BiometricAuthService.hasBiometricCredentials(profileData.id);
+        setHasCredentials(hasCredentials);
+      }
     } catch (error) {
       console.error('Error checking credentials:', error);
+      setHasCredentials(false);
+    } finally {
       setCheckingCredentials(false);
     }
   };
@@ -75,11 +86,7 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
         description: "Welcome back! You've been signed in with biometric authentication.",
       });
     } else {
-      if (result.error?.includes('No biometric credentials found')) {
-        setError('No biometric credentials found. Please set up biometric authentication first by signing in with your password and enabling it in Settings.');
-      } else {
-        setError(result.error || 'Biometric authentication failed');
-      }
+      setError(result.error || 'Biometric authentication failed');
     }
     
     setIsLoading(false);
@@ -113,7 +120,7 @@ const BiometricAuth = ({ userEmail, onSuccess, onRegister, mode, userId }: Biome
       <Alert className="border-amber-200 bg-amber-50">
         <Info className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-800">
-          Biometric authentication is not supported on this device or browser.
+          Biometric authentication is not supported on this device or browser. On iPhone, make sure you have Face ID or Touch ID enabled in your device settings.
         </AlertDescription>
       </Alert>
     );
