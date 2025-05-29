@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { ShiftValidationService } from '@/services/ShiftValidationService';
+
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -78,7 +79,7 @@ const LoginScreen = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src="/lovable-uploads/09a66026-6415-4468-9706-7cadf06736ec.png" alt="Sentinel Guard Logo" className="h-12 w-12 object-contain" />
+            <img src="/lovable-uploads/2f80a624-0bbb-431f-8440-671c1ad9fde4.png" alt="Ovit Security Logo" className="h-16 w-16 object-contain" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Sentinel Patrol</CardTitle>
@@ -131,4 +132,5 @@ const LoginScreen = () => {
       </Card>
     </div>;
 };
+
 export default LoginScreen;
