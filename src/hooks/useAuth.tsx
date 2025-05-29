@@ -120,27 +120,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // If no session exists, just clear state
-    if (!session) {
-      console.log('No session found, clearing state...')
-      setUser(null)
-      setProfile(null)
-      setSession(null)
-      setLoading(false)
-      return
-    }
-
     try {
       setSigningOut(true)
       console.log('Signing out user...')
       
+      // Always try to sign out, but don't throw errors if session is already invalid
       const { error } = await supabase.auth.signOut()
+      
+      // Only log session-related errors, don't throw them
       if (error) {
-        console.error('Supabase signout error:', error)
-        throw error
+        console.log('Supabase signout response:', error.message)
+        // Don't throw error for "Session not found" - this means we're already signed out
+        if (!error.message.includes('Session not found') && !error.message.includes('session id') && !error.message.includes("doesn't exist")) {
+          throw error
+        }
       }
       
-      // Clear all state immediately
+      // Always clear local state regardless of Supabase response
       setUser(null)
       setProfile(null)
       setSession(null)
@@ -149,8 +145,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('User signed out successfully')
     } catch (error) {
       console.error('Sign out error:', error)
+      // Even if there's an error, clear the local state
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+      setLoading(false)
       setSigningOut(false)
       throw error
+    } finally {
+      setSigningOut(false)
     }
   }
 
