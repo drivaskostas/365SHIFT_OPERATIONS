@@ -208,30 +208,40 @@ export class PatrolService {
   }
 
   static async getAvailableSites(guardId: string): Promise<GuardianSite[]> {
-    // First get the site IDs assigned to the guard
-    const { data: siteAssignments, error: assignmentError } = await supabase
-      .from('site_guards')
-      .select('site_id')
-      .eq('guard_id', guardId)
+    // Get the guard's team assignment first
+    const { data: teamMember, error: teamError } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('profile_id', guardId)
+      .maybeSingle()
 
-    if (assignmentError) throw assignmentError
-    
-    if (!siteAssignments || siteAssignments.length === 0) {
+    if (teamError) {
+      console.error('Error fetching team assignment:', teamError)
       return []
     }
 
-    const siteIds = siteAssignments.map(assignment => assignment.site_id)
+    if (!teamMember) {
+      console.log('No team assignment found for guard:', guardId)
+      return []
+    }
 
-    // Then get the actual site details
-    const { data, error } = await supabase
+    console.log('🔍 Guard team ID:', teamMember.team_id)
+
+    // Get sites assigned to the guard's team
+    const { data: sites, error: siteError } = await supabase
       .from('guardian_sites')
       .select('*')
+      .eq('team_id', teamMember.team_id)
       .eq('active', true)
-      .in('id', siteIds)
       .order('name')
 
-    if (error) throw error
-    return data || []
+    if (siteError) {
+      console.error('Error fetching sites:', siteError)
+      throw siteError
+    }
+
+    console.log('✅ Found sites for team:', sites)
+    return sites || []
   }
 
   static async recordCheckpointVisit(
