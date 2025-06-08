@@ -13,6 +13,8 @@ import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import { useToast } from '@/components/ui/use-toast';
+import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
+
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
 }
@@ -57,6 +59,10 @@ const PatrolDashboard = ({
   const {
     isTracking
   } = useLocationTracking();
+  
+  // Add offline patrol hook
+  const { isOnline, syncStatus, unsyncedCount, hasUnsyncedData, syncOfflineData } = useOfflinePatrol(profile?.id);
+  
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showObservations, setShowObservations] = useState(false);
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
@@ -190,10 +196,13 @@ const PatrolDashboard = ({
     try {
       const patrol = await PatrolService.startPatrol(shiftValidation.assignedSite.id, profile.id, shiftValidation.assignedTeam?.id);
       setActivePatrol(patrol);
+      
+      const modeText = isOnline ? "online" : "offline";
       toast({
         title: "Patrol Started",
-        description: `Patrol started at ${shiftValidation.assignedSite.name} for ${shiftValidation.assignedTeam?.name || 'your team'}. Location tracking will begin shortly.`
+        description: `Patrol started ${modeText} at ${shiftValidation.assignedSite.name}. ${isOnline ? 'Location tracking will begin shortly.' : 'Data will sync when connection is restored.'}`
       });
+      
       fetchDashboardStats();
       fetchRecentActivities();
     } catch (error) {
@@ -210,10 +219,13 @@ const PatrolDashboard = ({
     try {
       await PatrolService.endPatrol(activePatrol.id);
       setActivePatrol(null);
+      
+      const modeText = isOnline ? "online" : "offline";
       toast({
         title: "Patrol Ended",
-        description: "Patrol completed successfully. Location tracking stopped."
+        description: `Patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
       });
+      
       fetchDashboardStats();
       fetchRecentActivities();
     } catch (error) {
@@ -544,6 +556,38 @@ const PatrolDashboard = ({
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />
 
+      {/* Offline Status Banner */}
+      {(!isOnline || hasUnsyncedData) && <div className="mb-4">
+          <Card className={`border-2 ${isOnline ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20' : 'border-red-200 bg-red-50 dark:bg-red-900/20'}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                  <div>
+                    <h3 className={`font-semibold ${isOnline ? 'text-yellow-800 dark:text-yellow-200' : 'text-red-800 dark:text-red-200'}`}>
+                      {isOnline ? '📡 Connection Issues' : '📴 Offline Mode'}
+                    </h3>
+                    <p className={`text-sm ${isOnline ? 'text-yellow-600 dark:text-yellow-300' : 'text-red-600 dark:text-red-300'}`}>
+                      {isOnline 
+                        ? `${unsyncedCount} items waiting to sync`
+                        : 'Working offline. Patrol activities will sync when connection is restored.'
+                      }
+                    </p>
+                  </div>
+                </div>
+                {isOnline && hasUnsyncedData && <Button 
+                    onClick={syncOfflineData}
+                    disabled={syncStatus === 'syncing'}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}
+                  </Button>}
+              </div>
+            </CardContent>
+          </Card>
+        </div>}
+
       {/* Welcome Section */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -566,6 +610,11 @@ const PatrolDashboard = ({
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span>Location Tracking Active</span>
             </div>}
+          {/* Connection Status Indicator */}
+          <div className="flex items-center space-x-1">
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span>{isOnline ? 'Online' : 'Offline'}</span>
+          </div>
         </div>
       </div>
 
@@ -638,7 +687,7 @@ const PatrolDashboard = ({
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0 pr-4">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1 truncate">
-                  Patrol Status
+                  Patrol Status {!isOnline && '(Offline Mode)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
                   {activePatrol ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : 'No active shift assigned'}
@@ -648,6 +697,9 @@ const PatrolDashboard = ({
                   </p>}
                 {isTracking && <p className="text-xs text-green-600 mt-1">
                     📍 Location updates every minute
+                  </p>}
+                {!isOnline && <p className="text-xs text-orange-600 mt-1">
+                    📴 Patrol activities will be saved locally and synced when online
                   </p>}
               </div>
               <div className="flex gap-2 flex-shrink-0">

@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { PatrolSession, GuardianSite, PatrolCheckpointVisit, GuardianCheckpoint } from '@/types/database'
+import { OfflineStorageService } from './OfflineStorageService'
+import { OfflineSyncService } from './OfflineSyncService'
 
 export class PatrolService {
   static async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
@@ -28,9 +30,9 @@ export class PatrolService {
           resolve(null);
         },
         { 
-          timeout: 3000, // Reduced from 8000ms
-          enableHighAccuracy: false, // Changed to false for faster response
-          maximumAge: 300000 // 5 minutes
+          timeout: 3000,
+          enableHighAccuracy: false,
+          maximumAge: 300000
         }
       );
     });
@@ -47,7 +49,6 @@ export class PatrolService {
         .order('created_at', { ascending: false })
         .limit(1);
 
-      // If we have a specific patrol, try to get location from that patrol first
       if (patrolId) {
         const patrolQuery = supabase
           .from('guard_locations')
@@ -68,7 +69,6 @@ export class PatrolService {
         }
       }
 
-      // Fallback to any recent location from the guard
       const { data, error } = await query;
       
       if (error) {
@@ -95,14 +95,12 @@ export class PatrolService {
   static async getLocationWithFallback(guardId: string, patrolId?: string): Promise<{ latitude: number; longitude: number } | null> {
     console.log('📍 Attempting to get location with fallback strategy...');
     
-    // Try to get current location first (with reduced timeout)
     const currentLocation = await this.getCurrentLocation();
     if (currentLocation) {
       console.log('✅ Got current GPS location');
       return currentLocation;
     }
 
-    // Fallback to last known location from database
     console.log('🔄 GPS failed, trying last known location from database...');
     const lastKnownLocation = await this.getLastKnownLocation(guardId, patrolId);
     if (lastKnownLocation) {
@@ -140,75 +138,171 @@ export class PatrolService {
 
       if (teamError) {
         console.error('Error fetching team assignment:', teamError)
-        // Continue without team_id rather than failing
       } else if (teamMember) {
         resolvedTeamId = teamMember.team_id
       }
     }
 
-    // Get current location with retries
+    // Get current location
     console.log('Attempting to get location for patrol start...');
     const location = await this.getCurrentLocation();
     console.log('Location for patrol start:', location);
 
-    const { data, error } = await supabase
-      .from('patrol_sessions')
-      .insert({
+    let patrol: PatrolSession;
+
+    if (OfflineStorageService.isOnline()) {
+      const { data, error } = await supabase
+        .from('patrol_sessions')
+        .insert({
+          guard_id: guardId,
+          site_id: siteId,
+          team_id: resolvedTeamId,
+          start_time: new Date().toISOString(),
+          status: 'active',
+          latitude: location?.latitude,
+          longitude: location?.longitude
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      patrol = data;
+      console.log('✅ Patrol started online:', patrol.id);
+    } else {
+      // Create offline patrol session
+      patrol = {
+        id: `offline_${Date.now()}`,
         guard_id: guardId,
         site_id: siteId,
         team_id: resolvedTeamId,
         start_time: new Date().toISOString(),
         status: 'active',
         latitude: location?.latitude,
-        longitude: location?.longitude
-      })
-      .select()
-      .single()
+        longitude: location?.longitude,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } as PatrolSession;
 
-    if (error) throw error
-    return data
+      // Save to offline storage
+      OfflineStorageService.savePatrolActivity(patrol.id, guardId, {
+        type: 'patrol_start',
+        data: patrol,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log('📴 Patrol started offline:', patrol.id);
+    }
+
+    return patrol;
   }
 
   static async endPatrol(patrolId: string): Promise<PatrolSession> {
-    // Get current location for end patrol
-    console.log('Attempting to get location for patrol end...');
+    console.log('Attempting to end patrol:', patrolId);
     const location = await this.getCurrentLocation();
     console.log('Location for patrol end:', location);
 
-    const { data, error } = await supabase
-      .from('patrol_sessions')
-      .update({
+    if (OfflineStorageService.isOnline()) {
+      const { data, error } = await supabase
+        .from('patrol_sessions')
+        .update({
+          end_time: new Date().toISOString(),
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+          latitude: location?.latitude,
+          longitude: location?.longitude
+        })
+        .eq('id', patrolId)
+        .select()
+        .single()
+
+      if (error) throw error
+      console.log('✅ Patrol ended online:', data.id);
+      return data;
+    } else {
+      // Handle offline patrol end
+      const offlineData = OfflineStorageService.getOfflineData();
+      const patrolData = offlineData.find(p => p.patrolId === patrolId);
+
+      if (!patrolData) {
+        throw new Error('Patrol session not found in offline storage');
+      }
+
+      // Save end patrol activity
+      OfflineStorageService.savePatrolActivity(patrolId, patrolData.guardId, {
+        type: 'patrol_end',
+        data: {
+          end_time: new Date().toISOString(),
+          latitude: location?.latitude,
+          longitude: location?.longitude
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      console.log('📴 Patrol ended offline:', patrolId);
+      
+      // Return mock completed patrol
+      return {
+        id: patrolId,
+        guard_id: patrolData.guardId,
+        site_id: '',
+        start_time: patrolData.lastSync,
         end_time: new Date().toISOString(),
         status: 'completed',
-        updated_at: new Date().toISOString(),
-        // Update location for end patrol (you might want separate end_latitude/end_longitude fields)
-        latitude: location?.latitude,
-        longitude: location?.longitude
-      })
-      .eq('id', patrolId)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+        created_at: patrolData.lastSync,
+        updated_at: new Date().toISOString()
+      } as PatrolSession;
+    }
   }
 
   static async getActivePatrol(guardId: string): Promise<PatrolSession | null> {
-    const { data, error } = await supabase
-      .from('patrol_sessions')
-      .select('*')
-      .eq('guard_id', guardId)
-      .eq('status', 'active')
-      .order('start_time', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    try {
+      if (OfflineStorageService.isOnline()) {
+        const { data, error } = await supabase
+          .from('patrol_sessions')
+          .select('*')
+          .eq('guard_id', guardId)
+          .eq('status', 'active')
+          .order('start_time', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-    if (error) throw error
-    return data
+        if (error && error.code !== 'PGRST116') throw error
+        return data;
+      } else {
+        // Check offline storage for active patrol
+        const offlineData = OfflineStorageService.getOfflineData();
+        const activePatrol = offlineData.find(p => 
+          p.guardId === guardId && 
+          !p.activities.some(a => a.type === 'patrol_end')
+        );
+
+        if (activePatrol) {
+          return {
+            id: activePatrol.patrolId,
+            guard_id: activePatrol.guardId,
+            site_id: '',
+            start_time: activePatrol.lastSync,
+            status: 'active',
+            created_at: activePatrol.lastSync,
+            updated_at: new Date().toISOString()
+          } as PatrolSession;
+        }
+
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting active patrol:', error);
+      return null;
+    }
   }
 
   static async getAvailableSites(guardId: string): Promise<GuardianSite[]> {
-    // First get the site IDs assigned to the guard
+    if (!OfflineStorageService.isOnline()) {
+      console.log('📴 Offline mode: returning cached sites (if any)');
+      // In a real implementation, you might cache sites in localStorage
+      return [];
+    }
+
     const { data: siteAssignments, error: assignmentError } = await supabase
       .from('site_guards')
       .select('site_id')
@@ -222,7 +316,6 @@ export class PatrolService {
 
     const siteIds = siteAssignments.map(assignment => assignment.site_id)
 
-    // Then get the actual site details
     const { data, error } = await supabase
       .from('guardian_sites')
       .select('*')
@@ -245,32 +338,59 @@ export class PatrolService {
     let finalLocation = location;
     
     if (!finalLocation) {
-      // Use the new fallback strategy
       if (guardId) {
         finalLocation = await this.getLocationWithFallback(guardId, patrolId);
       } else {
-        // Legacy fallback
         finalLocation = await this.getCurrentLocation();
       }
     }
     
     console.log('📍 Final location for checkpoint visit:', finalLocation);
 
-    const { data, error } = await supabase
-      .from('patrol_checkpoint_visits')
-      .insert({
+    if (OfflineStorageService.isOnline()) {
+      const { data, error } = await supabase
+        .from('patrol_checkpoint_visits')
+        .insert({
+          patrol_id: patrolId,
+          checkpoint_id: checkpointId,
+          timestamp: new Date().toISOString(),
+          status: 'completed',
+          latitude: finalLocation?.latitude,
+          longitude: finalLocation?.longitude
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      console.log('✅ Checkpoint visit recorded online');
+      return data;
+    } else {
+      // Save checkpoint visit offline
+      const offlineId = OfflineStorageService.savePatrolActivity(patrolId, guardId!, {
+        type: 'checkpoint_visit',
+        data: {
+          patrolId,
+          checkpointId,
+          latitude: finalLocation?.latitude,
+          longitude: finalLocation?.longitude
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      console.log('📴 Checkpoint visit recorded offline:', offlineId);
+
+      // Return mock checkpoint visit
+      return {
+        id: offlineId || 'offline_temp',
         patrol_id: patrolId,
         checkpoint_id: checkpointId,
         timestamp: new Date().toISOString(),
         status: 'completed',
         latitude: finalLocation?.latitude,
-        longitude: finalLocation?.longitude
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+        longitude: finalLocation?.longitude,
+        created_at: new Date().toISOString()
+      } as PatrolCheckpointVisit;
+    }
   }
 
   static async validateCheckpoint(checkpointId: string, siteId: string): Promise<GuardianCheckpoint | null> {
@@ -321,5 +441,27 @@ export class PatrolService {
       visitedCheckpoints: visitedCheckpoints || 0,
       progress
     }
+  }
+
+  static async syncOfflineData(guardId: string): Promise<boolean> {
+    return OfflineSyncService.syncAllData(guardId);
+  }
+
+  static hasUnsyncedData(): boolean {
+    const unsyncedActivities = OfflineStorageService.getUnsyncedActivities();
+    const unsyncedLocations = OfflineStorageService.getUnsyncedLocations();
+    return unsyncedActivities.length > 0 || unsyncedLocations.length > 0;
+  }
+
+  static getOfflineStatus() {
+    const unsyncedActivities = OfflineStorageService.getUnsyncedActivities();
+    const unsyncedLocations = OfflineStorageService.getUnsyncedLocations();
+    
+    return {
+      isOnline: OfflineStorageService.isOnline(),
+      unsyncedActivities: unsyncedActivities.length,
+      unsyncedLocations: unsyncedLocations.length,
+      totalUnsynced: unsyncedActivities.length + unsyncedLocations.length
+    };
   }
 }

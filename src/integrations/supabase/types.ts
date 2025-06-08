@@ -276,6 +276,7 @@ export type Database = {
       }
       clock_in_out: {
         Row: {
+          auto_checkout: boolean | null
           clock_in: string
           clock_out: string | null
           created_at: string | null
@@ -286,6 +287,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_checkout?: boolean | null
           clock_in?: string
           clock_out?: string | null
           created_at?: string | null
@@ -296,6 +298,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_checkout?: boolean | null
           clock_in?: string
           clock_out?: string | null
           created_at?: string | null
@@ -592,48 +595,41 @@ export type Database = {
       }
       guard_upcoming_shifts: {
         Row: {
-          acknowledged: boolean
+          acknowledged: boolean | null
           acknowledged_at: string | null
-          created_at: string
+          created_at: string | null
           guard_id: string
           id: string
-          location: string | null
           schedule_id: string
-          shift_end_time: string
-          shift_start_time: string
-          team_id: string
-          title: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
-          acknowledged?: boolean
+          acknowledged?: boolean | null
           acknowledged_at?: string | null
-          created_at?: string
+          created_at?: string | null
           guard_id: string
           id?: string
-          location?: string | null
           schedule_id: string
-          shift_end_time: string
-          shift_start_time: string
-          team_id: string
-          title: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
-          acknowledged?: boolean
+          acknowledged?: boolean | null
           acknowledged_at?: string | null
-          created_at?: string
+          created_at?: string | null
           guard_id?: string
           id?: string
-          location?: string | null
           schedule_id?: string
-          shift_end_time?: string
-          shift_start_time?: string
-          team_id?: string
-          title?: string
-          updated_at?: string
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "guard_upcoming_shifts_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "team_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guard_work_stats: {
         Row: {
@@ -2739,6 +2735,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      auto_checkout_guards: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      check_and_close_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       check_if_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -2752,6 +2756,10 @@ export type Database = {
           name: string
           permissions: string[] | null
         }
+      }
+      cron_auto_checkout: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       delete_service_account: {
         Args: { p_id: string }
@@ -2957,6 +2965,8 @@ export type Database = {
         | "unassigned_schedule"
         | "missing_template_shifts"
         | "early_checkout"
+        | "INSUFFICIENT_HOURS"
+        | "UNASSIGNED_SCHEDULE"
       app_role: "admin" | "guard" | "client" | "super_admin" | "guardian"
       equipment_status: "active" | "archived" | "inactive"
       patrol_status: "active" | "completed" | "interrupted" | "leave_tracking"
@@ -3085,6 +3095,8 @@ export const Constants = {
         "unassigned_schedule",
         "missing_template_shifts",
         "early_checkout",
+        "INSUFFICIENT_HOURS",
+        "UNASSIGNED_SCHEDULE",
       ],
       app_role: ["admin", "guard", "client", "super_admin", "guardian"],
       equipment_status: ["active", "archived", "inactive"],
