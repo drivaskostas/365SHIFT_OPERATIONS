@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Camera, ArrowLeft, Flashlight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -200,6 +199,38 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     setIsVideoReady(false);
   };
 
+  // Function to trigger haptic feedback and beep sound
+  const triggerSuccessFeedback = () => {
+    // Haptic feedback for mobile devices
+    if ('vibrate' in navigator) {
+      // Pattern: short-long-short vibration for success
+      navigator.vibrate([100, 50, 100]);
+    }
+
+    // Beep sound using Web Audio API
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Success beep: higher frequency, pleasant tone
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+      
+      // Volume control
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.log('Audio not supported:', error);
+    }
+  };
+
   const handleScanSuccess = async (qrData: string) => {
     if (!activePatrol || isProcessing) {
       console.log('⚠️ No active patrol or already processing');
@@ -262,6 +293,9 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         undefined, // Let the service handle location
         user?.id // Pass guardId for fallback location lookup
       );
+      
+      // Trigger haptic feedback and beep sound on success
+      triggerSuccessFeedback();
       
       // Stop scanning temporarily and show success
       setIsScanning(false);
@@ -453,6 +487,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             <li>• Ensure good lighting or use flashlight</li>
             <li>• Wait for automatic scan detection</li>
             <li>• QR must belong to current patrol site</li>
+            <li>• Successful scans will vibrate and beep</li>
           </ul>
         </div>
         
