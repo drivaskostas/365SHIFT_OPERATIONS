@@ -1,5 +1,5 @@
+
 import { supabase } from '@/lib/supabase';
-import { LocationPermissionService } from './LocationPermissionService';
 import { OfflineStorageService } from './OfflineStorageService';
 
 export class LocationTrackingService {
@@ -171,20 +171,11 @@ export class LocationTrackingService {
 
   static async forcePermissionReset(): Promise<boolean> {
     try {
-      // Clear permission if possible
-      if (navigator.permissions && navigator.permissions.revoke) {
-        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-        await permissionStatus.revoke();
-        console.log('✅ Location permission revoked (if supported)');
-      }
-
       // Clear any cached settings (browser-specific)
       localStorage.removeItem('location_permission_granted');
       sessionStorage.removeItem('location_permission_granted');
 
-      // Attempt to reset geolocation settings (browser-specific)
-      // This is highly dependent on the browser and may not always work
-      console.warn('Attempting to reset geolocation settings - this may not work on all browsers');
+      console.log('✅ Location permission cache cleared');
       return true;
     } catch (error) {
       console.error('❌ Error in forcePermissionReset:', error);

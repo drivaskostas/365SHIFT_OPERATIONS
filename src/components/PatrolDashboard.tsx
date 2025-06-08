@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -295,7 +295,7 @@ const PatrolDashboard = ({
       if (result.success) {
         toast({
           title: "✅ Location Test Successful!",
-          description: `Got location: ${result.position?.latitude.toFixed(6)}, ${result.position?.longitude.toFixed(6)} (accuracy: ${result.position?.accuracy}m)`
+          description: `Got location: ${result.position?.coords.latitude.toFixed(6)}, ${result.position?.coords.longitude.toFixed(6)} (accuracy: ${result.position?.coords.accuracy}m)`
         });
         setLocationPermissionStatus('granted');
         if (profile?.id) {
