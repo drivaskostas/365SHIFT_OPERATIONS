@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { OfflineStorageService } from './OfflineStorageService';
 
@@ -8,6 +7,7 @@ export class LocationTrackingService {
   private static currentGuardId: string | null = null;
   private static currentPatrolId: string | null = null;
   private static readonly TRACKING_INTERVAL = 60000; // 60 seconds
+  private static isShuttingDown: boolean = false;
 
   static startTracking(guardId: string, patrolId?: string): boolean {
     if (this.isCurrentlyTracking()) {
@@ -24,17 +24,25 @@ export class LocationTrackingService {
 
     this.currentGuardId = guardId;
     this.currentPatrolId = patrolId;
+    this.isShuttingDown = false;
 
     // Start periodic location updates
     this.trackingInterval = setInterval(async () => {
+      // Check if we're shutting down
+      if (this.isShuttingDown) {
+        this.stopTracking();
+        return;
+      }
+
       try {
         const position = await this.getCurrentPosition();
         
-        if (position && this.currentGuardId) {
+        if (position && this.currentGuardId && !this.isShuttingDown) {
           await this.saveLocationUpdate(this.currentGuardId, position, this.currentPatrolId);
         }
       } catch (error) {
         console.error('❌ Error during location tracking:', error);
+        // Don't stop tracking on single errors, just log them
       }
     }, this.TRACKING_INTERVAL);
 
@@ -44,26 +52,35 @@ export class LocationTrackingService {
   }
 
   static stopTracking(): void {
+    console.log('🛑 Stopping location tracking...');
+    this.isShuttingDown = true;
+    
     if (this.trackingInterval) {
       clearInterval(this.trackingInterval);
       this.trackingInterval = null;
-      this.isTracking = false;
-      this.currentGuardId = null;
-      this.currentPatrolId = null;
-      console.log('🛑 Location tracking stopped');
-    } else {
-      console.warn('Location tracking was not active');
     }
+    
+    this.isTracking = false;
+    this.currentGuardId = null;
+    this.currentPatrolId = null;
+    this.isShuttingDown = false;
+    
+    console.log('🛑 Location tracking stopped');
   }
 
   static isCurrentlyTracking(): boolean {
-    return this.isTracking;
+    return this.isTracking && !this.isShuttingDown;
   }
 
   private static async getCurrentPosition(): Promise<GeolocationPosition | null> {
     return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error('Geolocation timeout'));
+      }, 10000);
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          clearTimeout(timeoutId);
           console.log('📍 Location obtained:', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -72,6 +89,7 @@ export class LocationTrackingService {
           resolve(position);
         },
         (error) => {
+          clearTimeout(timeoutId);
           console.error('❌ Location access failed:', error);
           reject(error);
         },
@@ -89,6 +107,11 @@ export class LocationTrackingService {
     position: GeolocationPosition, 
     patrolId?: string
   ): Promise<void> {
+    if (this.isShuttingDown) {
+      console.log('📍 Skipping location save - shutting down');
+      return;
+    }
+
     const locationData = {
       guard_id: guardId,
       patrol_id: patrolId,
@@ -140,12 +163,16 @@ export class LocationTrackingService {
     patrolId: string | undefined, 
     position: GeolocationPosition
   ): void {
-    OfflineStorageService.saveLocationUpdate(guardId, patrolId || '', {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracy: position.coords.accuracy
-    });
-    console.log('📴 Location saved offline');
+    try {
+      OfflineStorageService.saveLocationUpdate(guardId, patrolId || '', {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy
+      });
+      console.log('📴 Location saved offline');
+    } catch (error) {
+      console.error('❌ Error saving location offline:', error);
+    }
   }
 
   static async getRecentLocations(guardId: string, limit: number = 5): Promise<any[]> {

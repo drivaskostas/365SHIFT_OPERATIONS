@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { PatrolService } from '@/services/PatrolService';
 import { OfflineStorageService } from '@/services/OfflineStorageService';
 import { OfflineSyncService } from '@/services/OfflineSyncService';
@@ -10,10 +10,16 @@ export const useOfflinePatrol = (guardId?: string) => {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [unsyncedCount, setUnsyncedCount] = useState(0);
   const { toast } = useToast();
+  const isMountedRef = useRef(true);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update online status
   useEffect(() => {
+    isMountedRef.current = true;
+
     const handleOnline = () => {
+      if (!isMountedRef.current) return;
+      
       setIsOnline(true);
       toast({
         title: "🟢 Back Online",
@@ -26,6 +32,8 @@ export const useOfflinePatrol = (guardId?: string) => {
     };
 
     const handleOffline = () => {
+      if (!isMountedRef.current) return;
+      
       setIsOnline(false);
       toast({
         title: "📴 Offline Mode",
@@ -37,6 +45,7 @@ export const useOfflinePatrol = (guardId?: string) => {
     window.addEventListener('offline', handleOffline);
 
     return () => {
+      isMountedRef.current = false;
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -44,18 +53,26 @@ export const useOfflinePatrol = (guardId?: string) => {
 
   // Update unsynced count
   const updateUnsyncedCount = useCallback(() => {
-    const status = PatrolService.getOfflineStatus();
-    setUnsyncedCount(status.totalUnsynced);
+    if (!isMountedRef.current) return;
+    
+    try {
+      const status = PatrolService.getOfflineStatus();
+      setUnsyncedCount(status.totalUnsynced);
+    } catch (error) {
+      console.error('Error updating unsynced count:', error);
+    }
   }, []);
 
   // Sync offline data
   const syncOfflineData = useCallback(async () => {
-    if (!guardId || syncStatus === 'syncing') return;
+    if (!guardId || syncStatus === 'syncing' || !isMountedRef.current) return;
 
     setSyncStatus('syncing');
     
     try {
       const success = await PatrolService.syncOfflineData(guardId);
+      
+      if (!isMountedRef.current) return;
       
       if (success) {
         setSyncStatus('success');
@@ -73,6 +90,8 @@ export const useOfflinePatrol = (guardId?: string) => {
         });
       }
     } catch (error) {
+      if (!isMountedRef.current) return;
+      
       setSyncStatus('error');
       console.error('Sync error:', error);
       toast({
@@ -83,12 +102,16 @@ export const useOfflinePatrol = (guardId?: string) => {
     }
 
     // Reset status after 3 seconds
-    setTimeout(() => setSyncStatus('idle'), 3000);
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        setSyncStatus('idle');
+      }
+    }, 3000);
   }, [guardId, syncStatus, toast, updateUnsyncedCount]);
 
   // Auto-sync when coming online
   useEffect(() => {
-    if (isOnline && guardId && unsyncedCount > 0) {
+    if (isOnline && guardId && unsyncedCount > 0 && isMountedRef.current) {
       syncOfflineData();
     }
   }, [isOnline, guardId, unsyncedCount, syncOfflineData]);
@@ -96,9 +119,31 @@ export const useOfflinePatrol = (guardId?: string) => {
   // Update unsynced count on mount and periodically
   useEffect(() => {
     updateUnsyncedCount();
-    const interval = setInterval(updateUnsyncedCount, 5000);
-    return () => clearInterval(interval);
+    
+    intervalRef.current = setInterval(() => {
+      if (isMountedRef.current) {
+        updateUnsyncedCount();
+      }
+    }, 5000);
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [updateUnsyncedCount]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     isOnline,

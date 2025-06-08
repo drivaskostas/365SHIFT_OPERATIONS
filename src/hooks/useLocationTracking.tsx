@@ -1,13 +1,17 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { LocationTrackingService } from '@/services/LocationTrackingService';
 import { PatrolService } from '@/services/PatrolService';
 
 export const useLocationTracking = () => {
   const { profile } = useAuth();
+  const isMountedRef = useRef(true);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (!profile?.id) {
       console.log('No profile ID available for location tracking');
       return;
@@ -16,9 +20,20 @@ export const useLocationTracking = () => {
     console.log('Setting up location tracking for profile:', profile.id);
 
     const checkAndStartTracking = async () => {
+      // Check if component is still mounted before proceeding
+      if (!isMountedRef.current) {
+        return;
+      }
+
       try {
         // Check if user has an active patrol
         const activePatrol = await PatrolService.getActivePatrol(profile.id);
+        
+        // Double-check mount status after async operation
+        if (!isMountedRef.current) {
+          return;
+        }
+        
         console.log('Active patrol check result:', activePatrol);
         
         if (activePatrol && !LocationTrackingService.isCurrentlyTracking()) {
@@ -49,18 +64,38 @@ export const useLocationTracking = () => {
     checkAndStartTracking();
 
     // Set up interval to check patrol status every 2 minutes
-    const interval = setInterval(checkAndStartTracking, 120000);
+    intervalRef.current = setInterval(() => {
+      if (isMountedRef.current) {
+        checkAndStartTracking();
+      }
+    }, 120000);
 
     // Cleanup on unmount
     return () => {
-      clearInterval(interval);
+      isMountedRef.current = false;
+      
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      // Stop location tracking when component unmounts
       LocationTrackingService.stopTracking();
     };
   }, [profile?.id]);
 
   return {
     isTracking: LocationTrackingService.isCurrentlyTracking(),
-    startTracking: () => profile?.id && LocationTrackingService.startTracking(profile.id),
-    stopTracking: LocationTrackingService.stopTracking
+    startTracking: () => {
+      if (isMountedRef.current && profile?.id) {
+        return LocationTrackingService.startTracking(profile.id);
+      }
+      return false;
+    },
+    stopTracking: () => {
+      if (isMountedRef.current) {
+        LocationTrackingService.stopTracking();
+      }
+    }
   };
 };
