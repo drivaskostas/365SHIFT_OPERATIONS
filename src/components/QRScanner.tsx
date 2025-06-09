@@ -490,18 +490,6 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             <li>• Successful scans will vibrate and beep</li>
           </ul>
         </div>
-        
-        <div className="flex gap-2">
-          <Button 
-            onClick={handleManualScan} 
-            className="w-full bg-yellow-600 hover:bg-yellow-700" 
-            size="lg"
-            disabled={isProcessing || !activePatrol}
-          >
-            <Camera className="h-5 w-5 mr-2" />
-            Test Sample QR
-          </Button>
-        </div>
       </div>
     </div>
   );
