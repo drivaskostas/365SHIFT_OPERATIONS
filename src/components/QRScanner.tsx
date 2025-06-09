@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Camera, ArrowLeft, Flashlight, CheckCircle } from 'lucide-react';
+import { Camera, ArrowLeft, Flashlight, CheckCircle, MapPin, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
 import { PatrolService } from '@/services/PatrolService';
 import { useToast } from '@/hooks/use-toast';
-import type { PatrolSession } from '@/types/database';
+import type { PatrolSession, GuardianCheckpoint } from '@/types/database';
 import jsQR from 'jsqr';
+import { supabase } from '@/lib/supabase';
 
 interface QRScannerProps {
   onBack: () => void;
@@ -22,6 +24,9 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState({ totalCheckpoints: 0, visitedCheckpoints: 0, progress: 0 });
+  const [remainingCheckpoints, setRemainingCheckpoints] = useState<GuardianCheckpoint[]>([]);
+  const [visitedCheckpointIds, setVisitedCheckpointIds] = useState<Set<string>>(new Set());
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -40,6 +45,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
   useEffect(() => {
     if (activePatrol) {
       startCamera();
+      loadPatrolProgress();
     }
   }, [activePatrol]);
 
@@ -73,6 +79,37 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     }
   };
 
+  const loadPatrolProgress = async () => {
+    if (!activePatrol) return;
+    
+    try {
+      const progressData = await PatrolService.getPatrolProgress(activePatrol.id);
+      setProgress(progressData);
+      
+      // Load remaining checkpoints
+      const { data: allCheckpoints } = await supabase
+        .from('guardian_checkpoints')
+        .select('*')
+        .eq('site_id', activePatrol.site_id)
+        .eq('active', true);
+        
+      const { data: visitedVisits } = await supabase
+        .from('patrol_checkpoint_visits')
+        .select('checkpoint_id')
+        .eq('patrol_id', activePatrol.id)
+        .eq('status', 'completed');
+        
+      const visitedIds = new Set(visitedVisits?.map(v => v.checkpoint_id) || []);
+      setVisitedCheckpointIds(visitedIds);
+      
+      const remaining = allCheckpoints?.filter(cp => !visitedIds.has(cp.id)) || [];
+      setRemainingCheckpoints(remaining);
+      
+    } catch (error) {
+      console.error('Error loading patrol progress:', error);
+    }
+  };
+
   const startCamera = async () => {
     try {
       console.log('🎥 Starting camera...');
@@ -99,7 +136,6 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
           if (videoRef.current) {
             videoRef.current.play().then(() => {
               console.log('▶️ Video playing, waiting for ready state...');
-              // Wait a bit longer for video to be fully ready
               setTimeout(() => {
                 setIsVideoReady(true);
                 console.log('✅ Video ready, starting scan loop');
@@ -167,7 +203,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       } catch (err) {
         console.error("❌ QR scanning error:", err);
       }
-    }, 100); // Scan every 100ms for better responsiveness
+    }, 100);
   };
 
   // Start scanning when video is ready
@@ -199,35 +235,76 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     setIsVideoReady(false);
   };
 
-  // Function to trigger haptic feedback and beep sound
+  // Enhanced haptic and beep feedback function
   const triggerSuccessFeedback = () => {
-    // Haptic feedback for mobile devices
+    console.log('🎵 Triggering success feedback...');
+
+    // Enhanced haptic feedback
     if ('vibrate' in navigator) {
-      // Pattern: short-long-short vibration for success
-      navigator.vibrate([100, 50, 100]);
+      try {
+        // Pattern: short-long-short vibration for success
+        const vibrated = navigator.vibrate([100, 50, 100, 50, 200]);
+        console.log('📳 Vibration triggered:', vibrated);
+      } catch (error) {
+        console.log('❌ Vibration failed:', error);
+      }
+    } else {
+      console.log('⚠️ Vibration not supported');
     }
 
-    // Beep sound using Web Audio API
+    // Multiple audio fallback methods
     try {
+      // Method 1: Web Audio API (most reliable)
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      console.log('🔊 Using Web Audio API');
+      
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      // Success beep: higher frequency, pleasant tone
+      // Success beep: pleasant two-tone
       oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
       oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
       
       // Volume control
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
       
       oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.3);
+      oscillator.stop(audioContext.currentTime + 0.4);
+      
+      console.log('✅ Web Audio API beep played');
     } catch (error) {
-      console.log('Audio not supported:', error);
+      console.log('❌ Web Audio API failed, trying HTML5 Audio:', error);
+      
+      try {
+        // Method 2: HTML5 Audio with data URL (fallback)
+        const audio = new Audio();
+        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LFeSMFl7Hm8dpMEAxjrOPwtWAeAz6H0fPJ';
+        audio.play().then(() => {
+          console.log('✅ HTML5 Audio beep played');
+        }).catch(e => {
+          console.log('❌ HTML5 Audio failed:', e);
+        });
+      } catch (error2) {
+        console.log('❌ HTML5 Audio also failed:', error2);
+        
+        // Method 3: Simple frequency beep (last resort)
+        try {
+          const context = new AudioContext();
+          const oscillator = context.createOscillator();
+          oscillator.frequency.value = 1000;
+          oscillator.connect(context.destination);
+          oscillator.start();
+          oscillator.stop(context.currentTime + 0.2);
+          console.log('✅ Simple frequency beep played');
+        } catch (error3) {
+          console.log('❌ All audio methods failed:', error3);
+        }
+      }
     }
   };
 
@@ -252,7 +329,6 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         
         // Handle different JSON formats
         if (parsedData.type === 'checkpoint' && parsedData.checkpointId) {
-          // Format: {"type":"checkpoint","siteId":"...","checkpointId":"...","name":"...","location":"..."}
           checkpointId = parsedData.checkpointId;
           console.log('✅ Extracted checkpointId from structured JSON:', checkpointId);
           
@@ -262,19 +338,22 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             throw new Error(`This checkpoint belongs to a different site. Expected site: ${activePatrol.site_id}, but QR code is for site: ${parsedData.siteId}`);
           }
         } else if (parsedData.checkpointId) {
-          // Format: {"checkpointId":"..."}
           checkpointId = parsedData.checkpointId;
           console.log('✅ Extracted checkpointId from simple JSON:', checkpointId);
         } else {
           console.log('⚠️ JSON found but no checkpointId field, using raw data');
         }
       } catch (e) {
-        // Not JSON, assume the string itself is the checkpoint ID
         console.log('📝 Not JSON format, using raw string as checkpointId:', qrData);
       }
       
       console.log('🎯 Final checkpointId to validate:', checkpointId);
       console.log('🔐 Validating against site:', activePatrol.site_id);
+      
+      // Check if already visited
+      if (visitedCheckpointIds.has(checkpointId)) {
+        throw new Error('This checkpoint has already been scanned in this patrol session.');
+      }
       
       // Validate checkpoint belongs to the current patrol site
       const checkpoint = await PatrolService.validateCheckpoint(checkpointId, activePatrol.site_id);
@@ -286,16 +365,29 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       
       console.log('✅ Checkpoint validated:', checkpoint);
       
-      // Record the visit using the improved location strategy
+      // Record the visit
       await PatrolService.recordCheckpointVisit(
         activePatrol.id,
         checkpointId,
-        undefined, // Let the service handle location
-        user?.id // Pass guardId for fallback location lookup
+        undefined,
+        user?.id
       );
       
       // Trigger haptic feedback and beep sound on success
       triggerSuccessFeedback();
+      
+      // Update local state
+      const newVisitedIds = new Set([...visitedCheckpointIds, checkpointId]);
+      setVisitedCheckpointIds(newVisitedIds);
+      setRemainingCheckpoints(prev => prev.filter(cp => cp.id !== checkpointId));
+      
+      // Update progress
+      const newProgress = {
+        totalCheckpoints: progress.totalCheckpoints,
+        visitedCheckpoints: newVisitedIds.size,
+        progress: Math.round((newVisitedIds.size / progress.totalCheckpoints) * 100)
+      };
+      setProgress(newProgress);
       
       // Stop scanning temporarily and show success
       setIsScanning(false);
@@ -306,13 +398,36 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         description: `Successfully recorded visit to ${checkpoint.name}`,
       });
       
-      // Reset after showing result
-      setTimeout(() => {
-        setScanResult(null);
-        setIsProcessing(false);
-        setIsScanning(true);
-        console.log('🔄 Resuming QR scanning...');
-      }, 3000);
+      // Check if patrol is complete (100%)
+      if (newProgress.progress >= 100) {
+        console.log('🎉 Patrol completed! Auto-ending patrol session...');
+        
+        setTimeout(async () => {
+          try {
+            await PatrolService.endPatrol(activePatrol.id);
+            toast({
+              title: "🎉 Patrol Completed!",
+              description: "All checkpoints scanned. Patrol session ended automatically.",
+            });
+            onBack(); // Return to dashboard
+          } catch (error) {
+            console.error('Error ending patrol:', error);
+            toast({
+              title: "Error",
+              description: "Failed to end patrol automatically. Please end it manually.",
+              variant: "destructive",
+            });
+          }
+        }, 3000);
+      } else {
+        // Reset after showing result for incomplete patrol
+        setTimeout(() => {
+          setScanResult(null);
+          setIsProcessing(false);
+          setIsScanning(true);
+          console.log('🔄 Resuming QR scanning...');
+        }, 3000);
+      }
       
     } catch (error: any) {
       console.error('❌ QR Scan failed:', error);
@@ -361,14 +476,6 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     }
   };
 
-  // Manual scan for testing
-  const handleManualScan = () => {
-    // Test with the exact JSON format from your QR code
-    const testData = '{"type":"checkpoint","siteId":"c5ca9f8d-7f57-4a62-bf70-0acccddbe9b8","checkpointId":"06d783a6-b1c1-49d4-a7ab-73d70201ffe5","name":"advasdcasc","location":"ascascasc"}';
-    console.log('🧪 Testing with sample QR data:', testData);
-    handleScanSuccess(testData);
-  };
-
   if (cameraError) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
@@ -388,41 +495,41 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <div className="p-4 flex items-center justify-between bg-black/50 relative z-10">
-        <Button variant="ghost" onClick={onBack} className="text-white">
-          <ArrowLeft className="h-6 w-6" />
+      {/* Header - Fixed with better responsive handling */}
+      <div className="p-3 flex items-center justify-between bg-black/50 relative z-10">
+        <Button variant="ghost" onClick={onBack} className="text-white p-2">
+          <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-semibold">Scan Checkpoint</h1>
+        <h1 className="text-base font-semibold truncate mx-2">Scan Checkpoint</h1>
         <Button 
           variant="ghost" 
           onClick={toggleFlashlight}
-          className={`text-white ${flashlightOn ? 'bg-yellow-600' : ''}`}
+          className={`text-white p-2 ${flashlightOn ? 'bg-yellow-600' : ''}`}
         >
-          <Flashlight className="h-6 w-6" />
+          <Flashlight className="h-5 w-5" />
         </Button>
       </div>
 
-      {/* Debug Info */}
+      {/* Debug Info - More compact */}
       {activePatrol && (
-        <div className="p-2 bg-blue-900/50 text-xs text-blue-200">
-          Active Patrol: {activePatrol.id} | Site: {activePatrol.site_id}
+        <div className="px-2 py-1 bg-blue-900/50 text-xs text-blue-200 truncate">
+          Active Patrol: {activePatrol.id.slice(0, 8)}... | Site: {activePatrol.site_id.slice(0, 8)}...
         </div>
       )}
 
       {/* Camera View */}
-      <div className="relative flex-1 bg-gray-800">
+      <div className="relative bg-gray-800">
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="w-full h-96 object-cover"
+          className="w-full h-64 sm:h-80 object-cover"
           style={{ display: isVideoReady ? 'block' : 'none' }}
         />
         
         {!isVideoReady && (
-          <div className="w-full h-96 bg-gray-800 flex items-center justify-center">
+          <div className="w-full h-64 sm:h-80 bg-gray-800 flex items-center justify-center">
             <div className="text-white text-center">
               <Camera className="h-12 w-12 mx-auto mb-4" />
               <p>Starting camera...</p>
@@ -439,10 +546,10 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         {/* Scanning overlay */}
         {isVideoReady && (
           <div className="absolute inset-4 border-2 border-white/50 rounded-lg">
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
+            <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
+            <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
+            <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
+            <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
           </div>
         )}
         
@@ -463,8 +570,8 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
 
         {/* Scan Result */}
         {scanResult && (
-          <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
-            <Card className="mx-4 bg-green-600 text-white border-green-600">
+          <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-4">
+            <Card className="w-full max-w-sm bg-green-600 text-white border-green-600">
               <CardContent className="p-6 text-center">
                 <CheckCircle className="h-12 w-12 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Scan Successful!</h3>
@@ -472,24 +579,75 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
                 <p className="text-xs opacity-75">
                   Location recorded • Time: {new Date().toLocaleTimeString()}
                 </p>
+                {progress.progress >= 100 && (
+                  <p className="text-sm font-semibold mt-2 text-yellow-300">
+                    🎉 Patrol Complete! Ending session...
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
         )}
       </div>
 
-      {/* Instructions */}
-      <div className="p-4 bg-black/90">
-        <div className="bg-gray-800 rounded-lg p-4 mb-4">
-          <h3 className="font-semibold mb-2">Instructions:</h3>
-          <ul className="text-sm space-y-1 text-gray-300">
-            <li>• Hold phone steady over QR code</li>
-            <li>• Ensure good lighting or use flashlight</li>
-            <li>• Wait for automatic scan detection</li>
-            <li>• QR must belong to current patrol site</li>
-            <li>• Successful scans will vibrate and beep</li>
-          </ul>
-        </div>
+      {/* Progress and Instructions */}
+      <div className="p-4 bg-black/90 space-y-4">
+        {/* Progress Section */}
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-white flex items-center gap-2 text-lg">
+              <Target className="h-5 w-5" />
+              Patrol Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between text-sm text-gray-300">
+              <span>Checkpoints Scanned</span>
+              <span>{progress.visitedCheckpoints} / {progress.totalCheckpoints}</span>
+            </div>
+            <Progress value={progress.progress} className="h-3" />
+            <div className="text-center text-lg font-bold text-white">
+              {progress.progress}% Complete
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Remaining Checkpoints */}
+        {remainingCheckpoints.length > 0 && (
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-white flex items-center gap-2 text-lg">
+                <MapPin className="h-5 w-5" />
+                Remaining Checkpoints ({remainingCheckpoints.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {remainingCheckpoints.map((checkpoint) => (
+                  <div key={checkpoint.id} className="flex justify-between items-center p-2 bg-gray-700 rounded text-sm">
+                    <span className="text-white font-medium truncate">{checkpoint.name}</span>
+                    <span className="text-gray-300 text-xs ml-2 flex-shrink-0">{checkpoint.location}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Instructions */}
+        <Card className="bg-gray-800 border-gray-700">
+          <CardContent className="p-4">
+            <h3 className="font-semibold mb-2 text-white">Instructions:</h3>
+            <ul className="text-sm space-y-1 text-gray-300">
+              <li>• Hold phone steady over QR code</li>
+              <li>• Ensure good lighting or use flashlight</li>
+              <li>• Wait for automatic scan detection</li>
+              <li>• QR must belong to current patrol site</li>
+              <li>• Successful scans will vibrate and beep</li>
+              <li>• Patrol ends automatically at 100%</li>
+            </ul>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
