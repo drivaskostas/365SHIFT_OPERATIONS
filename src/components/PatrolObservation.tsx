@@ -386,7 +386,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
                     <div className="relative bg-black rounded-lg overflow-hidden">
                       <video
                         ref={videoRef}
-                        className="w-full h-80 object-cover"
+                        className="w-full h-160 object-cover"
                         playsInline
                         muted
                       />
