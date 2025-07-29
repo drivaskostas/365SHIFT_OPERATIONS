@@ -369,22 +369,22 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                 <Label>{t('observation.evidence_photos')} ({photos.length}/5)</Label>
                 
                 {photos.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="grid grid-cols-1 gap-4 mb-4">
                     {photos.map((photo, index) => (
                       <div key={index} className="relative">
                         <img 
                           src={photo} 
                           alt={`Emergency evidence ${index + 1}`} 
-                          className="w-full h-32 object-cover rounded-lg"
+                          className="w-full h-64 object-cover rounded-lg"
                         />
                         <Button
                           type="button"
                           onClick={() => removePhoto(index)}
                           variant="destructive"
                           size="sm"
-                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                          className="absolute top-2 right-2 h-8 w-8 p-0"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
@@ -396,7 +396,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                     <div className="relative bg-black rounded-lg overflow-hidden">
                       <video
                         ref={videoRef}
-                        className="w-full h-64 object-cover"
+                        className="w-full h-160 object-cover"
                         playsInline
                         muted
                       />
