@@ -74,6 +74,32 @@ export class EmergencyService {
     const currentLocation = location || await this.getCurrentLocation();
     console.log('Location for emergency report:', currentLocation);
 
+    // Get team_id if not provided
+    let resolvedTeamId = teamId;
+    if (!resolvedTeamId) {
+      const { data: teamMember } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', guardId)
+        .single();
+      
+      resolvedTeamId = teamMember?.team_id;
+    }
+
+    // Get site_id from guardian_sites for the team
+    let siteId = null;
+    if (resolvedTeamId) {
+      const { data: site } = await supabase
+        .from('guardian_sites')
+        .select('id')
+        .eq('team_id', resolvedTeamId)
+        .eq('active', true)
+        .limit(1)
+        .single();
+      
+      siteId = site?.id;
+    }
+
     // Fetch guard's name for notification
     const { data: guardProfile } = await supabase
       .from('profiles')
@@ -91,7 +117,7 @@ export class EmergencyService {
       .insert({
         guard_id: guardId,
         patrol_id: patrolId,
-        team_id: teamId,
+        team_id: resolvedTeamId,
         title,
         description,
         severity,
