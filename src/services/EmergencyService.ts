@@ -155,6 +155,15 @@ export class EmergencyService {
       const finalSiteId = siteId;
 
       // Call the existing emergency notification edge function
+      console.log('Calling emergency notification with params:', {
+        reportId: report.id,
+        title: report.title,
+        severity: report.severity,
+        teamId: report.team_id,
+        siteId: finalSiteId,
+        guardName: guardName
+      });
+      
       await supabase.functions.invoke('send-emergency-notification', {
         body: {
           reportId: report.id,
@@ -174,7 +183,7 @@ export class EmergencyService {
         }
       });
 
-      console.log('Emergency notification sent successfully to existing notification system');
+      console.log('Emergency notification sent successfully');
     } catch (error) {
       console.error('Failed to send emergency notification:', error);
       throw error;

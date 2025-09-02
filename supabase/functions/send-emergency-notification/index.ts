@@ -48,22 +48,31 @@ const handler = async (req: Request): Promise<Response> => {
     }: EmergencyNotificationRequest = await req.json();
 
     console.log('Processing emergency notification for report:', reportId);
+    console.log('Received siteId:', siteId);
+    console.log('Received teamId:', teamId);
+    console.log('Received severity:', severity);
 
     // Get notification recipients based on site and severity
     let recipients: any[] = [];
 
     if (siteId) {
+      console.log('Looking for recipients for siteId:', siteId);
       const { data: siteRecipients } = await supabase
         .from('site_notification_settings')
         .select('email, name, notify_for_severity')
         .eq('site_id', siteId)
         .eq('active', true);
 
+      console.log('Raw site recipients found:', siteRecipients?.length || 0);
       if (siteRecipients) {
+        console.log('Site recipients before filtering:', siteRecipients);
         recipients = siteRecipients.filter(recipient => 
           recipient.notify_for_severity.includes(severity)
         );
+        console.log('Site recipients after severity filtering:', recipients.length);
       }
+    } else {
+      console.log('No siteId provided, skipping site-specific recipients');
     }
 
     // If no site-specific recipients or no siteId, get admin users
