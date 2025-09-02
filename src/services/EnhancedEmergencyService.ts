@@ -171,7 +171,16 @@ export class EnhancedEmergencyService {
       const finalSiteId = siteId;
 
       // Call the existing emergency notification edge function
-      await supabase.functions.invoke('send-emergency-notification', {
+      console.log('Calling emergency notification with params:', {
+        reportId: report.id,
+        title: report.title,
+        severity: report.severity,
+        teamId: report.team_id,
+        siteId: finalSiteId,
+        guardName: guardName
+      });
+      
+      const result = await supabase.functions.invoke('send-emergency-notification', {
         body: {
           reportId: report.id,
           emergencyType: reportData.emergency_type,
@@ -190,9 +199,11 @@ export class EnhancedEmergencyService {
         }
       });
 
+      console.log('Edge function result:', result);
       console.log('Emergency notification sent successfully to existing notification system');
     } catch (error) {
       console.error('Failed to send emergency notification:', error);
+      console.error('Full error details:', JSON.stringify(error, null, 2));
       // Don't throw error - report was still created successfully
     }
   }
