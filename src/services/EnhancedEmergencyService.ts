@@ -141,7 +141,7 @@ export class EnhancedEmergencyService {
 
     // Send emergency notification
     try {
-      await this.sendEmergencyNotification(data, reportData);
+      await this.sendEmergencyNotification(data, reportData, siteId);
     } catch (notificationError) {
       console.warn('Failed to send emergency notification:', notificationError);
     }
@@ -151,7 +151,8 @@ export class EnhancedEmergencyService {
 
   private static async sendEmergencyNotification(
     report: EmergencyReport,
-    reportData: EmergencyReportData
+    reportData: EmergencyReportData,
+    siteId: string | null
   ): Promise<void> {
     try {
       // Get guard name
@@ -166,29 +167,8 @@ export class EnhancedEmergencyService {
                        `${profile.first_name} ${profile.last_name}` : 
                        'Unknown Guard');
 
-      // Get site_id from active patrol if available, or find closest site
-      let siteId = null;
-      if (report.patrol_id) {
-        const { data: patrol } = await supabase
-          .from('patrol_sessions')
-          .select('site_id')
-          .eq('id', report.patrol_id)
-          .single();
-        
-        siteId = patrol?.site_id;
-      } else if (report.team_id && report.latitude && report.longitude) {
-        // Find closest active site for the team
-        const { data: sites } = await supabase
-          .from('guardian_sites')
-          .select('id')
-          .eq('team_id', report.team_id)
-          .eq('active', true)
-          .limit(1);
-        
-        if (sites && sites.length > 0) {
-          siteId = sites[0].id;
-        }
-      }
+      // Use the siteId passed from the calling function
+      const finalSiteId = siteId;
 
       // Call the existing emergency notification edge function
       await supabase.functions.invoke('send-emergency-notification', {
@@ -202,7 +182,7 @@ export class EnhancedEmergencyService {
           guardName: guardName,
           timestamp: report.created_at,
           teamId: report.team_id,
-          siteId: siteId,
+          siteId: finalSiteId,
           guardId: report.guard_id,
           imageUrl: report.image_url,
           images: reportData.images || [],
