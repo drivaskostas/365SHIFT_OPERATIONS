@@ -192,25 +192,37 @@ const handler = async (req: Request): Promise<Response> => {
     // Send emails to all recipients
     const emailPromises = recipients.map(async (recipient) => {
       try {
+        console.log(`Attempting to send observation email to ${recipient.email}...`);
         const emailResponse = await resend.emails.send({
-          from: "Sentinel Guard <observations@sentinelguard.com>",
+          from: "OVIT Observations <observations@notifications.ovitguardly.com>",
           to: [recipient.email],
           subject: `👁️ PATROL OBSERVATION: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}`,
           html: emailHtml,
         });
 
-        console.log(`Email sent to ${recipient.email}:`, emailResponse);
+        console.log(`Observation email sent successfully to ${recipient.email}:`, emailResponse);
         return { success: true, email: recipient.email, response: emailResponse };
       } catch (error) {
-        console.error(`Failed to send email to ${recipient.email}:`, error);
+        console.error(`Failed to send observation email to ${recipient.email}:`, error);
+        console.error(`Resend error details:`, JSON.stringify(error, null, 2));
         return { success: false, email: recipient.email, error: error.message };
       }
     });
 
     const emailResults = await Promise.allSettled(emailPromises);
+    console.log('All observation email results:', emailResults);
+    
     const successCount = emailResults.filter(result => 
       result.status === 'fulfilled' && result.value.success
     ).length;
+    
+    const failedResults = emailResults.filter(result => 
+      result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success)
+    );
+    
+    if (failedResults.length > 0) {
+      console.error('Failed observation email results:', failedResults);
+    }
 
     console.log(`Observation notification completed: ${successCount}/${recipients.length} emails sent successfully`);
 
