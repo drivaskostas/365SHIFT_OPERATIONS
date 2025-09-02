@@ -183,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         console.log(`Attempting to send email to ${recipient.email}...`);
         const emailResponse = await resend.emails.send({
-          from: "OVIT Emergency <emergency@ovitsec.com>",
+          from: "OVIT Emergency <emergency@notifications.ovitguardly.com>",
           to: [recipient.email],
           subject: `🚨 EMERGENCY: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}`,
           html: emailHtml,
