@@ -59,8 +59,17 @@ function AppContent() {
   };
   const renderScreen = () => {
     if (loading) {
-      return <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+          <div className="text-center space-y-4">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary/30 border-t-primary mx-auto"></div>
+              <Shield className="h-8 w-8 text-primary absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold text-foreground">Loading Sentinel Patrol</h2>
+              <p className="text-sm text-muted-foreground">Initializing security dashboard...</p>
+            </div>
+          </div>
         </div>;
     }
     if (!user) {
@@ -85,17 +94,22 @@ function AppContent() {
       
       <div className="min-h-screen flex flex-col">
         {/* Header */}
-        {user && <header className="sticky top-0 z-50 bg-blue-900 text-white p-4 flex items-center justify-between py-[51px]">
-            <div className="flex items-center space-x-2">
-              <Shield className="h-6 w-6" />
-              <h1 className="text-lg font-bold">{t('app.title')}</h1>
+        {user && <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-900 to-blue-800 text-white p-4 flex items-center justify-between shadow-lg backdrop-blur-sm">
+            <div className="flex items-center space-x-3 animate-fade-in">
+              <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                <Shield className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold">{t('app.title')}</h1>
+                <p className="text-xs text-blue-100 opacity-80">Professional Security</p>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={() => setDarkMode(!darkMode)} className="text-white hover:bg-blue-800">
+              <Button variant="glass" size="sm" onClick={() => setDarkMode(!darkMode)} className="hover:scale-105">
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <LanguageToggle />
-              <Button variant="ghost" size="sm" onClick={handleSettingsClick} className="text-white hover:bg-blue-800" title="Settings">
+              <Button variant="glass" size="sm" onClick={handleSettingsClick} title="Settings" className="hover:scale-105">
                 <User className="h-4 w-4" />
               </Button>
             </div>
@@ -107,19 +121,25 @@ function AppContent() {
         </main>
 
         {/* Bottom Navigation */}
-        {user && currentScreen === 'dashboard' && <nav className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex justify-around">
-              <Button variant="ghost" className="flex flex-col items-center space-y-1" onClick={() => setCurrentScreen('dashboard')}>
-                <Shield className="h-5 w-5" />
-                <span className="text-xs">{t('nav.dashboard')}</span>
+        {user && currentScreen === 'dashboard' && <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 p-4 shadow-lg">
+            <div className="flex justify-around max-w-md mx-auto">
+              <Button variant="ghost" className="flex flex-col items-center space-y-1 transition-all hover:scale-105 hover:bg-primary/10" onClick={() => setCurrentScreen('dashboard')}>
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Shield className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-xs font-medium">{t('nav.dashboard')}</span>
               </Button>
-              <Button variant="ghost" className="flex flex-col items-center space-y-1" onClick={() => setCurrentScreen('scanner')}>
-                <Camera className="h-5 w-5" />
-                <span className="text-xs">{t('nav.scan')}</span>
+              <Button variant="ghost" className="flex flex-col items-center space-y-1 transition-all hover:scale-105 hover:bg-primary/10" onClick={() => setCurrentScreen('scanner')}>
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Camera className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-xs font-medium">{t('nav.scan')}</span>
               </Button>
-              <Button variant="ghost" className="flex flex-col items-center space-y-1" onClick={() => setCurrentScreen('observation')}>
-                <AlertTriangle className="h-5 w-5" />
-                <span className="text-xs">{t('nav.report')}</span>
+              <Button variant="ghost" className="flex flex-col items-center space-y-1 transition-all hover:scale-105 hover:bg-primary/10" onClick={() => setCurrentScreen('observation')}>
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <AlertTriangle className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-xs font-medium">{t('nav.report')}</span>
               </Button>
             </div>
           </nav>}

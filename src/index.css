@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 240 10% 98%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -13,7 +13,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 214 84% 56%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -22,17 +22,32 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 214 84% 56%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 214 84% 56%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+    
+    /* Enhanced design tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(217 91% 60%));
+    --gradient-secondary: linear-gradient(135deg, hsl(210 40% 96%), hsl(214 31% 91%));
+    --shadow-elegant: 0 10px 30px -10px hsl(214 84% 56% / 0.2);
+    --shadow-card: 0 4px 20px -4px hsl(214 84% 56% / 0.1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Status colors */
+    --success: 142 76% 36%;
+    --success-foreground: 355 100% 97%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+    --info: 214 84% 56%;
+    --info-foreground: 210 40% 98%;
 
     --sidebar-background: 0 0% 98%;
 
@@ -61,8 +76,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 214 84% 56%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -70,7 +85,7 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 214 84% 56%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -78,7 +93,13 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 214 84% 56%;
+    
+    /* Enhanced dark mode tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(217 91% 60%));
+    --gradient-secondary: linear-gradient(135deg, hsl(217 32% 17%), hsl(222 84% 4%));
+    --shadow-elegant: 0 10px 30px -10px hsl(214 84% 56% / 0.3);
+    --shadow-card: 0 4px 20px -4px hsl(214 84% 56% / 0.2);
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -96,6 +117,112 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+@layer components {
+  /* Enhanced animations */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounceSubtle 2s infinite;
+  }
+
+  /* Card hover effects */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  /* Button enhancements */
+  .btn-gradient {
+    background: var(--gradient-primary);
+    @apply text-primary-foreground border-0 hover:opacity-90;
+  }
+
+  .btn-glass {
+    @apply bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20;
+  }
+
+  /* Loading states */
+  .loading-pulse {
+    @apply animate-pulse bg-gradient-to-r from-muted via-muted-foreground/20 to-muted;
+  }
+
+  /* Status indicators */
+  .status-indicator {
+    @apply inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-success {
+    @apply bg-success/20 text-success border border-success/30;
+  }
+
+  .status-warning {
+    @apply bg-warning/20 text-warning border border-warning/30;
+  }
+
+  .status-error {
+    @apply bg-destructive/20 text-destructive border border-destructive/30;
+  }
+
+  .status-info {
+    @apply bg-info/20 text-info border border-info/30;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes bounceSubtle {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+  60% {
+    transform: translateY(-2px);
   }
 }
