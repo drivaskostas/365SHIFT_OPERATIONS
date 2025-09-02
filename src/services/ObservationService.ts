@@ -138,6 +138,18 @@ export class ObservationService {
 
     console.log('📍 Final location for observation:', finalLocation);
 
+    // Fetch guard's name for notification
+    const { data: guardProfile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, full_name')
+      .eq('id', guardId)
+      .single();
+
+    const guardName = guardProfile?.full_name || 
+                    (guardProfile?.first_name && guardProfile?.last_name ? 
+                     `${guardProfile.first_name} ${guardProfile.last_name}` : 
+                     'Unknown Guard');
+
     const observationData = {
       guard_id: guardId,
       patrol_id: patrolId,
@@ -149,7 +161,8 @@ export class ObservationService {
       image_url: imageUrl,
       latitude: finalLocation?.latitude || null,
       longitude: finalLocation?.longitude || null,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      guard_name: guardName
     };
 
     console.log('💾 Inserting observation data:', observationData);
@@ -166,7 +179,68 @@ export class ObservationService {
     }
 
     console.log('✅ Observation created successfully:', data);
+
+    // Send observation notification using existing edge function
+    try {
+      await this.sendObservationNotification(data, guardName);
+    } catch (notificationError) {
+      console.warn('Failed to send observation notification:', notificationError);
+    }
+
     return data
+  }
+
+  private static async sendObservationNotification(
+    observation: PatrolObservation,
+    guardName: string
+  ): Promise<void> {
+    try {
+      // Get site_id from active patrol if available, or find closest site
+      let siteId = null;
+      if (observation.patrol_id) {
+        const { data: patrol } = await supabase
+          .from('patrol_sessions')
+          .select('site_id')
+          .eq('id', observation.patrol_id)
+          .single();
+        
+        siteId = patrol?.site_id;
+      } else if (observation.team_id && observation.latitude && observation.longitude) {
+        // Find closest active site for the team
+        const { data: sites } = await supabase
+          .from('guardian_sites')
+          .select('id')
+          .eq('team_id', observation.team_id)
+          .eq('active', true)
+          .limit(1);
+        
+        if (sites && sites.length > 0) {
+          siteId = sites[0].id;
+        }
+      }
+
+      // Call the observation notification edge function
+      await supabase.functions.invoke('send-observation-email', {
+        body: {
+          observationId: observation.id,
+          title: observation.title,
+          description: observation.description,
+          severity: observation.severity || 'medium',
+          guardName: guardName,
+          timestamp: observation.timestamp,
+          teamId: observation.team_id,
+          siteId: siteId,
+          guardId: observation.guard_id,
+          imageUrl: observation.image_url,
+          testMode: false
+        }
+      });
+
+      console.log('✅ Observation notification sent successfully to existing notification system');
+    } catch (error) {
+      console.error('❌ Failed to send observation notification:', error);
+      throw error;
+    }
   }
 
   static async getObservations(guardId: string): Promise<PatrolObservation[]> {

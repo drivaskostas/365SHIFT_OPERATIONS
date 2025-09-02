@@ -140,7 +140,7 @@ export class EnhancedEmergencyService {
                        `${profile.first_name} ${profile.last_name}` : 
                        'Unknown Guard');
 
-      // Get site_id from active patrol if available
+      // Get site_id from active patrol if available, or find closest site
       let siteId = null;
       if (report.patrol_id) {
         const { data: patrol } = await supabase
@@ -150,24 +150,41 @@ export class EnhancedEmergencyService {
           .single();
         
         siteId = patrol?.site_id;
+      } else if (report.team_id && report.latitude && report.longitude) {
+        // Find closest active site for the team
+        const { data: sites } = await supabase
+          .from('guardian_sites')
+          .select('id')
+          .eq('team_id', report.team_id)
+          .eq('active', true)
+          .limit(1);
+        
+        if (sites && sites.length > 0) {
+          siteId = sites[0].id;
+        }
       }
 
+      // Call the existing emergency notification edge function
       await supabase.functions.invoke('send-emergency-notification', {
         body: {
           reportId: report.id,
           emergencyType: reportData.emergency_type,
-          title: reportData.title,
-          description: reportData.description,
-          severity: reportData.severity,
-          locationDescription: reportData.location_description,
+          title: report.title,
+          description: report.description,
+          severity: report.severity,
+          locationDescription: report.location || reportData.location_description,
           guardName: guardName,
+          timestamp: report.created_at,
           teamId: report.team_id,
           siteId: siteId,
-          images: reportData.images || []
+          guardId: report.guard_id,
+          imageUrl: report.image_url,
+          images: reportData.images || [],
+          testMode: false
         }
       });
 
-      console.log('Emergency notification sent successfully');
+      console.log('Emergency notification sent successfully to existing notification system');
     } catch (error) {
       console.error('Failed to send emergency notification:', error);
       // Don't throw error - report was still created successfully

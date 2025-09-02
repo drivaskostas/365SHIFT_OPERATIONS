@@ -74,6 +74,18 @@ export class EmergencyService {
     const currentLocation = location || await this.getCurrentLocation();
     console.log('Location for emergency report:', currentLocation);
 
+    // Fetch guard's name for notification
+    const { data: guardProfile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, full_name')
+      .eq('id', guardId)
+      .single();
+
+    const guardName = guardProfile?.full_name || 
+                    (guardProfile?.first_name && guardProfile?.last_name ? 
+                     `${guardProfile.first_name} ${guardProfile.last_name}` : 
+                     'Unknown Guard');
+
     const { data, error } = await supabase
       .from('emergency_reports')
       .insert({
@@ -88,13 +100,79 @@ export class EmergencyService {
         location: currentLocation ? `${currentLocation.latitude},${currentLocation.longitude}` : undefined,
         latitude: currentLocation?.latitude,
         longitude: currentLocation?.longitude,
-        incident_time: new Date().toISOString()
+        incident_time: new Date().toISOString(),
+        guard_name: guardName
       })
       .select()
       .single()
 
     if (error) throw error
+
+    // Send emergency notification using existing edge function
+    try {
+      await this.sendEmergencyNotification(data, guardName, currentLocation);
+    } catch (notificationError) {
+      console.warn('Failed to send emergency notification:', notificationError);
+    }
+
     return data
+  }
+
+  private static async sendEmergencyNotification(
+    report: EmergencyReport,
+    guardName: string,
+    location: { latitude: number; longitude: number } | null
+  ): Promise<void> {
+    try {
+      // Get site_id from active patrol if available, or find closest site
+      let siteId = null;
+      if (report.patrol_id) {
+        const { data: patrol } = await supabase
+          .from('patrol_sessions')
+          .select('site_id')
+          .eq('id', report.patrol_id)
+          .single();
+        
+        siteId = patrol?.site_id;
+      } else if (report.team_id && location) {
+        // Find closest active site for the team
+        const { data: sites } = await supabase
+          .from('guardian_sites')
+          .select('id')
+          .eq('team_id', report.team_id)
+          .eq('active', true)
+          .limit(1);
+        
+        if (sites && sites.length > 0) {
+          siteId = sites[0].id;
+        }
+      }
+
+      // Call the existing emergency notification edge function
+      await supabase.functions.invoke('send-emergency-notification', {
+        body: {
+          reportId: report.id,
+          emergencyType: 'general_emergency',
+          title: report.title,
+          description: report.description,
+          severity: report.severity,
+          locationDescription: report.location || 'Location not available',
+          guardName: guardName,
+          timestamp: report.created_at,
+          teamId: report.team_id,
+          siteId: siteId,
+          guardId: report.guard_id,
+          imageUrl: report.image_url,
+          images: report.image_url ? [report.image_url] : [],
+          testMode: false
+        }
+      });
+
+      console.log('Emergency notification sent successfully to existing notification system');
+    } catch (error) {
+      console.error('Failed to send emergency notification:', error);
+      throw error;
+    }
   }
 
   static async getEmergencyReports(guardId: string): Promise<EmergencyReport[]> {
