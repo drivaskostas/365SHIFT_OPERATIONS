@@ -554,51 +554,53 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                 </div>
               </div>
 
-              {/* Guard Selection */}
-              {guards.length > 0 && (
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    {language === 'el' ? 'Συμπεριφορικές Παρατηρήσεις' : 'Behavioral Observations'}
-                  </Label>
-                  <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3 bg-white">
-                    {guards.map((guard) => (
-                      <div key={guard.profile_id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`guard-${guard.profile_id}`}
-                          checked={formData.description.selected_guards?.includes(guard.profile_id)}
-                          onCheckedChange={(checked) => {
-                            const currentGuards = formData.description.selected_guards || [];
-                            const newGuards = checked 
-                              ? [...currentGuards, guard.profile_id]
-                              : currentGuards.filter(id => id !== guard.profile_id);
-                            setFormData({
-                              ...formData,
-                              description: {...formData.description, selected_guards: newGuards}
-                            });
-                          }}
-                        />
-                        <Label htmlFor={`guard-${guard.profile_id}`} className="text-sm">
-                          {getGuardName(guard)}
-                        </Label>
-                      </div>
-                    ))}
+              {/* Guard Selection and Behavioral Observations */}
+              <div className="space-y-4">
+                {guards.length > 0 && (
+                  <div>
+                    <Label className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      {language === 'el' ? 'Επιλογή Φρουρών' : 'Guard Selection'}
+                    </Label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3 bg-white">
+                      {guards.map((guard) => (
+                        <div key={guard.profile_id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`guard-${guard.profile_id}`}
+                            checked={formData.description.selected_guards?.includes(guard.profile_id)}
+                            onCheckedChange={(checked) => {
+                              const currentGuards = formData.description.selected_guards || [];
+                              const newGuards = checked 
+                                ? [...currentGuards, guard.profile_id]
+                                : currentGuards.filter(id => id !== guard.profile_id);
+                              setFormData({
+                                ...formData,
+                                description: {...formData.description, selected_guards: newGuards}
+                              });
+                            }}
+                          />
+                          <Label htmlFor={`guard-${guard.profile_id}`} className="text-sm">
+                            {getGuardName(guard)}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div>
-                <Label htmlFor="behavioral_observation">{language === 'el' ? 'Συμπεριφορικές Παρατηρήσεις' : 'Behavioral Observations'}</Label>
-                <Textarea
-                  id="behavioral_observation"
-                  value={formData.description.behavioral_observation}
-                  onChange={(e) => setFormData({
-                    ...formData, 
-                    description: {...formData.description, behavioral_observation: e.target.value}
-                  })}
-                  placeholder={language === 'el' ? 'Συμπεριφορικές παρατηρήσεις που παρατηρήθηκαν (συμπεριφορά, εγρήγορση, επικοινωνία, κ.λ.π.)' : 'Behavioral observations noted (behavior, alertness, communication, etc.)'}
-                  rows={3}
-                />
+                <div>
+                  <Label htmlFor="behavioral_observation">{language === 'el' ? 'Συμπεριφορικές Παρατηρήσεις' : 'Behavioral Observations'}</Label>
+                  <Textarea
+                    id="behavioral_observation"
+                    value={formData.description.behavioral_observation}
+                    onChange={(e) => setFormData({
+                      ...formData, 
+                      description: {...formData.description, behavioral_observation: e.target.value}
+                    })}
+                    placeholder={language === 'el' ? 'Συμπεριφορικές παρατηρήσεις που παρατηρήθηκαν (συμπεριφορά, εγρήγορση, επικοινωνία, κ.λ.π.)' : 'Behavioral observations noted (behavior, alertness, communication, etc.)'}
+                    rows={3}
+                  />
+                </div>
               </div>
 
               <div>
@@ -624,7 +626,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     ...formData, 
                     description: {...formData.description, other_findings: e.target.value}
                   })}
-                  placeholder={language === 'el' ? 'Οποιεσδήποτε άλλες σημαντικές παρατηρήσεις ή και για τη χρήση αντιγραφή' : 'Any other significant observations or incidents'}
+                  placeholder={language === 'el' ? 'Οποιεσδήποτε άλλες σημαντικές παρατηρήσεις ή συμβάντα' : 'Any other significant observations or incidents'}
                   rows={3}
                 />
               </div>
@@ -668,7 +670,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     ...formData, 
                     description: {...formData.description, corrective_measures: e.target.value}
                   })}
-                  placeholder={language === 'el' ? 'Λεπτομερή περιγραφή διορθωτικά μέτρα που πάρθηκαν ή διατίθενται για χρήση' : 'Detailed description of corrective measures taken or required'}
+                  placeholder={language === 'el' ? 'Λεπτομερή περιγραφή διορθωτικών μέτρων που λήφθηκαν ή απαιτούνται' : 'Detailed description of corrective measures taken or required'}
                   rows={3}
                 />
               </div>
