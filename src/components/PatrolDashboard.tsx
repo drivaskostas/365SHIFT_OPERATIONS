@@ -13,6 +13,7 @@ import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import SupervisorReportForm from '@/components/SupervisorReportForm';
+import { TestEmailButton } from '@/components/TestEmailButton';
 import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
 
@@ -644,6 +645,9 @@ const PatrolDashboard = ({
           </div>
         </div>
       </div>
+
+      {/* Test Email Button for Admins */}
+      <TestEmailButton userRoles={userRoles} />
 
       {/* Enhanced Location Permission Alert */}
       {(locationPermissionStatus === 'denied' || locationPermissionStatus === 'unknown') && <div className="mb-6">
