@@ -64,6 +64,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
     guard_id: '',
     location_text: '',
     incident_time: new Date().toISOString().slice(0, 16),
+    followup_deadline: '',
     // Structured description fields
     description: {
       report_type: '' as keyof typeof REPORT_TYPES | '',
@@ -318,57 +319,19 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{language === 'el' ? 'Βασικές Πληροφορίες' : 'Basic Information'}</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="site">{language === 'el' ? 'Έργο' : 'Site'} *</Label>
-                  <Select value={selectedSite} onValueChange={setSelectedSite}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε έργο' : 'Select site'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sites.map((site) => (
-                        <SelectItem key={site.id} value={site.id}>
-                          {site.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="severity">{language === 'el' ? 'Σπουδαιότητα' : 'Severity'} *</Label>
-                  <Select value={formData.severity} onValueChange={(value: any) => setFormData({...formData, severity: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low" className="text-green-600">
-                        {language === 'el' ? 'Χαμηλή' : 'Low'}
-                      </SelectItem>
-                      <SelectItem value="medium" className="text-yellow-600">
-                        {language === 'el' ? 'Μέτρια' : 'Medium'}
-                      </SelectItem>
-                      <SelectItem value="high" className="text-orange-600">
-                        {language === 'el' ? 'Υψηλή' : 'High'}
-                      </SelectItem>
-                      <SelectItem value="critical" className="text-red-600">
-                        {language === 'el' ? 'Κρίσιμη' : 'Critical'}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* 1. Βασικές Πληροφορίες (Basic Information) */}
+            <div className="space-y-4 p-6 bg-gray-50/50 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">1</div>
+                <h3 className="text-lg font-semibold">{language === 'el' ? 'Βασικές Πληροφορίες' : 'Basic Information'}</h3>
               </div>
-
+              
               <div>
-                <Label htmlFor="title">{language === 'el' ? 'Τίτλος' : 'Title'} *</Label>
+                <Label htmlFor="title">{language === 'el' ? 'Τίτλος Αναφοράς' : 'Report Title'} *</Label>
                 <Select value={formData.title} onValueChange={(value) => setFormData({...formData, title: value})}>
                   <SelectTrigger>
-                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε τύπο αναφοράς' : 'Select report type'} />
+                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε τίτλο αναφοράς' : 'Select report title'} />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(REPORT_TITLES).map(([key, value]) => (
@@ -380,21 +343,90 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                 </Select>
               </div>
 
+              <div>
+                <Label htmlFor="severity">{language === 'el' ? 'Τύπος Αναφοράς' : 'Report Type'}</Label>
+                <Select 
+                  value={formData.description.report_type} 
+                  onValueChange={(value) => setFormData({
+                    ...formData, 
+                    description: {...formData.description, report_type: value as keyof typeof REPORT_TYPES}
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε τύπο' : 'Select type'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(REPORT_TYPES).map(([key, value]) => (
+                      <SelectItem key={key} value={key}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="severity_rating">{language === 'el' ? 'Σπουδαιότητα' : 'Severity'} *</Label>
+                <Select value={formData.severity} onValueChange={(value: any) => setFormData({...formData, severity: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low" className="text-green-600">
+                      {language === 'el' ? 'Χαμηλή' : 'Low'}
+                    </SelectItem>
+                    <SelectItem value="medium" className="text-yellow-600">
+                      {language === 'el' ? 'Μέτρια' : 'Medium'}
+                    </SelectItem>
+                    <SelectItem value="high" className="text-orange-600">
+                      {language === 'el' ? 'Υψηλή' : 'High'}
+                    </SelectItem>
+                    <SelectItem value="critical" className="text-red-600">
+                      {language === 'el' ? 'Κρίσιμη' : 'Critical'}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* 2. Τοποθεσία & Περιβάλλον (Location & Environment) */}
+            <div className="space-y-4 p-6 bg-gray-50/50 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">2</div>
+                <h3 className="text-lg font-semibold">{language === 'el' ? 'Τοποθεσία & Περιβάλλον' : 'Location & Environment'}</h3>
+              </div>
+              
+              <div>
+                <Label htmlFor="site">{language === 'el' ? 'Έργο' : 'Site'} *</Label>
+                <Select value={selectedSite} onValueChange={setSelectedSite}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε έργο' : 'Select site'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sites.map((site) => (
+                      <SelectItem key={site.id} value={site.id}>
+                        {site.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="report_type">{language === 'el' ? 'Τύπος Αναφοράς' : 'Report Type'}</Label>
+                  <Label htmlFor="weather_conditions">{language === 'el' ? 'Φυσικές/Καιρικές Συνθήκες τον Καιρό της Επίσκεψης' : 'Weather/Physical Conditions During Visit'}</Label>
                   <Select 
-                    value={formData.description.report_type} 
+                    value={formData.description.weather_conditions} 
                     onValueChange={(value) => setFormData({
                       ...formData, 
-                      description: {...formData.description, report_type: value as keyof typeof REPORT_TYPES}
+                      description: {...formData.description, weather_conditions: value as keyof typeof WEATHER_CONDITIONS}
                     })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε τύπο' : 'Select type'} />
+                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε συνθήκες' : 'Select conditions'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(REPORT_TYPES).map(([key, value]) => (
+                      {Object.entries(WEATHER_CONDITIONS).map(([key, value]) => (
                         <SelectItem key={key} value={key}>
                           {value}
                         </SelectItem>
@@ -403,6 +435,36 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                   </Select>
                 </div>
 
+                <div>
+                  <Label htmlFor="incident_time">{language === 'el' ? 'Ημερομηνία/Ώρα Συμβάντος' : 'Date/Time of Incident'}</Label>
+                  <Input
+                    id="incident_time"
+                    type="datetime-local"
+                    value={formData.incident_time}
+                    onChange={(e) => setFormData({...formData, incident_time: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="location_text">{language === 'el' ? 'Συγκεκριμένη Τοποθεσία' : 'Specific Location'}</Label>
+                <Input
+                  id="location_text"
+                  value={formData.location_text}
+                  onChange={(e) => setFormData({...formData, location_text: e.target.value})}
+                  placeholder={language === 'el' ? 'Περιγράψτε την ακριβή τοποθεσία ή την περιοχή' : 'Describe the exact location or area'}
+                />
+              </div>
+            </div>
+
+            {/* 3. Λεπτομέρειες Παρατήρησης (Observation Details) */}
+            <div className="space-y-4 p-6 bg-gray-50/50 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">3</div>
+                <h3 className="text-lg font-semibold">{language === 'el' ? 'Λεπτομέρειες Παρατήρησης' : 'Observation Details'}</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="observation_type">{language === 'el' ? 'Τύπος Παρατήρησης' : 'Observation Type'}</Label>
                   <Select 
@@ -424,49 +486,9 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-            </div>
 
-            {/* Guard Selection - Multiple */}
-            {guards.length > 0 && (
-              <div>
-                <Label className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  {language === 'el' ? 'Φύλακες (επιλογή πολλαπλών)' : 'Guards (multiple selection)'}
-                </Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                  {guards.map((guard) => (
-                    <div key={guard.profile_id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`guard-${guard.profile_id}`}
-                        checked={formData.description.selected_guards?.includes(guard.profile_id)}
-                        onCheckedChange={(checked) => {
-                          const currentGuards = formData.description.selected_guards || [];
-                          const newGuards = checked 
-                            ? [...currentGuards, guard.profile_id]
-                            : currentGuards.filter(id => id !== guard.profile_id);
-                          setFormData({
-                            ...formData,
-                            description: {...formData.description, selected_guards: newGuards}
-                          });
-                        }}
-                      />
-                      <Label htmlFor={`guard-${guard.profile_id}`} className="text-sm">
-                        {getGuardName(guard)}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Performance & Compliance */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{language === 'el' ? 'Αξιολόγηση & Συμμόρφωση' : 'Assessment & Compliance'}</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="performance_rating">{language === 'el' ? 'Αξιολόγηση Απόδοσης' : 'Performance Rating'}</Label>
+                  <Label htmlFor="performance_rating">{language === 'el' ? 'Αξιολόγηση Απόδοσης' : 'Performance Assessment'}</Label>
                   <Select 
                     value={formData.description.performance_rating} 
                     onValueChange={(value) => setFormData({
@@ -475,7 +497,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε αξιολόγηση' : 'Select rating'} />
+                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε αξιολόγηση' : 'Select assessment'} />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(PERFORMANCE_RATINGS).map(([key, value]) => (
@@ -530,37 +552,43 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div>
-                  <Label htmlFor="weather_conditions">{language === 'el' ? 'Καιρικές Συνθήκες' : 'Weather Conditions'}</Label>
-                  <Select 
-                    value={formData.description.weather_conditions} 
-                    onValueChange={(value) => setFormData({
-                      ...formData, 
-                      description: {...formData.description, weather_conditions: value as keyof typeof WEATHER_CONDITIONS}
-                    })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε καιρικές συνθήκες' : 'Select weather conditions'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(WEATHER_CONDITIONS).map(([key, value]) => (
-                        <SelectItem key={key} value={key}>
-                          {value}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
-            </div>
 
-            {/* Detailed Observations */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{language === 'el' ? 'Λεπτομερείς Παρατηρήσεις' : 'Detailed Observations'}</h3>
-              
+              {/* Guard Selection */}
+              {guards.length > 0 && (
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    {language === 'el' ? 'Συμπεριφορικές Παρατηρήσεις' : 'Behavioral Observations'}
+                  </Label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3 bg-white">
+                    {guards.map((guard) => (
+                      <div key={guard.profile_id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`guard-${guard.profile_id}`}
+                          checked={formData.description.selected_guards?.includes(guard.profile_id)}
+                          onCheckedChange={(checked) => {
+                            const currentGuards = formData.description.selected_guards || [];
+                            const newGuards = checked 
+                              ? [...currentGuards, guard.profile_id]
+                              : currentGuards.filter(id => id !== guard.profile_id);
+                            setFormData({
+                              ...formData,
+                              description: {...formData.description, selected_guards: newGuards}
+                            });
+                          }}
+                        />
+                        <Label htmlFor={`guard-${guard.profile_id}`} className="text-sm">
+                          {getGuardName(guard)}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <Label htmlFor="behavioral_observation">{language === 'el' ? 'Παρατήρηση Συμπεριφοράς' : 'Behavioral Observation'}</Label>
+                <Label htmlFor="behavioral_observation">{language === 'el' ? 'Συμπεριφορικές Παρατηρήσεις' : 'Behavioral Observations'}</Label>
                 <Textarea
                   id="behavioral_observation"
                   value={formData.description.behavioral_observation}
@@ -568,7 +596,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     ...formData, 
                     description: {...formData.description, behavioral_observation: e.target.value}
                   })}
-                  placeholder={language === 'el' ? 'Λεπτομερής περιγραφή συμπεριφοράς...' : 'Detailed behavioral observations...'}
+                  placeholder={language === 'el' ? 'Συμπεριφορικές παρατηρήσεις που παρατηρήθηκαν (συμπεριφορά, εγρήγορση, επικοινωνία, κ.λ.π.)' : 'Behavioral observations noted (behavior, alertness, communication, etc.)'}
                   rows={3}
                 />
               </div>
@@ -582,7 +610,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     ...formData, 
                     description: {...formData.description, safety_concerns: e.target.value}
                   })}
-                  placeholder={language === 'el' ? 'Περιγραφή ανησυχιών ασφάλειας...' : 'Describe safety concerns...'}
+                  placeholder={language === 'el' ? 'Οποιεσδήποτε ανησυχίες ασφάλειας που προσδιορίστηκαν' : 'Any safety concerns identified'}
                   rows={3}
                 />
               </div>
@@ -596,48 +624,21 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     ...formData, 
                     description: {...formData.description, other_findings: e.target.value}
                   })}
-                  placeholder={language === 'el' ? 'Άλλα σημαντικά ευρήματα...' : 'Other significant findings...'}
+                  placeholder={language === 'el' ? 'Οποιεσδήποτε άλλες σημαντικές παρατηρήσεις ή και για τη χρήση αντιγραφή' : 'Any other significant observations or incidents'}
                   rows={3}
                 />
               </div>
             </div>
 
-            {/* Location & Time */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{language === 'el' ? 'Τοποθεσία & Χρόνος' : 'Location & Time'}</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="location_text">
-                    <MapPin className="h-4 w-4 inline mr-1" />
-                    {language === 'el' ? 'Τοποθεσία' : 'Location'}
-                  </Label>
-                  <Input
-                    id="location_text"
-                    value={formData.location_text}
-                    onChange={(e) => setFormData({...formData, location_text: e.target.value})}
-                    placeholder={language === 'el' ? 'Συγκεκριμένη τοποθεσία...' : 'Specific location...'}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="incident_time">{language === 'el' ? 'Χρόνος Συμβάντος' : 'Incident Time'}</Label>
-                  <Input
-                    id="incident_time"
-                    type="datetime-local"
-                    value={formData.incident_time}
-                    onChange={(e) => setFormData({...formData, incident_time: e.target.value})}
-                  />
-                </div>
+            {/* 4. Ενέργειες & Μέτρα (Actions & Measures) */}
+            <div className="space-y-4 p-6 bg-gray-50/50 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">4</div>
+                <h3 className="text-lg font-semibold">{language === 'el' ? 'Ενέργειες & Μέτρα' : 'Actions & Measures'}</h3>
               </div>
-            </div>
 
-            {/* Actions */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{language === 'el' ? 'Δράσεις & Διορθωτικά Μέτρα' : 'Actions & Corrective Measures'}</h3>
-              
               <div>
-                <Label htmlFor="immediate_action">{language === 'el' ? 'Άμεση Δράση που Λήφθηκε' : 'Immediate Action Taken'}</Label>
+                <Label htmlFor="immediate_action">{language === 'el' ? 'Άμεσες Ενέργειες που Λήφθηκαν' : 'Immediate Actions Taken'}</Label>
                 <Select 
                   value={formData.description.immediate_action_taken} 
                   onValueChange={(value) => setFormData({
@@ -646,7 +647,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                   })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε άμεση δράση' : 'Select immediate action'} />
+                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε άμεση ενέργεια' : 'Select immediate action'} />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(IMMEDIATE_ACTIONS).map(([key, value]) => (
@@ -667,13 +668,89 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     ...formData, 
                     description: {...formData.description, corrective_measures: e.target.value}
                   })}
-                  placeholder={language === 'el' ? 'Προτεινόμενα διορθωτικά μέτρα...' : 'Recommended corrective measures...'}
+                  placeholder={language === 'el' ? 'Λεπτομερή περιγραφή διορθωτικά μέτρα που πάρθηκαν ή διατίθενται για χρήση' : 'Detailed description of corrective measures taken or required'}
                   rows={3}
                 />
               </div>
+            </div>
+
+            {/* 5. Φωτογραφία Αποδεικτικού Στοιχείου (Evidence Photo) */}
+            <div className="space-y-4 p-6 bg-gray-50/50 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">5</div>
+                <h3 className="text-lg font-semibold">{language === 'el' ? 'Φωτογραφία Αποδεικτικού Στοιχείου' : 'Evidence Photo'}</h3>
+              </div>
+
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                {!imageUrl ? (
+                  <div>
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={isUploadingImage}
+                      className="hidden"
+                    />
+                    <Label 
+                      htmlFor="image" 
+                      className="cursor-pointer flex flex-col items-center gap-2 p-4"
+                    >
+                      <div className="w-12 h-12 border-2 border-gray-400 rounded border-dashed flex items-center justify-center">
+                        📷
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {isUploadingImage 
+                          ? (language === 'el' ? 'Μεταφόρτωση εικόνας...' : 'Uploading image...') 
+                          : (language === 'el' ? 'Upload Image' : 'Upload Image')
+                        }
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {language === 'el' ? 'No image uploaded\nClick to add an image' : 'No image uploaded\nClick to add an image'}
+                      </div>
+                    </Label>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <img src={imageUrl} alt="Evidence" className="max-w-full max-h-48 object-cover rounded" />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setImageUrl('')}
+                    >
+                      {language === 'el' ? 'Αφαίρεση' : 'Remove'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 6. Προθεσμίες Παρακολουθίας (Follow-up Deadlines) */}
+            <div className="space-y-4 p-6 bg-gray-50/50 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">6</div>
+                <h3 className="text-lg font-semibold">{language === 'el' ? 'Προθεσμίες Παρακολουθίας' : 'Follow-up Deadlines'}</h3>
+              </div>
 
               <div>
-                <Label htmlFor="additional_notes">{language === 'el' ? 'Επιπλέον Σημειώσεις' : 'Additional Notes'}</Label>
+                <Label htmlFor="followup_deadline">{language === 'el' ? 'Προθεσμίες Ενεργειών' : 'Action Deadlines'}</Label>
+                <Textarea
+                  id="followup_deadline"
+                  value={formData.followup_deadline}
+                  onChange={(e) => setFormData({...formData, followup_deadline: e.target.value})}
+                  placeholder={language === 'el' ? 'Οποιεσδήποτε άλλες σχετικές πληροφορίες, παρακολούθησα των εκθέσεων ή προτάσεις' : 'Any other relevant information, report follow-up, or recommendations'}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* Additional Notes */}
+            <div className="space-y-4 p-6 bg-gray-50/50 rounded-lg border">
+              <h3 className="text-lg font-semibold">{language === 'el' ? 'Προσθήκες Πληροφορίες' : 'Additional Information'}</h3>
+              
+              <div>
+                <Label htmlFor="additional_notes">{language === 'el' ? 'Προσθήκες Ενεργειας' : 'Additional Notes'}</Label>
                 <Textarea
                   id="additional_notes"
                   value={formData.description.additional_notes}
@@ -681,43 +758,21 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                     ...formData, 
                     description: {...formData.description, additional_notes: e.target.value}
                   })}
-                  placeholder={language === 'el' ? 'Οποιεσδήποτε επιπλέον παρατηρήσεις...' : 'Any additional observations...'}
+                  placeholder={language === 'el' ? 'Οποιεσδήποτε άλλες σχετικές πληροφορίες, παρακολούθησα των εκθέσεων ή προτάσεις' : 'Any other relevant information, report follow-up, or recommendations'}
                   rows={3}
                 />
               </div>
             </div>
 
-            {/* Image Upload */}
-            <div>
-              <Label htmlFor="image">{language === 'el' ? 'Εικόνα (προαιρετικό)' : 'Image (optional)'}</Label>
-              <Input
-                id="image"
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                disabled={isUploadingImage}
-              />
-              {isUploadingImage && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === 'el' ? 'Μεταφόρτωση εικόνας...' : 'Uploading image...'}
-                </p>
-              )}
-              {imageUrl && (
-                <div className="mt-2">
-                  <img src={imageUrl} alt="Report" className="max-w-full h-32 object-cover rounded" />
-                </div>
-              )}
-            </div>
-
             {/* Submit Buttons */}
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={onClose}>
-                {language === 'el' ? 'Ακύρωση' : 'Cancel'}
+            <div className="flex justify-between gap-4 pt-6 border-t-2">
+              <Button type="button" variant="outline" onClick={onClose} className="px-8">
+                {language === 'el' ? 'Ακύρωση Φόρμας' : 'Cancel Form'}
               </Button>
               <Button 
                 type="submit" 
                 disabled={isSubmitting || !selectedSite || !formData.title.trim()}
-                variant="gradient"
+                className="px-8 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {isSubmitting 
                   ? (language === 'el' ? 'Υποβολή...' : 'Submitting...') 
