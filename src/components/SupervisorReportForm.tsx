@@ -558,13 +558,13 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
               <div className="space-y-4">
                 {guards.length > 0 && (
                   <div>
-                    <Label className="flex items-center gap-2">
+                    <Label className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
                       <Users className="h-4 w-4" />
                       {language === 'el' ? 'Επιλογή Φρουρών' : 'Guard Selection'}
                     </Label>
-                    <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3 bg-white">
+                    <div className="space-y-3 max-h-40 overflow-y-auto border border-border rounded-lg p-4 bg-card shadow-sm">
                       {guards.map((guard) => (
-                        <div key={guard.profile_id} className="flex items-center space-x-2">
+                        <div key={guard.profile_id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
                           <Checkbox
                             id={`guard-${guard.profile_id}`}
                             checked={formData.description.selected_guards?.includes(guard.profile_id)}
@@ -578,8 +578,12 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                                 description: {...formData.description, selected_guards: newGuards}
                               });
                             }}
+                            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                           />
-                          <Label htmlFor={`guard-${guard.profile_id}`} className="text-sm">
+                          <Label 
+                            htmlFor={`guard-${guard.profile_id}`} 
+                            className="text-sm font-medium text-foreground cursor-pointer flex-grow"
+                          >
                             {getGuardName(guard)}
                           </Label>
                         </div>
