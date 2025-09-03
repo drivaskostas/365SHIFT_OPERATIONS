@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square } from 'lucide-react';
+import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -12,6 +12,7 @@ import TeamObservations from '@/components/TeamObservations';
 import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
+import SupervisorReportForm from '@/components/SupervisorReportForm';
 import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
 
@@ -48,7 +49,8 @@ const PatrolDashboard = ({
   onNavigate
 }: PatrolDashboardProps) => {
   const {
-    t
+    t,
+    language
   } = useLanguage();
   const {
     profile
@@ -67,6 +69,8 @@ const PatrolDashboard = ({
   const [showObservations, setShowObservations] = useState(false);
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
   const [showEmergencyReports, setShowEmergencyReports] = useState(false);
+  const [showSupervisorReport, setShowSupervisorReport] = useState(false);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
   const [availableSites, setAvailableSites] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -94,8 +98,25 @@ const PatrolDashboard = ({
       checkActivePatrol();
       loadGuardShiftInfo();
       checkLocationPermission();
+      fetchUserRoles();
     }
   }, [profile?.id]);
+  const fetchUserRoles = async () => {
+    if (!profile?.id) return;
+    
+    try {
+      const { data: roles, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', profile.id);
+      
+      if (error) throw error;
+      setUserRoles(roles?.map(r => r.role) || []);
+    } catch (error) {
+      console.error('Error fetching user roles:', error);
+    }
+  };
+
   const loadGuardShiftInfo = () => {
     const shiftInfo = localStorage.getItem('guardShiftInfo');
     if (shiftInfo) {
@@ -543,6 +564,12 @@ const PatrolDashboard = ({
     color: 'bg-red-500',
     action: () => onNavigate('emergency')
   }];
+  const isAdminOrManager = userRoles.includes('admin') || userRoles.includes('super_admin') || userRoles.includes('manager');
+
+  if (showSupervisorReport) {
+    return <SupervisorReportForm onClose={() => setShowSupervisorReport(false)} />;
+  }
+
   if (showObservations) {
     return <TeamObservations onBack={() => setShowObservations(false)} />;
   }
@@ -739,6 +766,40 @@ const PatrolDashboard = ({
             </CardContent>
           </Card>)}
       </div>
+
+      {/* Supervisor Report Button for Admin/Manager */}
+      {isAdminOrManager && (
+        <div className="mb-6">
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-blue-500 p-2 rounded-full">
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+                      {language === 'el' ? 'Αναφορά Εποπτείας' : 'Supervisor Report'}
+                    </h3>
+                    <p className="text-sm text-blue-600 dark:text-blue-300">
+                      {language === 'el' ? 'Υποβάλετε αναφορά εποπτείας για έργα και φύλακες' : 'Submit supervisor reports for sites and guards'}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => setShowSupervisorReport(true)}
+                  variant="glass"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  {language === 'el' ? 'Νέα Αναφορά' : 'New Report'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Status Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
