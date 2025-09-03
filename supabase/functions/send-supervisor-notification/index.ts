@@ -35,7 +35,19 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
 
+    console.log('🔑 Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseServiceKey: !!supabaseServiceKey, 
+      hasResendApiKey: !!resendApiKey,
+      resendKeyLength: resendApiKey?.length || 0
+    });
+
     if (!supabaseUrl || !supabaseServiceKey || !resendApiKey) {
+      console.error('❌ Missing environment variables:', {
+        supabaseUrl: !!supabaseUrl,
+        supabaseServiceKey: !!supabaseServiceKey,
+        resendApiKey: !!resendApiKey
+      });
       throw new Error('Missing required environment variables');
     }
 
@@ -411,13 +423,23 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send emails to all recipients
-    const emailPromises = Array.from(recipients).map(email => {
-      return resend.emails.send({
-        from: 'OVIT Security <notifications@ovitguardly.com>',
-        to: [email],
-        subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()}`,
-        html: htmlContent
-      });
+    console.log(`🔍 Attempting to send ${recipients.size} emails using domain: notifications@ovitguardly.com`);
+    
+    const emailPromises = Array.from(recipients).map(async (email, index) => {
+      try {
+        console.log(`📧 Sending email ${index + 1}/${recipients.size} to: ${email}`);
+        const result = await resend.emails.send({
+          from: 'OVIT Security <notifications@ovitguardly.com>',
+          to: [email],
+          subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()}`,
+          html: htmlContent
+        });
+        console.log(`✅ Email sent successfully to ${email}:`, result);
+        return result;
+      } catch (emailError) {
+        console.error(`❌ Failed to send email to ${email}:`, emailError);
+        throw emailError;
+      }
     });
 
     const emailResults = await Promise.allSettled(emailPromises);
