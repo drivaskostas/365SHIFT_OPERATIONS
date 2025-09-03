@@ -230,33 +230,9 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
         ].filter(note => note.value.trim() !== ''))
       };
 
-      // Use the existing emergency_reports table as a supervisor report with a special field
-      const supervisorReportData = {
-        guard_id: profile.id,
-        title: `[SUPERVISOR] ${formData.title}`,
-        description: formData.description,
-        severity: formData.severity,
-        status: 'pending',
-        location: formData.location_text,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        incident_time: formData.incident_time ? new Date(formData.incident_time).toISOString() : null,
-        image_url: imageUrl || null,
-        guard_name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
-        team_id: selectedSiteData?.team_id,
-        involved_persons: formData.guard_id ? guards.find(g => g.profile_id === formData.guard_id)?.profiles?.full_name || '' : '',
-        notes: JSON.stringify([
-          { field: 'supervisor_report', value: 'true' },
-          { field: 'site_id', value: selectedSite },
-          { field: 'immediate_action_taken', value: formData.immediate_action_taken },
-          { field: 'corrective_measures', value: formData.corrective_measures },
-          { field: 'additional_notes', value: formData.additional_notes }
-        ].filter(note => note.value && note.value.trim() !== ''))
-      };
-
       const { error } = await supabase
-        .from('emergency_reports')
-        .insert([supervisorReportData]);
+        .from('supervisor_reports')
+        .insert([reportData]);
 
       if (error) throw error;
 
