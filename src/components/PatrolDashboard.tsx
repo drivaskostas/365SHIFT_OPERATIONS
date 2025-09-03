@@ -620,27 +620,28 @@ const PatrolDashboard = ({
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           {t('dashboard.welcome_simple')}
         </h1>
-        <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
+        {/* Mobile-optimized status indicators */}
+        <div className="grid grid-cols-2 lg:flex lg:items-center lg:space-x-4 gap-2 lg:gap-0 text-sm text-gray-600 dark:text-gray-300">
           <div className="flex items-center space-x-1">
-            <Clock className="h-4 w-4" />
-            <span>{currentTime.toLocaleTimeString()}</span>
+            <Clock className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{currentTime.toLocaleTimeString()}</span>
           </div>
           <div className="flex items-center space-x-1">
-            <MapPin className="h-4 w-4" />
-            <span>{activePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
+            <MapPin className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{activePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
           </div>
-          {guardShiftInfo && <div className="flex items-center space-x-1 text-green-600">
-              <Shield className="h-4 w-4" />
-              <span>{guardShiftInfo.siteName}</span>
+          {guardShiftInfo && <div className="flex items-center space-x-1 text-green-600 col-span-2 lg:col-span-1">
+              <Shield className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate font-medium">{guardShiftInfo.siteName}</span>
             </div>}
-          {isTracking && <div className="flex items-center space-x-1 text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Location Tracking Active</span>
+          {isTracking && <div className="flex items-center space-x-1 text-green-600 col-span-2 lg:col-span-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
+              <span className="truncate">Location Tracking Active</span>
             </div>}
           {/* Connection Status Indicator */}
           <div className="flex items-center space-x-1">
-            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span>{isOnline ? 'Online' : 'Offline'}</span>
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="truncate">{isOnline ? 'Online' : 'Offline'}</span>
           </div>
         </div>
       </div>
@@ -711,27 +712,31 @@ const PatrolDashboard = ({
       <div className="mb-6">
         <Card className="overflow-hidden">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0 pr-4">
+            <div className="space-y-4 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
+              <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1 truncate">
                   Patrol Status {!isOnline && '(Offline Mode)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
-                  {activePatrol ? `Active patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : 'No active shift assigned'}
+                  {activePatrol ? `Patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : 'No active shift assigned'}
                 </p>
-                {guardShiftInfo && !activePatrol && <p className="text-xs text-blue-600 mt-1">
+                {guardShiftInfo && !activePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
                     📍 Current shift: {guardShiftInfo.teamName} - {guardShiftInfo.siteName}
                   </p>}
                 {isTracking && <p className="text-xs text-green-600 mt-1">
                     📍 Location updates every minute
                   </p>}
-                {!isOnline && <p className="text-xs text-orange-600 mt-1">
+                {!isOnline && <p className="text-xs text-orange-600 mt-1 break-words">
                     📴 Patrol activities will be saved locally and synced when online
                   </p>}
               </div>
-              <div className="flex gap-2 flex-shrink-0">
-                {!activePatrol}
-                <Button onClick={activePatrol ? handleEndPatrol : handleStartPatrol} className={activePatrol ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} disabled={!activePatrol && !guardShiftInfo}>
+              <div className="flex justify-center lg:justify-end">
+                <Button 
+                  onClick={activePatrol ? handleEndPatrol : handleStartPatrol} 
+                  className={activePatrol ? 'bg-red-500 hover:bg-red-600 w-full lg:w-auto' : 'bg-green-500 hover:bg-green-600 w-full lg:w-auto'} 
+                  disabled={!activePatrol && !guardShiftInfo}
+                  size="lg"
+                >
                   {activePatrol ? <>
                       <Square className="h-4 w-4 mr-2" />
                       End Patrol
@@ -747,18 +752,18 @@ const PatrolDashboard = ({
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {quickActions.map(action => <Card key={action.id} className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden">
-            <CardContent className="p-6" onClick={action.action}>
-              <div className="flex items-center space-x-4">
-                <div className={`${action.color} p-3 rounded-full flex-shrink-0`}>
-                  <action.icon className="h-6 w-6 text-white" />
+            <CardContent className="p-4 lg:p-6" onClick={action.action}>
+              <div className="flex items-center space-x-3 lg:space-x-4">
+                <div className={`${action.color} p-2 lg:p-3 rounded-full flex-shrink-0`}>
+                  <action.icon className="h-5 w-5 lg:h-6 lg:w-6 text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-sm lg:text-base truncate">
                     {action.title}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
+                  <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-300 break-words">
                     {action.description}
                   </p>
                 </div>
@@ -802,59 +807,59 @@ const PatrolDashboard = ({
       )}
 
       {/* Status Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
         <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowPatrolSessions(true)}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+          <CardContent className="p-3 lg:p-4">
+            <div className="space-y-2 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
+                <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.patrol_rounds')}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPatrols}</p>
+                <p className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPatrols}</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500 flex-shrink-0" />
+              <TrendingUp className="h-6 w-6 lg:h-8 lg:w-8 text-green-500 flex-shrink-0 self-end lg:self-auto" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowObservations(true)}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+          <CardContent className="p-3 lg:p-4">
+            <div className="space-y-2 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
+                <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.observations')}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalObservations}</p>
+                <p className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalObservations}</p>
               </div>
-              <AlertTriangle className="h-8 w-8 text-yellow-500 flex-shrink-0" />
+              <AlertTriangle className="h-6 w-6 lg:h-8 lg:w-8 text-yellow-500 flex-shrink-0 self-end lg:self-auto" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowEmergencyReports(true)}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+          <CardContent className="p-3 lg:p-4">
+            <div className="space-y-2 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
+                <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.incidents')}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalIncidents}</p>
+                <p className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalIncidents}</p>
               </div>
-              <Shield className="h-8 w-8 text-red-500 flex-shrink-0" />
+              <Shield className="h-6 w-6 lg:h-8 lg:w-8 text-red-500 flex-shrink-0 self-end lg:self-auto" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+          <CardContent className="p-3 lg:p-4">
+            <div className="space-y-2 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
+                <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.status')}
                 </p>
-                <p className="text-sm font-bold text-green-600 truncate">{activePatrol ? 'On Patrol' : t('dashboard.active')}</p>
+                <p className="text-sm lg:text-base font-bold text-green-600 truncate">{activePatrol ? 'On Patrol' : t('dashboard.active')}</p>
               </div>
-              <User className="h-8 w-8 text-blue-500 flex-shrink-0" />
+              <User className="h-6 w-6 lg:h-8 lg:w-8 text-blue-500 flex-shrink-0 self-end lg:self-auto" />
             </div>
           </CardContent>
         </Card>
