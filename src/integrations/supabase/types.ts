@@ -3651,15 +3651,7 @@ export type Database = {
           site_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "site_supervisor_notification_settings_site_id_fkey"
-            columns: ["site_id"]
-            isOneToOne: false
-            referencedRelation: "guardian_sites"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       supervisor_report_history: {
         Row: {
@@ -3708,7 +3700,7 @@ export type Database = {
       supervisor_reports: {
         Row: {
           created_at: string
-          description: string | null
+          description: Json | null
           guard_id: string | null
           id: string
           image_url: string | null
@@ -3730,7 +3722,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          description?: string | null
+          description?: Json | null
           guard_id?: string | null
           id?: string
           image_url?: string | null
@@ -3752,7 +3744,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          description?: string | null
+          description?: Json | null
           guard_id?: string | null
           id?: string
           image_url?: string | null
