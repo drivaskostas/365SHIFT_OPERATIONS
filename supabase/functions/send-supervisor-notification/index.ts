@@ -59,49 +59,37 @@ const handler = async (req: Request): Promise<Response> => {
 
     const siteName = siteData?.name || 'Unknown Site';
 
-    // Get all admin and manager emails
-    const { data: adminUsers } = await supabase
-      .from('user_roles')
-      .select('user_id, profiles!inner(email, full_name)')
-      .in('role', ['admin', 'super_admin', 'manager']);
-
-    // Get site supervisor notification settings
+    // Get site supervisor notification settings with severity filtering
     const { data: siteNotifications } = await supabase
       .from('site_supervisor_notification_settings')
-      .select('email')
+      .select('email, severity_filters')
       .eq('site_id', report.site_id)
       .eq('active', true);
 
-    // Get client emails for this team
-    const { data: clientUsers } = await supabase
-      .from('client_teams')
-      .select('client_id, profiles!inner(email, full_name)')
-      .eq('team_id', report.team_id);
+    console.log('Site notification settings found:', siteNotifications?.length || 0);
 
-    // Collect all recipient emails
+    // Collect recipient emails with severity filtering
     const recipients = new Set<string>();
 
-    // Add admin/manager emails
-    adminUsers?.forEach(user => {
-      if (user.profiles?.email) recipients.add(user.profiles.email);
-    });
+    if (siteNotifications && siteNotifications.length > 0) {
+      siteNotifications.forEach(setting => {
+        if (setting.email) {
+          // Check if this recipient wants notifications for this severity
+          if (!setting.severity_filters || 
+              (Array.isArray(setting.severity_filters) && setting.severity_filters.includes(report.severity))) {
+            recipients.add(setting.email);
+            console.log(`✅ Added recipient: ${setting.email} for severity: ${report.severity}`);
+          } else {
+            console.log(`⏭️ Skipped recipient: ${setting.email} - severity ${report.severity} not in filters:`, setting.severity_filters);
+          }
+        }
+      });
+    }
 
-    // Add site notification emails
-    siteNotifications?.forEach(setting => {
-      if (setting.email) recipients.add(setting.email);
-    });
-
-    // Add client emails
-    clientUsers?.forEach(client => {
-      if (client.profiles?.email) recipients.add(client.profiles.email);
-    });
-
+    // Fallback to default email if no site-specific recipients found
     if (recipients.size === 0) {
-      console.log('⚠️ No recipients found for notification');
-      return new Response(
-        JSON.stringify({ message: 'No recipients found' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      recipients.add('drivas@ovitsec.com');
+      console.log('📧 No site-specific recipients found, using fallback email: drivas@ovitsec.com');
     }
 
     console.log(`📧 Sending emails to ${recipients.size} recipients`);
