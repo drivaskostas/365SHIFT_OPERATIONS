@@ -7,22 +7,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface SupervisorReportPayload {
-  record: {
-    id: string;
-    supervisor_id: string;
-    supervisor_name: string;
-    site_id: string;
-    team_id: string;
-    title: string;
-    description: string;
-    severity: string;
-    location: string;
-    created_at: string;
-  };
-  schema: string;
-  table: string;
-  type: string;
+interface SupervisorReportRequest {
+  reportId: string;
+  supervisorId: string;
+  supervisorName: string;
+  siteId: string;
+  teamId: string;
+  title: string;
+  description: string;
+  severity: string;
+  location: string;
+  createdAt: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -45,16 +40,15 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const resend = new Resend(resendApiKey);
 
-    const payload: SupervisorReportPayload = await req.json();
-    const report = payload.record;
+    const report: SupervisorReportRequest = await req.json();
 
-    console.log('📨 Processing supervisor report notification:', report.id);
+    console.log('📨 Processing supervisor report notification:', report.reportId);
 
     // Get site name
     const { data: siteData } = await supabase
       .from('guardian_sites')
       .select('name')
-      .eq('id', report.site_id)
+      .eq('id', report.siteId)
       .single();
 
     const siteName = siteData?.name || 'Unknown Site';
@@ -63,7 +57,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: siteNotifications } = await supabase
       .from('site_supervisor_notification_settings')
       .select('email, severity_filters')
-      .eq('site_id', report.site_id)
+      .eq('site_id', report.siteId)
       .eq('active', true);
 
     console.log('Site notification settings found:', siteNotifications?.length || 0);
@@ -133,8 +127,8 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 0 0 8px 0; color: #374151; font-weight: 600;">Site Details:</p>
               <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Site:</strong> ${siteName}</p>
               <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Location:</strong> ${report.location || 'Not specified'}</p>
-              <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Supervisor:</strong> ${report.supervisor_name}</p>
-              <p style="margin: 0; color: #6b7280;"><strong>Date:</strong> ${new Date(report.created_at).toLocaleString('el-GR')}</p>
+              <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Supervisor:</strong> ${report.supervisorName}</p>
+              <p style="margin: 0; color: #6b7280;"><strong>Date:</strong> ${new Date(report.createdAt).toLocaleString('el-GR')}</p>
             </div>
             
             ${parsedDescription?.behavioral_observation ? `
@@ -155,7 +149,7 @@ const handler = async (req: Request): Promise<Response> => {
           <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center;">
             <p style="margin: 0; color: #9ca3af; font-size: 12px;">
               This supervisor report was submitted through the OVIT Security system.<br>
-              Report ID: ${report.id}
+              Report ID: ${report.reportId}
             </p>
           </div>
         </div>
@@ -185,9 +179,9 @@ const handler = async (req: Request): Promise<Response> => {
         recipient_email: email,
         subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()}`,
         html_content: htmlContent,
-        reference_id: report.id,
-        team_id: report.team_id,
-        site_id: report.site_id,
+        reference_id: report.reportId,
+        team_id: report.teamId,
+        site_id: report.siteId,
         status: 'sent'
       });
     });
