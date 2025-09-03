@@ -28,8 +28,9 @@ export const TestEmailButton: React.FC<TestEmailButtonProps> = ({ userRoles }) =
 
       const { data, error } = await supabase.functions.invoke('test-email', {
         body: { 
-          recipientEmail: user.email,
-          recipientName: user.user_metadata?.full_name || 'Admin User'
+          recipient: user.email,
+          subject: 'Test Email από OVIT Security',
+          message: `Αυτό είναι ένα test email από το σύστημα OVIT Security για τον χρήστη ${user.user_metadata?.full_name || user.email}.`
         }
       });
 
