@@ -267,27 +267,8 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
 
       if (error) throw error;
 
-      // Trigger notification edge function
-      if (data && selectedSiteData) {
-        try {
-          await supabase.functions.invoke('send-supervisor-notification', {
-            body: {
-              reportId: data.id,
-              siteId: selectedSite,
-              teamId: selectedSiteData.team_id,
-              supervisorName: data.supervisor_name || 'Unknown Supervisor',
-              siteName: selectedSiteData.name,
-              severity: data.severity,
-              title: data.title,
-              description: JSON.parse(data.description || '{}')
-            }
-          });
-          console.log('Notification sent successfully');
-        } catch (notificationError) {
-          console.error('Failed to send notifications:', notificationError);
-          // Don't fail the whole operation if notifications fail
-        }
-      }
+      // Notifications are handled automatically by database trigger
+      console.log('Supervisor report submitted successfully, notifications sent via trigger');
 
       toast({
         title: language === 'el' ? 'Επιτυχία' : 'Success',
