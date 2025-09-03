@@ -413,7 +413,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send emails to all recipients
     const emailPromises = Array.from(recipients).map(email => {
       return resend.emails.send({
-        from: 'OVIT Security <notifications@ovitsec.com>',
+        from: 'OVIT Security <onboarding@resend.dev>',
         to: [email],
         subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()}`,
         html: htmlContent
