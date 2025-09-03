@@ -22,6 +22,9 @@ interface SupervisorReportRequest {
   testMode?: boolean;
 }
 
+// Simple in-memory deduplication store (resets on function restart)
+const processedNotifications = new Map<string, number>();
+
 const handler = async (req: Request): Promise<Response> => {
   console.log('🚀 Supervisor notification function started');
 
@@ -45,6 +48,33 @@ const handler = async (req: Request): Promise<Response> => {
     const report: SupervisorReportRequest = await req.json();
 
     console.log('📨 Processing supervisor report notification for:', report.title);
+
+    // Create deduplication key based on report data
+    const deduplicationKey = `${report.siteId}-${report.supervisorId}-${report.title}-${report.timestamp}`;
+    const now = Date.now();
+    
+    // Check if we've processed this notification in the last 5 minutes
+    const lastProcessed = processedNotifications.get(deduplicationKey);
+    if (lastProcessed && (now - lastProcessed) < 300000) { // 5 minutes
+      console.log(`⏭️ Skipping duplicate notification for key: ${deduplicationKey}`);
+      return new Response(
+        JSON.stringify({ message: 'Duplicate notification skipped' }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Mark this notification as processed
+    processedNotifications.set(deduplicationKey, now);
+
+    // Clean up old entries (keep only last hour)
+    for (const [key, timestamp] of processedNotifications.entries()) {
+      if (now - timestamp > 3600000) { // 1 hour
+        processedNotifications.delete(key);
+      }
+    }
 
     // Get site name
     const { data: siteData } = await supabase
