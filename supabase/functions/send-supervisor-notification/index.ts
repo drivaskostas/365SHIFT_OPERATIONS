@@ -8,16 +8,18 @@ const corsHeaders = {
 };
 
 interface SupervisorReportRequest {
-  reportId: string;
-  supervisorId: string;
-  supervisorName: string;
-  siteId: string;
-  teamId: string;
   title: string;
   description: string;
   severity: string;
+  supervisorName: string;
+  timestamp: string;
   location: string;
-  createdAt: string;
+  incidentTime: string;
+  imageUrl?: string;
+  siteId: string;
+  teamId: string;
+  supervisorId: string;
+  testMode?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -42,7 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const report: SupervisorReportRequest = await req.json();
 
-    console.log('📨 Processing supervisor report notification:', report.reportId);
+    console.log('📨 Processing supervisor report notification for:', report.title);
 
     // Get site name
     const { data: siteData } = await supabase
@@ -150,7 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Site:</strong> ${siteName}</p>
               <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Location:</strong> ${report.location || 'Not specified'}</p>
               <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Supervisor:</strong> ${report.supervisorName}</p>
-              <p style="margin: 0; color: #6b7280;"><strong>Date:</strong> ${new Date(report.createdAt).toLocaleString('el-GR')}</p>
+              <p style="margin: 0; color: #6b7280;"><strong>Date:</strong> ${new Date(report.timestamp).toLocaleString('el-GR')}</p>
             </div>
             
             ${parsedDescription?.behavioral_observation ? `
@@ -171,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
           <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center;">
             <p style="margin: 0; color: #9ca3af; font-size: 12px;">
               This supervisor report was submitted through the OVIT Security system.<br>
-              Report ID: ${report.reportId}
+              Site: ${siteName} | Supervisor: ${report.supervisorName}
             </p>
           </div>
         </div>
@@ -201,7 +203,7 @@ const handler = async (req: Request): Promise<Response> => {
         recipient_email: email,
         subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()}`,
         html_content: htmlContent,
-        reference_id: report.reportId,
+        reference_id: null, // No reportId available from trigger
         team_id: report.teamId,
         site_id: report.siteId,
         status: 'sent'

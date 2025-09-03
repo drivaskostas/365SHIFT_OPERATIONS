@@ -68,13 +68,58 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('Site recipients before filtering:', siteRecipients);
 
       if (siteRecipients && siteRecipients.length > 0) {
-        // Filter by severity (ensure notify_for_severity is an array)
-        recipients = siteRecipients.filter(recipient => 
-          recipient.notify_for_severity && 
-          Array.isArray(recipient.notify_for_severity) &&
-          recipient.notify_for_severity.includes(severity)
-        );
+        // Filter by severity - be more lenient with the filtering
+        recipients = siteRecipients.filter(recipient => {
+          if (!recipient.email) return false;
+          
+          // If no severity filter is set, include the recipient
+          if (!recipient.notify_for_severity) return true;
+          
+          // If severity filter is set and is an array, check if it includes the severity
+          if (Array.isArray(recipient.notify_for_severity)) {
+            return recipient.notify_for_severity.includes(severity);
+          }
+          
+          // If severity filter is not an array, include the recipient
+          return true;
+        });
         console.log('Site recipients after severity filtering:', recipients.length);
+      }
+    }
+
+    // If still no recipients and no siteId, try to get recipients for any active site in the team
+    if (recipients.length === 0 && !testMode && teamId && !siteId) {
+      console.log('No siteId provided, looking for recipients in team sites:', teamId);
+      
+      const { data: teamSiteRecipients } = await supabase
+        .from('site_notification_settings')
+        .select(`
+          email, 
+          name, 
+          notify_for_severity,
+          guardian_sites!inner(team_id)
+        `)
+        .eq('guardian_sites.team_id', teamId)
+        .eq('active', true);
+
+      console.log('Team site recipients found:', teamSiteRecipients?.length || 0);
+
+      if (teamSiteRecipients && teamSiteRecipients.length > 0) {
+        recipients = teamSiteRecipients.filter(recipient => {
+          if (!recipient.email) return false;
+          
+          // If no severity filter is set, include the recipient
+          if (!recipient.notify_for_severity) return true;
+          
+          // If severity filter is set and is an array, check if it includes the severity
+          if (Array.isArray(recipient.notify_for_severity)) {
+            return recipient.notify_for_severity.includes(severity);
+          }
+          
+          // If severity filter is not an array, include the recipient
+          return true;
+        });
+        console.log('Team site recipients after filtering:', recipients.length);
       }
     }
 
