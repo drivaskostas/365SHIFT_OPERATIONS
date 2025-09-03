@@ -5,11 +5,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { FileText, X, MapPin } from 'lucide-react';
+import { FileText, X, MapPin, Users } from 'lucide-react';
+import { 
+  REPORT_TITLES, 
+  REPORT_TYPES, 
+  OBSERVATION_TYPES, 
+  PERFORMANCE_RATINGS, 
+  COMPLIANCE_STATUS, 
+  EQUIPMENT_STATUS, 
+  IMMEDIATE_ACTIONS, 
+  WEATHER_CONDITIONS,
+  SupervisorReportDescription,
+  getSeverityColor 
+} from "@/constants/supervisorReports";
 
 interface SupervisorReportFormProps {
   onClose: () => void;
@@ -47,14 +60,26 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
 
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
     severity: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     guard_id: '',
     location_text: '',
     incident_time: new Date().toISOString().slice(0, 16),
-    immediate_action_taken: '',
-    corrective_measures: '',
-    additional_notes: ''
+    // Structured description fields
+    description: {
+      report_type: '' as keyof typeof REPORT_TYPES | '',
+      observation_type: '' as keyof typeof OBSERVATION_TYPES | '',
+      selected_guards: [] as string[],
+      behavioral_observation: '',
+      performance_rating: '' as keyof typeof PERFORMANCE_RATINGS | '',
+      compliance_status: '' as keyof typeof COMPLIANCE_STATUS | '',
+      safety_concerns: '',
+      other_findings: '',
+      equipment_status: '' as keyof typeof EQUIPMENT_STATUS | '',
+      immediate_action_taken: '' as keyof typeof IMMEDIATE_ACTIONS | '',
+      corrective_measures: '',
+      weather_conditions: '' as keyof typeof WEATHER_CONDITIONS | '',
+      additional_notes: ''
+    } as SupervisorReportDescription
   });
 
   useEffect(() => {
@@ -214,20 +239,23 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
         supervisor_name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
         site_id: selectedSite,
         team_id: selectedSiteData?.team_id,
-        guard_id: formData.guard_id || null,
+        guard_id: formData.description.selected_guards?.[0] || null, // Primary guard for compatibility
         title: formData.title,
-        description: formData.description,
+        description: JSON.stringify(formData.description), // Store as JSON
         severity: formData.severity,
         location: formData.location_text,
         latitude: location.latitude,
         longitude: location.longitude,
         incident_time: formData.incident_time ? new Date(formData.incident_time).toISOString() : null,
         image_url: imageUrl || null,
-        notes: JSON.stringify([
-          { field: 'immediate_action_taken', value: formData.immediate_action_taken },
-          { field: 'corrective_measures', value: formData.corrective_measures },
-          { field: 'additional_notes', value: formData.additional_notes }
-        ].filter(note => note.value.trim() !== ''))
+        notes: JSON.stringify(formData.description.selected_guards?.map(guardId => {
+          const guard = guards.find(g => g.profile_id === guardId);
+          return {
+            type: 'guard_selection',
+            guard_id: guardId,
+            guard_name: guard ? getGuardName(guard) : 'Unknown'
+          };
+        }) || [])
       };
 
       const { error } = await supabase
@@ -333,46 +361,241 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
 
               <div>
                 <Label htmlFor="title">{language === 'el' ? 'Τίτλος' : 'Title'} *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  placeholder={language === 'el' ? 'Συντομη περιγραφή της αναφοράς' : 'Brief description of the report'}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="description">{language === 'el' ? 'Περιγραφή' : 'Description'}</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder={language === 'el' ? 'Λεπτομερής περιγραφή...' : 'Detailed description...'}
-                  rows={4}
-                />
-              </div>
-            </div>
-
-            {/* Guard Selection */}
-            {guards.length > 0 && (
-              <div>
-                <Label htmlFor="guard">{language === 'el' ? 'Φύλακας (προαιρετικό)' : 'Guard (optional)'}</Label>
-                <Select value={formData.guard_id} onValueChange={(value) => setFormData({...formData, guard_id: value})}>
+                <Select value={formData.title} onValueChange={(value) => setFormData({...formData, title: value})}>
                   <SelectTrigger>
-                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε φύλακα' : 'Select guard'} />
+                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε τύπο αναφοράς' : 'Select report type'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{language === 'el' ? 'Χωρίς επιλογή' : 'No selection'}</SelectItem>
-                    {guards.map((guard) => (
-                      <SelectItem key={guard.profile_id} value={guard.profile_id}>
-                        {getGuardName(guard)}
+                    {Object.entries(REPORT_TITLES).map(([key, value]) => (
+                      <SelectItem key={key} value={value}>
+                        {value}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="report_type">{language === 'el' ? 'Τύπος Αναφοράς' : 'Report Type'}</Label>
+                  <Select 
+                    value={formData.description.report_type} 
+                    onValueChange={(value) => setFormData({
+                      ...formData, 
+                      description: {...formData.description, report_type: value as keyof typeof REPORT_TYPES}
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε τύπο' : 'Select type'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(REPORT_TYPES).map(([key, value]) => (
+                        <SelectItem key={key} value={key}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="observation_type">{language === 'el' ? 'Τύπος Παρατήρησης' : 'Observation Type'}</Label>
+                  <Select 
+                    value={formData.description.observation_type} 
+                    onValueChange={(value) => setFormData({
+                      ...formData, 
+                      description: {...formData.description, observation_type: value as keyof typeof OBSERVATION_TYPES}
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε τύπο παρατήρησης' : 'Select observation type'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(OBSERVATION_TYPES).map(([key, value]) => (
+                        <SelectItem key={key} value={key}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Guard Selection - Multiple */}
+            {guards.length > 0 && (
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  {language === 'el' ? 'Φύλακες (επιλογή πολλαπλών)' : 'Guards (multiple selection)'}
+                </Label>
+                <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                  {guards.map((guard) => (
+                    <div key={guard.profile_id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`guard-${guard.profile_id}`}
+                        checked={formData.description.selected_guards?.includes(guard.profile_id)}
+                        onCheckedChange={(checked) => {
+                          const currentGuards = formData.description.selected_guards || [];
+                          const newGuards = checked 
+                            ? [...currentGuards, guard.profile_id]
+                            : currentGuards.filter(id => id !== guard.profile_id);
+                          setFormData({
+                            ...formData,
+                            description: {...formData.description, selected_guards: newGuards}
+                          });
+                        }}
+                      />
+                      <Label htmlFor={`guard-${guard.profile_id}`} className="text-sm">
+                        {getGuardName(guard)}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
+
+            {/* Performance & Compliance */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">{language === 'el' ? 'Αξιολόγηση & Συμμόρφωση' : 'Assessment & Compliance'}</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="performance_rating">{language === 'el' ? 'Αξιολόγηση Απόδοσης' : 'Performance Rating'}</Label>
+                  <Select 
+                    value={formData.description.performance_rating} 
+                    onValueChange={(value) => setFormData({
+                      ...formData, 
+                      description: {...formData.description, performance_rating: value as keyof typeof PERFORMANCE_RATINGS}
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε αξιολόγηση' : 'Select rating'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(PERFORMANCE_RATINGS).map(([key, value]) => (
+                        <SelectItem key={key} value={key}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="compliance_status">{language === 'el' ? 'Κατάσταση Συμμόρφωσης' : 'Compliance Status'}</Label>
+                  <Select 
+                    value={formData.description.compliance_status} 
+                    onValueChange={(value) => setFormData({
+                      ...formData, 
+                      description: {...formData.description, compliance_status: value as keyof typeof COMPLIANCE_STATUS}
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε κατάσταση' : 'Select status'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(COMPLIANCE_STATUS).map(([key, value]) => (
+                        <SelectItem key={key} value={key}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="equipment_status">{language === 'el' ? 'Κατάσταση Εξοπλισμού' : 'Equipment Status'}</Label>
+                  <Select 
+                    value={formData.description.equipment_status} 
+                    onValueChange={(value) => setFormData({
+                      ...formData, 
+                      description: {...formData.description, equipment_status: value as keyof typeof EQUIPMENT_STATUS}
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε κατάσταση εξοπλισμού' : 'Select equipment status'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(EQUIPMENT_STATUS).map(([key, value]) => (
+                        <SelectItem key={key} value={key}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="weather_conditions">{language === 'el' ? 'Καιρικές Συνθήκες' : 'Weather Conditions'}</Label>
+                  <Select 
+                    value={formData.description.weather_conditions} 
+                    onValueChange={(value) => setFormData({
+                      ...formData, 
+                      description: {...formData.description, weather_conditions: value as keyof typeof WEATHER_CONDITIONS}
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={language === 'el' ? 'Επιλέξτε καιρικές συνθήκες' : 'Select weather conditions'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(WEATHER_CONDITIONS).map(([key, value]) => (
+                        <SelectItem key={key} value={key}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Observations */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">{language === 'el' ? 'Λεπτομερείς Παρατηρήσεις' : 'Detailed Observations'}</h3>
+              
+              <div>
+                <Label htmlFor="behavioral_observation">{language === 'el' ? 'Παρατήρηση Συμπεριφοράς' : 'Behavioral Observation'}</Label>
+                <Textarea
+                  id="behavioral_observation"
+                  value={formData.description.behavioral_observation}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    description: {...formData.description, behavioral_observation: e.target.value}
+                  })}
+                  placeholder={language === 'el' ? 'Λεπτομερής περιγραφή συμπεριφοράς...' : 'Detailed behavioral observations...'}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="safety_concerns">{language === 'el' ? 'Ανησυχίες Ασφάλειας' : 'Safety Concerns'}</Label>
+                <Textarea
+                  id="safety_concerns"
+                  value={formData.description.safety_concerns}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    description: {...formData.description, safety_concerns: e.target.value}
+                  })}
+                  placeholder={language === 'el' ? 'Περιγραφή ανησυχιών ασφάλειας...' : 'Describe safety concerns...'}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="other_findings">{language === 'el' ? 'Άλλα Ευρήματα' : 'Other Findings'}</Label>
+                <Textarea
+                  id="other_findings"
+                  value={formData.description.other_findings}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    description: {...formData.description, other_findings: e.target.value}
+                  })}
+                  placeholder={language === 'el' ? 'Άλλα σημαντικά ευρήματα...' : 'Other significant findings...'}
+                  rows={3}
+                />
+              </div>
+            </div>
 
             {/* Location & Time */}
             <div className="space-y-4">
@@ -406,25 +629,39 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
 
             {/* Actions */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">{language === 'el' ? 'Δράσεις & Παρατηρήσεις' : 'Actions & Observations'}</h3>
+              <h3 className="text-lg font-medium">{language === 'el' ? 'Δράσεις & Διορθωτικά Μέτρα' : 'Actions & Corrective Measures'}</h3>
               
               <div>
                 <Label htmlFor="immediate_action">{language === 'el' ? 'Άμεση Δράση που Λήφθηκε' : 'Immediate Action Taken'}</Label>
-                <Textarea
-                  id="immediate_action"
-                  value={formData.immediate_action_taken}
-                  onChange={(e) => setFormData({...formData, immediate_action_taken: e.target.value})}
-                  placeholder={language === 'el' ? 'Περιγράψτε τις άμεσες δράσεις...' : 'Describe immediate actions taken...'}
-                  rows={3}
-                />
+                <Select 
+                  value={formData.description.immediate_action_taken} 
+                  onValueChange={(value) => setFormData({
+                    ...formData, 
+                    description: {...formData.description, immediate_action_taken: value as keyof typeof IMMEDIATE_ACTIONS}
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={language === 'el' ? 'Επιλέξτε άμεση δράση' : 'Select immediate action'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(IMMEDIATE_ACTIONS).map(([key, value]) => (
+                      <SelectItem key={key} value={key}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
                 <Label htmlFor="corrective_measures">{language === 'el' ? 'Διορθωτικά Μέτρα' : 'Corrective Measures'}</Label>
                 <Textarea
                   id="corrective_measures"
-                  value={formData.corrective_measures}
-                  onChange={(e) => setFormData({...formData, corrective_measures: e.target.value})}
+                  value={formData.description.corrective_measures}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    description: {...formData.description, corrective_measures: e.target.value}
+                  })}
                   placeholder={language === 'el' ? 'Προτεινόμενα διορθωτικά μέτρα...' : 'Recommended corrective measures...'}
                   rows={3}
                 />
@@ -434,8 +671,11 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
                 <Label htmlFor="additional_notes">{language === 'el' ? 'Επιπλέον Σημειώσεις' : 'Additional Notes'}</Label>
                 <Textarea
                   id="additional_notes"
-                  value={formData.additional_notes}
-                  onChange={(e) => setFormData({...formData, additional_notes: e.target.value})}
+                  value={formData.description.additional_notes}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    description: {...formData.description, additional_notes: e.target.value}
+                  })}
                   placeholder={language === 'el' ? 'Οποιεσδήποτε επιπλέον παρατηρήσεις...' : 'Any additional observations...'}
                   rows={3}
                 />
