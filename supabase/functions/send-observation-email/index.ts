@@ -52,43 +52,29 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Processing observation notification for observation:', observationId);
 
-    // Get notification recipients using the same logic as emergency reports
+    // Get notification recipients using the same table as emergency reports
     let recipients: any[] = [];
 
     if (siteId && !testMode) {
-      // Try site-specific recipients first (same table as emergency reports)
+      console.log('Looking for recipients for siteId:', siteId);
+      // Use the same table as emergency reports that actually works
       const { data: siteRecipients } = await supabase
-        .from('site_supervisor_notification_settings')
+        .from('site_notification_settings')
         .select('email, name, notify_for_severity')
         .eq('site_id', siteId)
         .eq('active', true);
 
+      console.log('Raw site recipients found:', siteRecipients?.length || 0);
       console.log('Site recipients before filtering:', siteRecipients);
 
       if (siteRecipients && siteRecipients.length > 0) {
-        // Filter by severity
+        // Filter by severity (ensure notify_for_severity is an array)
         recipients = siteRecipients.filter(recipient => 
-          recipient.notify_for_severity && recipient.notify_for_severity.includes(severity)
+          recipient.notify_for_severity && 
+          Array.isArray(recipient.notify_for_severity) &&
+          recipient.notify_for_severity.includes(severity)
         );
         console.log('Site recipients after severity filtering:', recipients.length);
-      }
-    }
-
-    // If no site recipients and we have teamId, try team-based recipients
-    if (recipients.length === 0 && teamId && !testMode) {
-      console.log('No site recipients found, trying team-based recipients for teamId:', teamId);
-      
-      const { data: teamRecipients } = await supabase
-        .from('site_supervisor_notification_settings')
-        .select('email, name, notify_for_severity')
-        .eq('team_id', teamId)
-        .eq('active', true);
-
-      if (teamRecipients && teamRecipients.length > 0) {
-        recipients = teamRecipients.filter(recipient => 
-          recipient.notify_for_severity && recipient.notify_for_severity.includes(severity)
-        );
-        console.log('Team recipients after severity filtering:', recipients.length);
       }
     }
 

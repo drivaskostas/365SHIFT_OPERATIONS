@@ -53,37 +53,58 @@ const handler = async (req: Request): Promise<Response> => {
 
     const siteName = siteData?.name || 'Unknown Site';
 
-    // Get site supervisor notification settings with severity filtering
-    const { data: siteNotifications } = await supabase
-      .from('site_supervisor_notification_settings')
-      .select('email, severity_filters')
+    // Get notification recipients using the same table as emergency reports that works
+    const { data: siteRecipients } = await supabase
+      .from('site_notification_settings')
+      .select('email, name, notify_for_severity')
       .eq('site_id', report.siteId)
       .eq('active', true);
 
-    console.log('Site notification settings found:', siteNotifications?.length || 0);
+    console.log('Raw site recipients found:', siteRecipients?.length || 0);
+    console.log('Site recipients before filtering:', siteRecipients);
 
-    // Collect recipient emails with severity filtering
+    // Collect recipient emails with severity filtering (same logic as emergency reports)
     const recipients = new Set<string>();
 
-    if (siteNotifications && siteNotifications.length > 0) {
-      siteNotifications.forEach(setting => {
-        if (setting.email) {
-          // Check if this recipient wants notifications for this severity
-          if (!setting.severity_filters || 
-              (Array.isArray(setting.severity_filters) && setting.severity_filters.includes(report.severity))) {
-            recipients.add(setting.email);
-            console.log(`✅ Added recipient: ${setting.email} for severity: ${report.severity}`);
-          } else {
-            console.log(`⏭️ Skipped recipient: ${setting.email} - severity ${report.severity} not in filters:`, setting.severity_filters);
-          }
+    if (siteRecipients && siteRecipients.length > 0) {
+      siteRecipients.forEach(recipient => {
+        if (recipient.email && 
+            recipient.notify_for_severity && 
+            Array.isArray(recipient.notify_for_severity) &&
+            recipient.notify_for_severity.includes(report.severity)) {
+          recipients.add(recipient.email);
+          console.log(`✅ Added recipient: ${recipient.email} for severity: ${report.severity}`);
+        } else {
+          console.log(`⏭️ Skipped recipient: ${recipient.email} - severity ${report.severity} not in filters:`, recipient.notify_for_severity);
         }
       });
     }
 
-    // Fallback to default email if no site-specific recipients found
+    // If no site recipients, fallback to admin users (same as emergency reports)
     if (recipients.size === 0) {
-      recipients.add('drivas@ovitsec.com');
-      console.log('📧 No site-specific recipients found, using fallback email: drivas@ovitsec.com');
+      console.log('No site recipients found, falling back to admins');
+      
+      const { data: adminUsers } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          profiles!inner(email, first_name, last_name, full_name)
+        `)
+        .in('role', ['admin', 'super_admin']);
+
+      if (adminUsers) {
+        adminUsers.forEach(user => {
+          if (user.profiles.email) {
+            recipients.add(user.profiles.email);
+          }
+        });
+      }
+      
+      // Final fallback
+      if (recipients.size === 0) {
+        recipients.add('drivas@ovitsec.com');
+        console.log('📧 Using final fallback email: drivas@ovitsec.com');
+      }
     }
 
     console.log(`📧 Sending emails to ${recipients.size} recipients`);
