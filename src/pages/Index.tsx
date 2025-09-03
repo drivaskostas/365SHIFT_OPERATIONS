@@ -7,6 +7,7 @@ import PatrolDashboard from '@/components/PatrolDashboard';
 import QRScanner from '@/components/QRScanner';
 import PatrolObservation from '@/components/PatrolObservation';
 import EnhancedEmergencyReport from '@/components/EnhancedEmergencyReport';
+import NotificationBell from '@/components/NotificationBell';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { LanguageProvider, useLanguage } from '@/hooks/useLanguage';
@@ -105,6 +106,7 @@ function AppContent() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <NotificationBell />
               <Button variant="glass" size="sm" onClick={() => setDarkMode(!darkMode)} className="hover:scale-105">
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
