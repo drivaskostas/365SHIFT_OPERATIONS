@@ -267,24 +267,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
 
       if (error) throw error;
 
-      // Call supervisor notification edge function directly
-      console.log('Calling supervisor notification edge function...');
-      await supabase.functions.invoke('send-supervisor-notification', {
-        body: {
-          reportId: data.id,
-          supervisorId: data.supervisor_id,
-          supervisorName: data.supervisor_name,
-          siteId: data.site_id,
-          teamId: data.team_id,
-          title: data.title,
-          description: typeof data.description === 'object' ? JSON.stringify(data.description) : data.description,
-          severity: data.severity,
-          location: data.location,
-          createdAt: data.created_at
-        }
-      });
-
-      console.log('Supervisor report submitted successfully, notifications sent via edge function');
+      console.log('Supervisor report submitted successfully, notifications will be sent via database trigger');
 
       toast({
         title: language === 'el' ? 'Επιτυχία' : 'Success',
