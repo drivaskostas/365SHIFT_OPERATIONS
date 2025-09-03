@@ -53,29 +53,30 @@ const handler = async (req: Request): Promise<Response> => {
 
     const siteName = siteData?.name || 'Unknown Site';
 
-    // Get notification recipients using the same table as emergency reports that works
-    const { data: siteRecipients } = await supabase
-      .from('site_notification_settings')
+    // Get notification recipients using site_supervisor_notification_settings (correct table for supervisors)
+    const { data: siteNotifications } = await supabase
+      .from('site_supervisor_notification_settings')
       .select('email, name, notify_for_severity')
       .eq('site_id', report.siteId)
       .eq('active', true);
 
-    console.log('Raw site recipients found:', siteRecipients?.length || 0);
-    console.log('Site recipients before filtering:', siteRecipients);
+    console.log('Site supervisor notification settings found:', siteNotifications?.length || 0);
+    console.log('Site recipients before filtering:', siteNotifications);
 
-    // Collect recipient emails with severity filtering (same logic as emergency reports)
+    // Collect recipient emails with severity filtering (use correct column name)
     const recipients = new Set<string>();
 
-    if (siteRecipients && siteRecipients.length > 0) {
-      siteRecipients.forEach(recipient => {
-        if (recipient.email && 
-            recipient.notify_for_severity && 
-            Array.isArray(recipient.notify_for_severity) &&
-            recipient.notify_for_severity.includes(report.severity)) {
-          recipients.add(recipient.email);
-          console.log(`✅ Added recipient: ${recipient.email} for severity: ${report.severity}`);
-        } else {
-          console.log(`⏭️ Skipped recipient: ${recipient.email} - severity ${report.severity} not in filters:`, recipient.notify_for_severity);
+    if (siteNotifications && siteNotifications.length > 0) {
+      siteNotifications.forEach(setting => {
+        if (setting.email) {
+          // Check if this recipient wants notifications for this severity
+          if (!setting.notify_for_severity || 
+              (Array.isArray(setting.notify_for_severity) && setting.notify_for_severity.includes(report.severity))) {
+            recipients.add(setting.email);
+            console.log(`✅ Added recipient: ${setting.email} for severity: ${report.severity}`);
+          } else {
+            console.log(`⏭️ Skipped recipient: ${setting.email} - severity ${report.severity} not in filters:`, setting.notify_for_severity);
+          }
         }
       });
     }
