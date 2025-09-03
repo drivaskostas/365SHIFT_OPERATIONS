@@ -52,66 +52,71 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Processing observation notification for observation:', observationId);
 
-    // Get notification recipients based on site and severity
+    // Get notification recipients using the same logic as emergency reports
     let recipients: any[] = [];
 
     if (siteId && !testMode) {
+      // Try site-specific recipients first (same table as emergency reports)
       const { data: siteRecipients } = await supabase
-        .from('site_notification_settings')
+        .from('site_supervisor_notification_settings')
         .select('email, name, notify_for_severity')
         .eq('site_id', siteId)
         .eq('active', true);
 
-      if (siteRecipients) {
+      console.log('Site recipients before filtering:', siteRecipients);
+
+      if (siteRecipients && siteRecipients.length > 0) {
+        // Filter by severity
         recipients = siteRecipients.filter(recipient => 
-          recipient.notify_for_severity.includes(severity)
+          recipient.notify_for_severity && recipient.notify_for_severity.includes(severity)
         );
+        console.log('Site recipients after severity filtering:', recipients.length);
       }
     }
 
-    // If no site-specific recipients or no siteId, get team-based recipients
+    // If no site recipients and we have teamId, try team-based recipients
     if (recipients.length === 0 && teamId && !testMode) {
+      console.log('No site recipients found, trying team-based recipients for teamId:', teamId);
+      
       const { data: teamRecipients } = await supabase
-        .from('notification_settings')
-        .select(`
-          email,
-          profiles!inner(email, first_name, last_name, full_name)
-        `)
+        .from('site_supervisor_notification_settings')
+        .select('email, name, notify_for_severity')
         .eq('team_id', teamId)
         .eq('active', true);
 
-      if (teamRecipients) {
-        recipients = teamRecipients.map(setting => ({
-          email: setting.profiles.email,
-          name: setting.profiles.full_name || 
-                `${setting.profiles.first_name} ${setting.profiles.last_name}`.trim() ||
-                setting.profiles.email
+      if (teamRecipients && teamRecipients.length > 0) {
+        recipients = teamRecipients.filter(recipient => 
+          recipient.notify_for_severity && recipient.notify_for_severity.includes(severity)
+        );
+        console.log('Team recipients after severity filtering:', recipients.length);
+      }
+    }
+
+    // If still no recipients, use admin fallback (same as emergency reports)
+    if (recipients.length === 0 && !testMode) {
+      console.log('No specific recipients found, falling back to admins');
+      
+      const { data: adminUsers } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          profiles!inner(email, first_name, last_name, full_name)
+        `)
+        .in('role', ['admin', 'super_admin']);
+
+      if (adminUsers) {
+        recipients = adminUsers.map(user => ({
+          email: user.profiles.email,
+          name: user.profiles.full_name || 
+                `${user.profiles.first_name} ${user.profiles.last_name}`.trim() ||
+                user.profiles.email
         })).filter(recipient => recipient.email);
       }
     }
 
-    // If still no recipients or test mode, use admin fallback
-    if ((recipients.length === 0 && !testMode) || testMode) {
-      if (testMode && testEmail) {
-        recipients = [{ email: testEmail, name: 'Test Recipient' }];
-      } else {
-        const { data: adminUsers } = await supabase
-          .from('user_roles')
-          .select(`
-            user_id,
-            profiles!inner(email, first_name, last_name, full_name)
-          `)
-          .in('role', ['admin', 'super_admin']);
-
-        if (adminUsers) {
-          recipients = adminUsers.map(user => ({
-            email: user.profiles.email,
-            name: user.profiles.full_name || 
-                  `${user.profiles.first_name} ${user.profiles.last_name}`.trim() ||
-                  user.profiles.email
-          })).filter(recipient => recipient.email);
-        }
-      }
+    // Handle test mode
+    if (testMode && testEmail) {
+      recipients = [{ email: testEmail, name: 'Test Recipient' }];
     }
 
     console.log('Found recipients:', recipients.length);
