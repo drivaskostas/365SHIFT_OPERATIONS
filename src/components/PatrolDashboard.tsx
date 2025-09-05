@@ -119,16 +119,54 @@ const PatrolDashboard = ({
     }
   }, [profile?.id, restoreOfflinePatrols]);
   
-  // Add a useEffect to sync states and refresh data periodically
+  // Add a useEffect to sync states and refresh data periodically  
   useEffect(() => {
     if (!profile?.id) return;
     
-    const interval = setInterval(() => {
-      checkActivePatrol();
-    }, 5000); // Check every 5 seconds
+    // Set up real-time subscription for patrol sessions
+    const channel = supabase
+      .channel('patrol-sessions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'patrol_sessions',
+          filter: `guard_id=eq.${profile.id}`
+        },
+        (payload) => {
+          console.log('🔄 Patrol session changed:', payload);
+          // Immediately update the local state when patrol changes
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+            const newData = payload.new as any;
+            if (newData && newData.status === 'completed') {
+              // Patrol was ended
+              setLegacyActivePatrol(null);
+              if (isPatrolPersistent) {
+                clearPersistentPatrol();
+              }
+            } else if (newData && newData.status === 'active') {
+              // Patrol was started or updated
+              setLegacyActivePatrol(newData as PatrolSession);
+            }
+          }
+          // Refresh dashboard stats
+          fetchDashboardStats();
+          fetchRecentActivities();
+        }
+      )
+      .subscribe();
     
-    return () => clearInterval(interval);
-  }, [profile?.id]);
+    const interval = setInterval(() => {
+      // Only check active patrol, don't constantly refresh other data
+      checkActivePatrol();
+    }, 10000); // Check every 10 seconds instead of 5
+    
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [profile?.id, isPatrolPersistent, clearPersistentPatrol]);
   const fetchUserRoles = async () => {
     if (!profile?.id) return;
     
@@ -178,9 +216,13 @@ const PatrolDashboard = ({
       const patrol = await PatrolService.getActivePatrol(profile.id);
       setLegacyActivePatrol(patrol);
       
-      // If no active patrol in database, clear persistent storage
-      if (!patrol && isPatrolPersistent) {
-        clearPersistentPatrol();
+      // If no active patrol in database, clear persistent storage immediately
+      if (!patrol) {
+        if (isPatrolPersistent) {
+          clearPersistentPatrol();
+        }
+        // Force re-render by updating state
+        setLegacyActivePatrol(null);
       }
     } catch (error) {
       console.error('Error checking active patrol:', error);
@@ -322,16 +364,19 @@ const PatrolDashboard = ({
         clearPersistentPatrol();
       }
       
+      // Force clear all patrol states immediately
+      setLegacyActivePatrol(null);
+      
       const modeText = isOnline ? "online" : "offline";
       toast({
         title: "Patrol Ended",
         description: `Patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
       });
       
-      // Force refresh the dashboard data
-      checkActivePatrol();
-      fetchDashboardStats();
-      fetchRecentActivities();
+      // Force refresh the dashboard data immediately
+      await checkActivePatrol();
+      await fetchDashboardStats();
+      await fetchRecentActivities();
     } catch (error) {
       console.error('Error ending patrol:', error);
       toast({

@@ -138,9 +138,9 @@ export const usePersistentPatrol = (guardId?: string) => {
 
     isMountedRef.current = true;
 
-    // Load existing persistent patrol
+    // Load existing persistent patrol only once on mount
     const existingPatrol = loadPatrolFromPersistentStorage();
-    if (existingPatrol && existingPatrol.status === 'active') {
+    if (existingPatrol && existingPatrol.status === 'active' && !existingPatrol.end_time) {
       setActivePatrol(existingPatrol);
       setIsPatrolPersistent(true);
       console.log('🔄 Restored persistent patrol session:', existingPatrol.id);
@@ -165,7 +165,7 @@ export const usePersistentPatrol = (guardId?: string) => {
         shiftCheckIntervalRef.current = null;
       }
     };
-  }, [guardId, loadPatrolFromPersistentStorage, checkPatrolAutoEnd, toast]);
+  }, [guardId, toast]); // Remove loadPatrolFromPersistentStorage and checkPatrolAutoEnd from deps
 
   // Enhanced start patrol with persistence
   const startPersistentPatrol = useCallback(async (siteId: string, teamId?: string) => {
@@ -198,7 +198,8 @@ export const usePersistentPatrol = (guardId?: string) => {
       auto_ended: !userInitiated
     };
 
-    setActivePatrol(endedPatrol);
+    // Clear state and persistence immediately
+    setActivePatrol(null); // Set to null instead of ended patrol
     setIsPatrolPersistent(false);
     clearPersistentPatrol();
     
