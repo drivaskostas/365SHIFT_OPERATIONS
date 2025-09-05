@@ -102,7 +102,7 @@ function AppContent() {
               </div>
               <div>
                 <h1 className="text-lg font-bold">{t('app.title')}</h1>
-                <p className="text-xs text-blue-100 opacity-80">Professional Security</p>
+                
               </div>
             </div>
             <div className="flex items-center space-x-2">
