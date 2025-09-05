@@ -37,21 +37,6 @@ export const usePersistentPatrol = (guardId?: string) => {
     }
   }, [guardId]);
 
-  // Load patrol session from persistent storage
-  const loadPatrolFromPersistentStorage = useCallback((): PatrolSession | null => {
-    try {
-      const stored = localStorage.getItem(`persistent_patrol_${guardId}`);
-      if (stored) {
-        const patrol = JSON.parse(stored);
-        console.log('📱 Loaded patrol from persistent storage:', patrol.id);
-        return patrol;
-      }
-    } catch (error) {
-      console.error('Error loading patrol from persistent storage:', error);
-    }
-    return null;
-  }, [guardId]);
-
   // Clear patrol from persistent storage
   const clearPersistentPatrol = useCallback(() => {
     try {
@@ -61,6 +46,29 @@ export const usePersistentPatrol = (guardId?: string) => {
       console.error('Error clearing persistent storage:', error);
     }
   }, [guardId]);
+
+  // Load patrol session from persistent storage
+  const loadPatrolFromPersistentStorage = useCallback((): PatrolSession | null => {
+    try {
+      const stored = localStorage.getItem(`persistent_patrol_${guardId}`);
+      if (stored) {
+        const patrol = JSON.parse(stored);
+        
+        // Don't restore completed or ended patrols
+        if (patrol.status === 'completed' || patrol.end_time) {
+          console.log('🚫 Not restoring ended patrol:', patrol.id, 'Status:', patrol.status);
+          clearPersistentPatrol();
+          return null;
+        }
+        
+        console.log('📱 Loaded patrol from persistent storage:', patrol.id);
+        return patrol;
+      }
+    } catch (error) {
+      console.error('Error loading patrol from persistent storage:', error);
+    }
+    return null;
+  }, [guardId, clearPersistentPatrol]);
 
   // Check if patrol should be auto-ended due to shift end
   const checkPatrolAutoEnd = useCallback(async () => {
@@ -245,7 +253,7 @@ export const usePersistentPatrol = (guardId?: string) => {
 
   // Update active patrol in persistent storage
   useEffect(() => {
-    if (activePatrol && isPatrolPersistent) {
+    if (activePatrol && isPatrolPersistent && activePatrol.status === 'active' && !activePatrol.end_time) {
       savePatrolToPersistentStorage(activePatrol);
     }
   }, [activePatrol, isPatrolPersistent, savePatrolToPersistentStorage]);
