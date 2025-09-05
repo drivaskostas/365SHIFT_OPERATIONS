@@ -94,119 +94,147 @@ export const CheckpointGroupSelector = ({
 
   if (loading) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>{t('selectCheckpointGroup')}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </CardContent>
-      </Card>
+      <div className="w-full max-w-lg mx-auto animate-fade-in">
+        <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 p-6">
+          <div className="text-center space-y-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent mx-auto"></div>
+            <p className="text-sm text-muted-foreground">{t('selectCheckpointGroup')}</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-primary" />
-          {t('selectCheckpointGroup')}
-        </CardTitle>
-        <CardDescription>
-          {t('selectGroupDescription')}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Option to patrol all groups */}
-        <Card 
-          className={`cursor-pointer transition-all hover:shadow-md border-2 ${
-            selectedGroupId === null ? 'border-primary bg-primary/5' : 'border-muted'
-          }`}
-          onClick={() => setSelectedGroupId(null)}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-foreground">
-                    {t('allCheckpointGroups')}
-                  </h3>
-                  <Badge variant="secondary">
-                    {groups.reduce((sum, g) => sum + g.checkpoint_count, 0)} σημεία
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {t('patrolAllGroups')}
-                </p>
-              </div>
-              {selectedGroupId === null && (
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-              )}
-            </div>
-          </CardContent>
-        </Card>
+    <div className="w-full max-w-lg mx-auto animate-fade-in">
+      <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-border/50">
+          <div className="flex items-center gap-2 mb-1">
+            <MapPin className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold text-foreground">{t('selectCheckpointGroup')}</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t('selectGroupDescription')}
+          </p>
+        </div>
 
-        {/* Individual groups */}
-        {groups.map((group) => (
-          <Card 
-            key={group.id}
-            className={`cursor-pointer transition-all hover:shadow-md border-2 ${
-              selectedGroupId === group.id ? 'border-primary bg-primary/5' : 'border-muted'
+        {/* Options */}
+        <div className="p-4 space-y-2">
+          {/* Option to patrol all groups */}
+          <div 
+            className={`group relative overflow-hidden rounded-lg border transition-all duration-200 cursor-pointer hover:scale-[1.01] ${
+              selectedGroupId === null 
+                ? 'border-primary bg-primary/8 shadow-sm' 
+                : 'border-border/60 hover:border-border hover:bg-muted/30'
             }`}
-            onClick={() => setSelectedGroupId(group.id)}
+            onClick={() => setSelectedGroupId(null)}
           >
-            <CardContent className="p-4">
+            <div className="p-3">
               <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    {group.color && (
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: group.color }}
-                      />
-                    )}
-                    <h3 className="font-semibold text-foreground">{group.name}</h3>
-                    <Badge variant="secondary">
-                      {group.checkpoint_count} σημεία
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium text-foreground text-sm truncate">
+                      {t('allCheckpointGroups')}
+                    </h3>
+                    <Badge variant="secondary" className="text-xs px-2 py-0.5 h-5">
+                      {groups.reduce((sum, g) => sum + g.checkpoint_count, 0)}
                     </Badge>
-                    {group.is_required && (
-                      <Badge variant="destructive" className="text-xs">
-                        Υποχρεωτική
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('patrolAllGroups')}
+                  </p>
+                </div>
+                <div className={`transition-all duration-200 ${selectedGroupId === null ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                </div>
+              </div>
+            </div>
+            {selectedGroupId === null && (
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-50" />
+            )}
+          </div>
+
+          {/* Individual groups */}
+          {groups.map((group, index) => (
+            <div 
+              key={group.id}
+              className={`group relative overflow-hidden rounded-lg border transition-all duration-200 cursor-pointer hover:scale-[1.01] ${
+                selectedGroupId === group.id 
+                  ? 'border-primary bg-primary/8 shadow-sm' 
+                  : 'border-border/60 hover:border-border hover:bg-muted/30'
+              }`}
+              style={{ 
+                animationDelay: `${index * 50}ms`,
+                animation: 'fade-in 0.3s ease-out forwards'
+              }}
+              onClick={() => setSelectedGroupId(group.id)}
+            >
+              <div className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {group.color && (
+                        <div 
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: group.color }}
+                        />
+                      )}
+                      <h3 className="font-medium text-foreground text-sm truncate">{group.name}</h3>
+                      <Badge variant="secondary" className="text-xs px-2 py-0.5 h-5 flex-shrink-0">
+                        {group.checkpoint_count}
                       </Badge>
+                      {group.is_required && (
+                        <Badge variant="destructive" className="text-xs px-1.5 py-0.5 h-5 flex-shrink-0">
+                          Required
+                        </Badge>
+                      )}
+                    </div>
+                    {group.description && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {group.description}
+                      </p>
+                    )}
+                    {group.completion_percentage_required && group.completion_percentage_required < 100 && (
+                      <p className="text-xs text-muted-foreground/80 mt-0.5">
+                        {group.completion_percentage_required}% required
+                      </p>
                     )}
                   </div>
-                  {group.description && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {group.description}
-                    </p>
-                  )}
-                  {group.completion_percentage_required && group.completion_percentage_required < 100 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Απαιτείται {group.completion_percentage_required}% ολοκλήρωση
-                    </p>
-                  )}
+                  <div className={`transition-all duration-200 ${selectedGroupId === group.id ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                  </div>
                 </div>
-                {selectedGroupId === group.id && (
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                )}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        <div className="flex gap-2 pt-4">
-          <Button onClick={onCancel} variant="outline" className="flex-1">
-            {t('cancel')}
-          </Button>
-          <Button 
-            onClick={handleStartPatrol} 
-            className="flex-1"
-            disabled={selectedGroupId === undefined}
-          >
-            {t('startPatrol')}
-          </Button>
+              {selectedGroupId === group.id && (
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-50" />
+              )}
+            </div>
+          ))}
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Actions */}
+        <div className="px-4 pb-4 pt-2">
+          <div className="flex gap-2">
+            <Button 
+              onClick={onCancel} 
+              variant="ghost" 
+              size="sm"
+              className="flex-1 h-9 text-xs font-medium"
+            >
+              {t('cancel')}
+            </Button>
+            <Button 
+              onClick={handleStartPatrol} 
+              size="sm"
+              className="flex-1 h-9 text-xs font-medium transition-all duration-200 hover:scale-105"
+              disabled={selectedGroupId === undefined}
+            >
+              {t('startPatrol')}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
