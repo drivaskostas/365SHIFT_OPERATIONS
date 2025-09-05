@@ -15,6 +15,7 @@ import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import SupervisorReportForm from '@/components/SupervisorReportForm';
 import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
+import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -65,13 +66,24 @@ const PatrolDashboard = ({
   // Add offline patrol hook
   const { isOnline, syncStatus, unsyncedCount, hasUnsyncedData, syncOfflineData } = useOfflinePatrol(profile?.id);
   
+  // Add persistent patrol hook
+  const { 
+    activePatrol: persistentPatrol, 
+    isPatrolPersistent, 
+    startPersistentPatrol, 
+    endPersistentPatrol,
+    restoreOfflinePatrols 
+  } = usePersistentPatrol(profile?.id);
+  
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showObservations, setShowObservations] = useState(false);
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
   const [showEmergencyReports, setShowEmergencyReports] = useState(false);
   const [showSupervisorReport, setShowSupervisorReport] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
-  const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
+  const [legacyActivePatrol, setLegacyActivePatrol] = useState<PatrolSession | null>(null);
+  // Use persistent patrol instead of local state
+  const currentActivePatrol = persistentPatrol || legacyActivePatrol;
   const [availableSites, setAvailableSites] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalPatrols: 0,
@@ -99,8 +111,9 @@ const PatrolDashboard = ({
       loadGuardShiftInfo();
       checkLocationPermission();
       fetchUserRoles();
+      restoreOfflinePatrols(); // Restore any offline patrol sessions
     }
-  }, [profile?.id]);
+  }, [profile?.id, restoreOfflinePatrols]);
   const fetchUserRoles = async () => {
     if (!profile?.id) return;
     
@@ -148,7 +161,7 @@ const PatrolDashboard = ({
     if (!profile?.id) return;
     try {
       const patrol = await PatrolService.getActivePatrol(profile.id);
-      setActivePatrol(patrol);
+      setLegacyActivePatrol(patrol);
     } catch (error) {
       console.error('Error checking active patrol:', error);
     }
@@ -215,13 +228,12 @@ const PatrolDashboard = ({
       return;
     }
     try {
-      const patrol = await PatrolService.startPatrol(shiftValidation.assignedSite.id, profile.id, shiftValidation.assignedTeam?.id);
-      setActivePatrol(patrol);
+      const patrol = await startPersistentPatrol(shiftValidation.assignedSite.id, shiftValidation.assignedTeam?.id);
       
       const modeText = isOnline ? "online" : "offline";
       toast({
         title: "Patrol Started",
-        description: `Patrol started ${modeText} at ${shiftValidation.assignedSite.name}. ${isOnline ? 'Location tracking will begin shortly.' : 'Data will sync when connection is restored.'}`
+        description: `Persistent patrol started ${modeText} at ${shiftValidation.assignedSite.name}. ${isOnline ? 'Location tracking will begin shortly.' : 'Data will sync when connection is restored. Session will persist even if app is restarted.'}`
       });
       
       fetchDashboardStats();
@@ -236,15 +248,14 @@ const PatrolDashboard = ({
     }
   };
   const handleEndPatrol = async () => {
-    if (!activePatrol) return;
+    if (!currentActivePatrol) return;
     try {
-      await PatrolService.endPatrol(activePatrol.id);
-      setActivePatrol(null);
+      await endPersistentPatrol(true); // User-initiated end
       
       const modeText = isOnline ? "online" : "offline";
       toast({
         title: "Patrol Ended",
-        description: `Patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
+        description: `Persistent patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
       });
       
       fetchDashboardStats();
@@ -628,7 +639,7 @@ const PatrolDashboard = ({
           </div>
           <div className="flex items-center space-x-1">
             <MapPin className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{activePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
+            <span className="truncate">{currentActivePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
           </div>
           {guardShiftInfo && <div className="flex items-center space-x-1 text-green-600 col-span-2 lg:col-span-1">
               <Shield className="h-4 w-4 flex-shrink-0" />
@@ -718,9 +729,9 @@ const PatrolDashboard = ({
                   Patrol Status {!isOnline && '(Offline Mode)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
-                  {activePatrol ? `Patrol started at ${new Date(activePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : 'No active shift assigned'}
+                  {currentActivePatrol ? `Patrol started at ${new Date(currentActivePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : 'No active shift assigned'}
                 </p>
-                {guardShiftInfo && !activePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
+                {guardShiftInfo && !currentActivePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
                     📍 Current shift: {guardShiftInfo.teamName} - {guardShiftInfo.siteName}
                   </p>}
                 {isTracking && <p className="text-xs text-green-600 mt-1">
@@ -732,12 +743,12 @@ const PatrolDashboard = ({
               </div>
               <div className="flex justify-center lg:justify-end">
                 <Button 
-                  onClick={activePatrol ? handleEndPatrol : handleStartPatrol} 
-                  className={activePatrol ? 'bg-red-500 hover:bg-red-600 w-full lg:w-auto' : 'bg-green-500 hover:bg-green-600 w-full lg:w-auto'} 
-                  disabled={!activePatrol && !guardShiftInfo}
+                  onClick={currentActivePatrol ? handleEndPatrol : handleStartPatrol} 
+                  className={currentActivePatrol ? 'bg-red-500 hover:bg-red-600 w-full lg:w-auto' : 'bg-green-500 hover:bg-green-600 w-full lg:w-auto'} 
+                  disabled={!currentActivePatrol && !guardShiftInfo}
                   size="lg"
                 >
-                  {activePatrol ? <>
+                  {currentActivePatrol ? <>
                       <Square className="h-4 w-4 mr-2" />
                       End Patrol
                     </> : <>
@@ -857,7 +868,7 @@ const PatrolDashboard = ({
                 <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                   {t('dashboard.status')}
                 </p>
-                <p className="text-sm lg:text-base font-bold text-green-600 truncate">{activePatrol ? 'On Patrol' : t('dashboard.active')}</p>
+                <p className="text-sm lg:text-base font-bold text-green-600 truncate">{currentActivePatrol ? 'On Patrol' : t('dashboard.active')}</p>
               </div>
               <User className="h-6 w-6 lg:h-8 lg:w-8 text-blue-500 flex-shrink-0 self-end lg:self-auto" />
             </div>

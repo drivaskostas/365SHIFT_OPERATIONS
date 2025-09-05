@@ -7,7 +7,7 @@ interface OfflinePatrolData {
 
 interface OfflineActivity {
   id: string;
-  type: 'checkpoint_visit' | 'observation' | 'emergency' | 'location_update' | 'patrol_start' | 'patrol_end';
+  type: 'checkpoint_visit' | 'observation' | 'emergency' | 'location_update' | 'patrol_start' | 'patrol_end' | 'patrol_auto_end';
   data: any;
   timestamp: string;
   synced: boolean;

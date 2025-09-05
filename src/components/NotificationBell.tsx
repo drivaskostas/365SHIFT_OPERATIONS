@@ -187,21 +187,33 @@ export default function NotificationBell() {
           />
           
           {/* Notifications Panel */}
-          <Card className="absolute right-0 top-full mt-2 w-80 max-h-96 z-50 shadow-lg border">
+          <Card className="absolute right-0 top-full mt-2 w-80 sm:w-80 w-[90vw] max-w-[400px] max-h-[70vh] z-50 shadow-lg border">
             <div className="p-4 bg-gradient-to-r from-blue-50 to-gray-50 dark:from-gray-800 dark:to-gray-900 border-b flex items-center justify-between">
               <h3 className="font-semibold text-sm">Ειδοποιήσεις</h3>
               <div className="flex items-center space-x-2">
                 {unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={markAllAsRead}
-                    disabled={loading}
-                    className="text-xs"
-                  >
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Όλα ως αναγνωσμένα
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={markAllAsRead}
+                      disabled={loading}
+                      className="text-xs hidden sm:flex"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Όλα ως αναγνωσμένα
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={markAllAsRead}
+                      disabled={loading}
+                      className="text-xs sm:hidden p-1"
+                      title="Όλα ως αναγνωσμένα"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="ghost"
@@ -213,7 +225,7 @@ export default function NotificationBell() {
               </div>
             </div>
             
-            <CardContent className="p-0 max-h-80 overflow-y-auto">
+            <CardContent className="p-0 max-h-[50vh] overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="p-6 text-center text-gray-500">
                   <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
