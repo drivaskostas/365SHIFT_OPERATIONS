@@ -95,7 +95,7 @@ function AppContent() {
       
       <div className="min-h-screen flex flex-col">
         {/* Header */}
-        {user && <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-900 to-blue-800 text-white p-4 flex items-center justify-between shadow-lg backdrop-blur-sm">
+        {user && <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-900 to-blue-800 text-white p-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between shadow-lg backdrop-blur-sm">
             <div className="flex items-center space-x-3 animate-fade-in">
               <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
                 <Shield className="h-6 w-6" />
