@@ -752,7 +752,7 @@ const PatrolDashboard = ({
       {/* Welcome Section */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          {t('dashboard.welcome_simple')}
+          Welcome {profile?.last_name}
         </h1>
         {/* Mobile-optimized status indicators */}
         <div className="grid grid-cols-2 lg:flex lg:items-center lg:space-x-4 gap-2 lg:gap-0 text-sm text-gray-600 dark:text-gray-300">
