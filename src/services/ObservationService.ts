@@ -138,6 +138,39 @@ export class ObservationService {
 
     console.log('📍 Final location for observation:', finalLocation);
 
+    // Get site from current scheduled shift (guard can only login if has active shift)
+    let resolvedTeamId = teamId;
+    let siteId = null;
+
+    const now = new Date().toISOString();
+    const { data: currentSchedule } = await supabase
+      .from('team_schedules')
+      .select('team_id')
+      .contains('assigned_guards', [guardId])
+      .lte('start_date', now)
+      .gte('end_date', now)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (currentSchedule?.team_id) {
+      resolvedTeamId = currentSchedule.team_id;
+      
+      // Get the site for this team
+      const { data: site } = await supabase
+        .from('guardian_sites')
+        .select('id, name')
+        .eq('team_id', resolvedTeamId)
+        .eq('active', true)
+        .limit(1)
+        .single();
+      
+      if (site) {
+        siteId = site.id;
+        console.log('Found current shift site:', { siteId, teamId: resolvedTeamId, siteName: site.name });
+      }
+    }
+
     // Fetch guard's name for notification
     const { data: guardProfile } = await supabase
       .from('profiles')
@@ -153,7 +186,7 @@ export class ObservationService {
     const observationData = {
       guard_id: guardId,
       patrol_id: patrolId,
-      team_id: teamId,
+      team_id: resolvedTeamId,
       title,
       description,
       severity,
@@ -180,10 +213,53 @@ export class ObservationService {
 
     console.log('✅ Observation created successfully:', data);
 
-    // Database trigger handles the notification automatically
-    console.log('📧 Observation notification will be sent via database trigger');
+    // Send observation notification using existing edge function
+    try {
+      await this.sendObservationNotification(data, guardName, finalLocation, siteId);
+    } catch (notificationError) {
+      console.warn('Failed to send observation notification:', notificationError);
+    }
 
     return data
+  }
+
+  private static async sendObservationNotification(
+    observation: PatrolObservation,
+    guardName: string,
+    location: { latitude: number; longitude: number } | null,
+    siteId: string | null
+  ): Promise<void> {
+    try {
+      // Call the existing observation notification edge function
+      console.log('Calling observation notification with params:', {
+        observationId: observation.id,
+        title: observation.title,
+        severity: observation.severity,
+        teamId: observation.team_id,
+        siteId: siteId,
+        guardName: guardName
+      });
+      
+      await supabase.functions.invoke('send-observation-email', {
+        body: {
+          title: observation.title,
+          description: observation.description,
+          severity: observation.severity,
+          guardName: guardName,
+          timestamp: observation.created_at,
+          teamId: observation.team_id,
+          siteId: siteId,
+          guardId: observation.guard_id,
+          imageUrl: observation.image_url,
+          testMode: false
+        }
+      });
+
+      console.log('Observation notification sent successfully');
+    } catch (error) {
+      console.error('Failed to send observation notification:', error);
+      throw error;
+    }
   }
 
   static async getObservations(guardId: string): Promise<PatrolObservation[]> {
