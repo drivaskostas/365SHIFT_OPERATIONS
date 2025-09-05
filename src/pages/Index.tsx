@@ -101,7 +101,7 @@ function AppContent() {
                 <Shield className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-lg font-bold">{t('app.title')}</h1>
+                <h1 className="text-lg font-bold">Sentinel</h1>
                 
               </div>
             </div>
