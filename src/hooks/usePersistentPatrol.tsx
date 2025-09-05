@@ -10,6 +10,7 @@ interface PatrolSession {
   guard_id: string;
   site_id: string;
   team_id?: string;
+  checkpoint_group_id?: string;
   start_time: string;
   end_time?: string;
   status: string;
@@ -168,10 +169,10 @@ export const usePersistentPatrol = (guardId?: string) => {
   }, [guardId, toast]); // Remove loadPatrolFromPersistentStorage and checkPatrolAutoEnd from deps
 
   // Enhanced start patrol with persistence
-  const startPersistentPatrol = useCallback(async (siteId: string, teamId?: string) => {
+  const startPersistentPatrol = useCallback(async (siteId: string, teamId?: string, checkpointGroupId?: string) => {
     if (!guardId) throw new Error('Guard ID required');
 
-    const patrol = await PatrolService.startPatrol(siteId, guardId, teamId);
+    const patrol = await PatrolService.startPatrol(siteId, guardId, teamId, checkpointGroupId);
     
     // Enhanced patrol object with persistence flag
     const persistentPatrol = {

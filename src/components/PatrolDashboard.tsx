@@ -326,7 +326,7 @@ const PatrolDashboard = ({
 
   const startPatrolWithGroup = async (siteId: string, teamId?: string, checkpointGroupId?: string | null) => {
     try {
-      const patrol = await startPersistentPatrol(siteId, teamId);
+      const patrol = await startPersistentPatrol(siteId, teamId, checkpointGroupId || undefined);
       
       const modeText = isOnline ? "online" : "offline";
       toast({

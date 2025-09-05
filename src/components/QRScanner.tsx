@@ -86,12 +86,19 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       const progressData = await PatrolService.getPatrolProgress(activePatrol.id);
       setProgress(progressData);
       
-      // Load remaining checkpoints
-      const { data: allCheckpoints } = await supabase
+      // Load checkpoints based on checkpoint group if specified
+      let checkpointsQuery = supabase
         .from('guardian_checkpoints')
         .select('*')
         .eq('site_id', activePatrol.site_id)
         .eq('active', true);
+      
+      // Filter by checkpoint group if specified in patrol
+      if (activePatrol.checkpoint_group_id) {
+        checkpointsQuery = checkpointsQuery.eq('checkpoint_group_id', activePatrol.checkpoint_group_id);
+      }
+      
+      const { data: allCheckpoints } = await checkpointsQuery;
         
       const { data: visitedVisits } = await supabase
         .from('patrol_checkpoint_visits')

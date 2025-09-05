@@ -112,7 +112,7 @@ export class PatrolService {
     return null;
   }
 
-  static async startPatrol(siteId: string, guardId: string, teamId?: string): Promise<PatrolSession> {
+  static async startPatrol(siteId: string, guardId: string, teamId?: string, checkpointGroupId?: string): Promise<PatrolSession> {
     // First verify the guard is assigned to this site
     const { data: siteGuard, error: assignmentError } = await supabase
       .from('site_guards')
@@ -157,6 +157,7 @@ export class PatrolService {
           guard_id: guardId,
           site_id: siteId,
           team_id: resolvedTeamId,
+          checkpoint_group_id: checkpointGroupId,
           start_time: new Date().toISOString(),
           status: 'active',
           latitude: location?.latitude,
@@ -175,6 +176,7 @@ export class PatrolService {
         guard_id: guardId,
         site_id: siteId,
         team_id: resolvedTeamId,
+        checkpoint_group_id: checkpointGroupId,
         start_time: new Date().toISOString(),
         status: 'active',
         latitude: location?.latitude,
@@ -414,18 +416,25 @@ export class PatrolService {
     // Get site from patrol session
     const { data: patrol } = await supabase
       .from('patrol_sessions')
-      .select('site_id')
+      .select('site_id, checkpoint_group_id')
       .eq('id', patrolId)
       .single()
 
     if (!patrol) return { totalCheckpoints: 0, visitedCheckpoints: 0, progress: 0 }
 
-    // Get total checkpoints for the site
-    const { count: totalCheckpoints } = await supabase
+    // Get total checkpoints for the site (filtered by checkpoint group if specified)
+    let checkpointsCountQuery = supabase
       .from('guardian_checkpoints')
       .select('*', { count: 'exact' })
       .eq('site_id', patrol.site_id)
-      .eq('active', true)
+      .eq('active', true);
+    
+    // Filter by checkpoint group if specified in patrol
+    if (patrol.checkpoint_group_id) {
+      checkpointsCountQuery = checkpointsCountQuery.eq('checkpoint_group_id', patrol.checkpoint_group_id);
+    }
+    
+    const { count: totalCheckpoints } = await checkpointsCountQuery;
 
     // Get visited checkpoints for this patrol
     const { count: visitedCheckpoints } = await supabase

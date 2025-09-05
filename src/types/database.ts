@@ -4,6 +4,7 @@ export interface PatrolSession {
   guard_id: string
   site_id: string
   team_id?: string
+  checkpoint_group_id?: string
   start_time: string
   end_time?: string
   status: 'active' | 'completed' | 'cancelled'
