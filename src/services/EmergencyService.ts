@@ -74,30 +74,97 @@ export class EmergencyService {
     const currentLocation = location || await this.getCurrentLocation();
     console.log('Location for emergency report:', currentLocation);
 
-    // Get team_id if not provided
+    // Get current active shift to determine the correct site
     let resolvedTeamId = teamId;
-    if (!resolvedTeamId) {
-      const { data: teamMember } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('profile_id', guardId)
-        .single();
-      
-      resolvedTeamId = teamMember?.team_id;
-    }
-
-    // Get site_id from guardian_sites for the team
     let siteId = null;
-    if (resolvedTeamId) {
+
+    // First, try to get the site from current active clock-in session
+    const { data: activeClockIn } = await supabase
+      .from('clock_in_out')
+      .select('team_id')
+      .eq('user_id', guardId)
+      .eq('status', 'active')
+      .order('clock_in', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (activeClockIn?.team_id) {
+      resolvedTeamId = activeClockIn.team_id;
+      
+      // Get the site for this team
       const { data: site } = await supabase
         .from('guardian_sites')
-        .select('id')
+        .select('id, name')
         .eq('team_id', resolvedTeamId)
         .eq('active', true)
         .limit(1)
         .single();
       
-      siteId = site?.id;
+      if (site) {
+        siteId = site.id;
+        console.log('Found active shift site:', { siteId, teamId: resolvedTeamId, siteName: site.name });
+      }
+    }
+
+    // If no active clock-in, check current scheduled shift
+    if (!siteId) {
+      const now = new Date().toISOString();
+      const { data: currentSchedule } = await supabase
+        .from('team_schedules')
+        .select('team_id')
+        .contains('assigned_guards', [guardId])
+        .lte('start_date', now)
+        .gte('end_date', now)
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (currentSchedule?.team_id) {
+        resolvedTeamId = currentSchedule.team_id;
+        
+        // Get the site for this team
+        const { data: site } = await supabase
+          .from('guardian_sites')
+          .select('id, name')
+          .eq('team_id', resolvedTeamId)
+          .eq('active', true)
+          .limit(1)
+          .single();
+        
+        if (site) {
+          siteId = site.id;
+          console.log('Found scheduled shift site:', { siteId, teamId: resolvedTeamId, siteName: site.name });
+        }
+      }
+    }
+
+    // Last fallback: Get team_id from team membership
+    if (!siteId) {
+      if (!resolvedTeamId) {
+        const { data: teamMember } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('profile_id', guardId)
+          .single();
+        
+        resolvedTeamId = teamMember?.team_id;
+      }
+
+      // Get any active site for this team as final fallback
+      if (resolvedTeamId) {
+        const { data: site } = await supabase
+          .from('guardian_sites')
+          .select('id, name')
+          .eq('team_id', resolvedTeamId)
+          .eq('active', true)
+          .limit(1)
+          .single();
+        
+        if (site) {
+          siteId = site.id;
+          console.log('Using team default site:', { siteId, teamId: resolvedTeamId, siteName: site.name });
+        }
+      }
     }
 
     // Fetch guard's name for notification
