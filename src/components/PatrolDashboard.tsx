@@ -137,17 +137,25 @@ const PatrolDashboard = ({
         (payload) => {
           console.log('🔄 Patrol session changed:', payload);
           // Immediately update the local state when patrol changes
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+          if (payload.eventType === 'UPDATE') {
             const newData = payload.new as any;
             if (newData && newData.status === 'completed') {
-              // Patrol was ended
+              // Patrol was ended - force immediate state update
               setLegacyActivePatrol(null);
               if (isPatrolPersistent) {
                 clearPersistentPatrol();
               }
+              // Force immediate re-render by updating key state
+              setTimeout(() => setLegacyActivePatrol(null), 0);
             } else if (newData && newData.status === 'active') {
               // Patrol was started or updated
               setLegacyActivePatrol(newData as PatrolSession);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            // Patrol was deleted
+            setLegacyActivePatrol(null);
+            if (isPatrolPersistent) {
+              clearPersistentPatrol();
             }
           }
           // Refresh dashboard stats
@@ -355,16 +363,12 @@ const PatrolDashboard = ({
   };
   const handleEndPatrol = async () => {
     if (!currentActivePatrol) return;
+    
     try {
-      // Use the regular PatrolService.endPatrol instead of persistent logic for now
-      await PatrolService.endPatrol(currentActivePatrol.id);
+      // Use persistent patrol end logic to ensure proper cleanup
+      await endPersistentPatrol(true);
       
-      // Also clear persistent storage if it exists
-      if (isPatrolPersistent) {
-        clearPersistentPatrol();
-      }
-      
-      // Force clear all patrol states immediately
+      // Force immediate local state update
       setLegacyActivePatrol(null);
       
       const modeText = isOnline ? "online" : "offline";
@@ -374,9 +378,11 @@ const PatrolDashboard = ({
       });
       
       // Force refresh the dashboard data immediately
-      await checkActivePatrol();
-      await fetchDashboardStats();
-      await fetchRecentActivities();
+      setTimeout(async () => {
+        await checkActivePatrol();
+        await fetchDashboardStats();
+        await fetchRecentActivities();
+      }, 0);
     } catch (error) {
       console.error('Error ending patrol:', error);
       toast({
