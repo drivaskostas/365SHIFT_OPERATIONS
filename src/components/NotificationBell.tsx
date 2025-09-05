@@ -188,7 +188,7 @@ export default function NotificationBell() {
           />
           
           {/* Notifications Panel */}
-          <Card className="absolute right-0 sm:right-0 left-2 sm:left-auto top-full mt-2 w-[calc(100vw-1rem)] sm:w-[400px] max-w-[400px] max-h-[80vh] z-50 shadow-lg border">
+          <Card className="absolute inset-x-2 sm:right-0 sm:left-auto top-full mt-2 w-auto sm:w-[400px] sm:max-w-[400px] max-h-[80vh] z-50 shadow-lg border">
             <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-gray-50 dark:from-gray-800 dark:to-gray-900 border-b flex items-center justify-between">
               <h3 className="font-semibold text-sm sm:text-base">Ειδοποιήσεις</h3>
               <div className="flex items-center space-x-2">
