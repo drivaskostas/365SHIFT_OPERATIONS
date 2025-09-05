@@ -395,6 +395,122 @@ export type Database = {
           },
         ]
       }
+      behavior_records: {
+        Row: {
+          behavior_type_id: string
+          created_at: string | null
+          description: string | null
+          evidence: string | null
+          guard_id: string
+          id: string
+          incident_date: string
+          notes: Json | null
+          recorded_by: string
+          score_applied: number
+          status: string | null
+          team_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          behavior_type_id: string
+          created_at?: string | null
+          description?: string | null
+          evidence?: string | null
+          guard_id: string
+          id?: string
+          incident_date?: string
+          notes?: Json | null
+          recorded_by: string
+          score_applied?: number
+          status?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          behavior_type_id?: string
+          created_at?: string | null
+          description?: string | null
+          evidence?: string | null
+          guard_id?: string
+          id?: string
+          incident_date?: string
+          notes?: Json | null
+          recorded_by?: string
+          score_applied?: number
+          status?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavior_records_behavior_type_id_fkey"
+            columns: ["behavior_type_id"]
+            isOneToOne: false
+            referencedRelation: "behavior_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "behavior_records_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "behavior_records_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "behavior_records_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      behavior_types: {
+        Row: {
+          category: string
+          color: string | null
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          score_impact: number
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          score_impact?: number
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          score_impact?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       candidate_evaluations: {
         Row: {
           additional_notes: string | null
@@ -606,6 +722,94 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "guardian_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_evaluations: {
+        Row: {
+          additional_comments: string | null
+          client_id: string
+          communication_score: number | null
+          created_at: string | null
+          evaluation_period: string
+          evaluation_year: number
+          guard_id: string
+          id: string
+          improvement_suggestions: string | null
+          overall_satisfaction: number | null
+          positive_feedback: string | null
+          professionalism_score: number | null
+          punctuality_score: number | null
+          quality_of_service_score: number | null
+          reliability_score: number | null
+          submitted_at: string | null
+          team_id: string
+          updated_at: string | null
+          would_recommend: boolean | null
+        }
+        Insert: {
+          additional_comments?: string | null
+          client_id: string
+          communication_score?: number | null
+          created_at?: string | null
+          evaluation_period: string
+          evaluation_year?: number
+          guard_id: string
+          id?: string
+          improvement_suggestions?: string | null
+          overall_satisfaction?: number | null
+          positive_feedback?: string | null
+          professionalism_score?: number | null
+          punctuality_score?: number | null
+          quality_of_service_score?: number | null
+          reliability_score?: number | null
+          submitted_at?: string | null
+          team_id: string
+          updated_at?: string | null
+          would_recommend?: boolean | null
+        }
+        Update: {
+          additional_comments?: string | null
+          client_id?: string
+          communication_score?: number | null
+          created_at?: string | null
+          evaluation_period?: string
+          evaluation_year?: number
+          guard_id?: string
+          id?: string
+          improvement_suggestions?: string | null
+          overall_satisfaction?: number | null
+          positive_feedback?: string | null
+          professionalism_score?: number | null
+          punctuality_score?: number | null
+          quality_of_service_score?: number | null
+          reliability_score?: number | null
+          submitted_at?: string | null
+          team_id?: string
+          updated_at?: string | null
+          would_recommend?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_evaluations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_evaluations_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_evaluations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -1150,6 +1354,206 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      guard_performance_achievements: {
+        Row: {
+          achievement_description: string | null
+          achievement_name: string
+          achievement_type: string
+          badge_color: string | null
+          badge_icon: string | null
+          created_at: string
+          earned_date: string
+          evaluation_id: string | null
+          guard_id: string
+          id: string
+          valid_until: string | null
+        }
+        Insert: {
+          achievement_description?: string | null
+          achievement_name: string
+          achievement_type: string
+          badge_color?: string | null
+          badge_icon?: string | null
+          created_at?: string
+          earned_date?: string
+          evaluation_id?: string | null
+          guard_id: string
+          id?: string
+          valid_until?: string | null
+        }
+        Update: {
+          achievement_description?: string | null
+          achievement_name?: string
+          achievement_type?: string
+          badge_color?: string | null
+          badge_icon?: string | null
+          created_at?: string
+          earned_date?: string
+          evaluation_id?: string | null
+          guard_id?: string
+          id?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_performance_achievements_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "guard_performance_evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_performance_achievements_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guard_performance_details: {
+        Row: {
+          baseline_value: number | null
+          calculation_details: Json | null
+          created_at: string
+          evaluation_id: string
+          id: string
+          max_possible_points: number
+          metric_name: string
+          metric_type: Database["public"]["Enums"]["performance_metric_type"]
+          performance_notes: string | null
+          points_awarded: number
+          raw_value: number | null
+          target_value: number | null
+        }
+        Insert: {
+          baseline_value?: number | null
+          calculation_details?: Json | null
+          created_at?: string
+          evaluation_id: string
+          id?: string
+          max_possible_points?: number
+          metric_name: string
+          metric_type: Database["public"]["Enums"]["performance_metric_type"]
+          performance_notes?: string | null
+          points_awarded?: number
+          raw_value?: number | null
+          target_value?: number | null
+        }
+        Update: {
+          baseline_value?: number | null
+          calculation_details?: Json | null
+          created_at?: string
+          evaluation_id?: string
+          id?: string
+          max_possible_points?: number
+          metric_name?: string
+          metric_type?: Database["public"]["Enums"]["performance_metric_type"]
+          performance_notes?: string | null
+          points_awarded?: number
+          raw_value?: number | null
+          target_value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_performance_details_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "guard_performance_evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guard_performance_evaluations: {
+        Row: {
+          assessment_score: number
+          behavior_score: number
+          client_evaluation_score: number
+          created_at: string
+          evaluated_by: string | null
+          evaluation_period_end: string
+          evaluation_period_start: string
+          evaluation_status: string
+          guard_id: string
+          id: string
+          notes: string | null
+          overall_rank: number | null
+          patrol_performance_score: number
+          performance_grade:
+            | Database["public"]["Enums"]["performance_grade"]
+            | null
+          punctuality_score: number
+          supervisor_reports_score: number
+          team_rank: number | null
+          total_raw_score: number
+          updated_at: string
+          weighted_score: number
+        }
+        Insert: {
+          assessment_score?: number
+          behavior_score?: number
+          client_evaluation_score?: number
+          created_at?: string
+          evaluated_by?: string | null
+          evaluation_period_end: string
+          evaluation_period_start: string
+          evaluation_status?: string
+          guard_id: string
+          id?: string
+          notes?: string | null
+          overall_rank?: number | null
+          patrol_performance_score?: number
+          performance_grade?:
+            | Database["public"]["Enums"]["performance_grade"]
+            | null
+          punctuality_score?: number
+          supervisor_reports_score?: number
+          team_rank?: number | null
+          total_raw_score?: number
+          updated_at?: string
+          weighted_score?: number
+        }
+        Update: {
+          assessment_score?: number
+          behavior_score?: number
+          client_evaluation_score?: number
+          created_at?: string
+          evaluated_by?: string | null
+          evaluation_period_end?: string
+          evaluation_period_start?: string
+          evaluation_status?: string
+          guard_id?: string
+          id?: string
+          notes?: string | null
+          overall_rank?: number | null
+          patrol_performance_score?: number
+          performance_grade?:
+            | Database["public"]["Enums"]["performance_grade"]
+            | null
+          punctuality_score?: number
+          supervisor_reports_score?: number
+          team_rank?: number | null
+          total_raw_score?: number
+          updated_at?: string
+          weighted_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_performance_evaluations_evaluated_by_fkey"
+            columns: ["evaluated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_performance_evaluations_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guard_upcoming_shifts: {
         Row: {
@@ -2665,6 +3069,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      performance_metrics_config: {
+        Row: {
+          calculation_formula: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          metric_name: string
+          metric_type: Database["public"]["Enums"]["performance_metric_type"]
+          points_per_unit: number
+          threshold_value: number | null
+          updated_at: string
+          weight_percentage: number
+        }
+        Insert: {
+          calculation_formula?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric_name: string
+          metric_type: Database["public"]["Enums"]["performance_metric_type"]
+          points_per_unit?: number
+          threshold_value?: number | null
+          updated_at?: string
+          weight_percentage?: number
+        }
+        Update: {
+          calculation_formula?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric_name?: string
+          metric_type?: Database["public"]["Enums"]["performance_metric_type"]
+          points_per_unit?: number
+          threshold_value?: number | null
+          updated_at?: string
+          weight_percentage?: number
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -5247,6 +5693,83 @@ export type Database = {
         Args: { data: string }
         Returns: string
       }
+      calculate_assessment_score: {
+        Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
+        Returns: {
+          details: Json
+          excellent_count: number
+          fair_count: number
+          good_count: number
+          poor_count: number
+          total_score: number
+        }[]
+      }
+      calculate_behavior_score: {
+        Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
+        Returns: {
+          details: Json
+          negative_count: number
+          negative_score: number
+          positive_count: number
+          positive_score: number
+          total_score: number
+        }[]
+      }
+      calculate_client_evaluation_score: {
+        Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
+        Returns: {
+          average_overall_satisfaction: number
+          details: Json
+          evaluation_count: number
+          recommendation_rate: number
+          total_score: number
+        }[]
+      }
+      calculate_guard_performance_with_base_score: {
+        Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
+        Returns: {
+          base_score: number
+          behavior_points: number
+          client_evaluation_points: number
+          details: Json
+          emergency_reports_points: number
+          final_score: number
+          patrol_activity_points: number
+          performance_grade: string
+          punctuality_points: number
+          supervisor_reports_points: number
+        }[]
+      }
+      calculate_patrol_performance_score: {
+        Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
+        Returns: {
+          checkpoint_efficiency: number
+          completion_rate: number
+          details: Json
+          on_time_percentage: number
+          patrol_consistency: number
+          total_score: number
+        }[]
+      }
+      calculate_punctuality_score: {
+        Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
+        Returns: {
+          details: Json
+          early_count: number
+          late_count: number
+          on_time_count: number
+          total_score: number
+        }[]
+      }
+      calculate_supervisor_reports_score: {
+        Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
+        Returns: {
+          details: Json
+          negative_score: number
+          positive_score: number
+          total_score: number
+        }[]
+      }
       check_and_close_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -5652,6 +6175,12 @@ export type Database = {
         | "manager"
       equipment_status: "active" | "archived" | "inactive"
       patrol_status: "active" | "completed" | "interrupted" | "leave_tracking"
+      performance_grade: "A+" | "A" | "B+" | "B" | "C+" | "C" | "D" | "F"
+      performance_metric_type:
+        | "patrol_performance"
+        | "supervisor_reports"
+        | "punctuality"
+        | "assessment_results"
       shift_change_type:
         | "added"
         | "removed"
@@ -5824,6 +6353,13 @@ export const Constants = {
       ],
       equipment_status: ["active", "archived", "inactive"],
       patrol_status: ["active", "completed", "interrupted", "leave_tracking"],
+      performance_grade: ["A+", "A", "B+", "B", "C+", "C", "D", "F"],
+      performance_metric_type: [
+        "patrol_performance",
+        "supervisor_reports",
+        "punctuality",
+        "assessment_results",
+      ],
       shift_change_type: [
         "added",
         "removed",
