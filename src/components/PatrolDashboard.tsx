@@ -72,7 +72,8 @@ const PatrolDashboard = ({
     isPatrolPersistent, 
     startPersistentPatrol, 
     endPersistentPatrol,
-    restoreOfflinePatrols 
+    restoreOfflinePatrols,
+    clearPersistentPatrol
   } = usePersistentPatrol(profile?.id);
   
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -82,8 +83,8 @@ const PatrolDashboard = ({
   const [showSupervisorReport, setShowSupervisorReport] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [legacyActivePatrol, setLegacyActivePatrol] = useState<PatrolSession | null>(null);
-  // Use persistent patrol instead of local state
-  const currentActivePatrol = persistentPatrol || legacyActivePatrol;
+  // Use persistent patrol instead of local state, but prioritize database state
+  const currentActivePatrol = legacyActivePatrol || persistentPatrol;
   const [availableSites, setAvailableSites] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalPatrols: 0,
@@ -114,6 +115,17 @@ const PatrolDashboard = ({
       restoreOfflinePatrols(); // Restore any offline patrol sessions
     }
   }, [profile?.id, restoreOfflinePatrols]);
+  
+  // Add a useEffect to sync states and refresh data periodically
+  useEffect(() => {
+    if (!profile?.id) return;
+    
+    const interval = setInterval(() => {
+      checkActivePatrol();
+    }, 5000); // Check every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [profile?.id]);
   const fetchUserRoles = async () => {
     if (!profile?.id) return;
     
@@ -162,6 +174,11 @@ const PatrolDashboard = ({
     try {
       const patrol = await PatrolService.getActivePatrol(profile.id);
       setLegacyActivePatrol(patrol);
+      
+      // If no active patrol in database, clear persistent storage
+      if (!patrol && isPatrolPersistent) {
+        clearPersistentPatrol();
+      }
     } catch (error) {
       console.error('Error checking active patrol:', error);
     }
@@ -250,14 +267,22 @@ const PatrolDashboard = ({
   const handleEndPatrol = async () => {
     if (!currentActivePatrol) return;
     try {
-      await endPersistentPatrol(true); // User-initiated end
+      // Use the regular PatrolService.endPatrol instead of persistent logic for now
+      await PatrolService.endPatrol(currentActivePatrol.id);
+      
+      // Also clear persistent storage if it exists
+      if (isPatrolPersistent) {
+        clearPersistentPatrol();
+      }
       
       const modeText = isOnline ? "online" : "offline";
       toast({
         title: "Patrol Ended",
-        description: `Persistent patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
+        description: `Patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
       });
       
+      // Force refresh the dashboard data
+      checkActivePatrol();
       fetchDashboardStats();
       fetchRecentActivities();
     } catch (error) {
