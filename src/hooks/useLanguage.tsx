@@ -134,6 +134,14 @@ const translations = {
     // Camera
     'camera.error': 'Camera Error',
     'camera.permission_error': 'Unable to access camera. Please check permissions.',
+    
+    // Checkpoint Groups
+    'selectCheckpointGroup': 'Select Checkpoint Group',
+    'selectGroupDescription': 'Choose which checkpoint group you want to patrol or select all.',
+    'allCheckpointGroups': 'All Checkpoint Groups',
+    'patrolAllGroups': 'Patrol all checkpoint groups',
+    'startPatrol': 'Start Patrol',
+    'cancel': 'Cancel',
   },
   el: {
     // App title and navigation

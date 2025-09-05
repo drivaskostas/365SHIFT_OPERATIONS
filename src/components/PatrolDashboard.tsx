@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useLanguage } from '@/hooks/useLanguage';
+import { CheckpointGroupSelector } from '@/components/CheckpointGroupSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,7 @@ import SupervisorReportForm from '@/components/SupervisorReportForm';
 import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
 import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -83,6 +84,8 @@ const PatrolDashboard = ({
   const [showSupervisorReport, setShowSupervisorReport] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [legacyActivePatrol, setLegacyActivePatrol] = useState<PatrolSession | null>(null);
+  const [showCheckpointGroupSelector, setShowCheckpointGroupSelector] = useState(false);
+  const [pendingPatrolSiteId, setPendingPatrolSiteId] = useState<string | null>(null);
   // Use persistent patrol instead of local state, but prioritize database state
   const currentActivePatrol = legacyActivePatrol || persistentPatrol;
   const [availableSites, setAvailableSites] = useState<any[]>([]);
@@ -244,13 +247,41 @@ const PatrolDashboard = ({
       });
       return;
     }
+
+    // Check if site has multiple checkpoint groups
     try {
-      const patrol = await startPersistentPatrol(shiftValidation.assignedSite.id, shiftValidation.assignedTeam?.id);
+      const { data: checkpointGroups, error } = await supabase
+        .from('checkpoint_groups')
+        .select('id, name')
+        .eq('site_id', shiftValidation.assignedSite.id);
+
+      if (error) throw error;
+
+      // If multiple groups exist, show selector
+      if (checkpointGroups && checkpointGroups.length > 1) {
+        setPendingPatrolSiteId(shiftValidation.assignedSite.id);
+        setShowCheckpointGroupSelector(true);
+        return;
+      }
+
+      // If only one or no groups, start patrol normally
+      await startPatrolWithGroup(shiftValidation.assignedSite.id, shiftValidation.assignedTeam?.id, null);
+      
+    } catch (error) {
+      console.error('Error checking checkpoint groups:', error);
+      // Continue with normal patrol start if there's an error
+      await startPatrolWithGroup(shiftValidation.assignedSite.id, shiftValidation.assignedTeam?.id, null);
+    }
+  };
+
+  const startPatrolWithGroup = async (siteId: string, teamId?: string, checkpointGroupId?: string | null) => {
+    try {
+      const patrol = await startPersistentPatrol(siteId, teamId);
       
       const modeText = isOnline ? "online" : "offline";
       toast({
         title: "Patrol Started",
-        description: `Persistent patrol started ${modeText} at ${shiftValidation.assignedSite.name}. ${isOnline ? 'Location tracking will begin shortly.' : 'Data will sync when connection is restored. Session will persist even if app is restarted.'}`
+        description: `Persistent patrol started ${modeText}. ${isOnline ? 'Location tracking will begin shortly.' : 'Data will sync when connection is restored. Session will persist even if app is restarted.'}`
       });
       
       fetchDashboardStats();
@@ -263,6 +294,22 @@ const PatrolDashboard = ({
         variant: "destructive"
       });
     }
+  };
+
+  const handleCheckpointGroupSelected = (groupId: string | null) => {
+    setShowCheckpointGroupSelector(false);
+    if (pendingPatrolSiteId) {
+      // Get team ID from shift validation
+      ShiftValidationService.validateGuardShiftAccess(profile?.id || '').then(shiftValidation => {
+        startPatrolWithGroup(pendingPatrolSiteId, shiftValidation.assignedTeam?.id, groupId);
+      });
+    }
+    setPendingPatrolSiteId(null);
+  };
+
+  const handleCheckpointGroupCancel = () => {
+    setShowCheckpointGroupSelector(false);
+    setPendingPatrolSiteId(null);
   };
   const handleEndPatrol = async () => {
     if (!currentActivePatrol) return;
@@ -898,8 +945,18 @@ const PatrolDashboard = ({
               <User className="h-6 w-6 lg:h-8 lg:w-8 text-blue-500 flex-shrink-0 self-end lg:self-auto" />
             </div>
           </CardContent>
-        </Card>
-      </div>
+      </Card>
+
+      {showCheckpointGroupSelector && pendingPatrolSiteId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <CheckpointGroupSelector
+            siteId={pendingPatrolSiteId}
+            onSelectGroup={handleCheckpointGroupSelected}
+            onCancel={handleCheckpointGroupCancel}
+          />
+        </div>
+      )}
+    </div>
 
       {/* Recent Activity */}
       <Card className="overflow-hidden">
