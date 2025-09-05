@@ -3008,6 +3008,7 @@ export type Database = {
       }
       patrol_sessions: {
         Row: {
+          checkpoint_group_id: string | null
           created_at: string
           end_time: string | null
           guard_id: string
@@ -3021,6 +3022,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          checkpoint_group_id?: string | null
           created_at?: string
           end_time?: string | null
           guard_id: string
@@ -3034,6 +3036,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          checkpoint_group_id?: string | null
           created_at?: string
           end_time?: string | null
           guard_id?: string
@@ -3047,6 +3050,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "patrol_sessions_checkpoint_group_id_fkey"
+            columns: ["checkpoint_group_id"]
+            isOneToOne: false
+            referencedRelation: "checkpoint_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "patrol_sessions_guard_id_fkey"
             columns: ["guard_id"]
