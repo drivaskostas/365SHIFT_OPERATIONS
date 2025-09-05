@@ -52,23 +52,45 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Processing observation notification for observation:', observationId);
 
-    // Get notification recipients using the same table as emergency reports
+    // Get notification recipients - ONLY use site-specific recipients
     let recipients: any[] = [];
 
+    console.log('=== OBSERVATION EMAIL NOTIFICATION START ===');
+    console.log('Raw request body:', JSON.stringify({ title, siteId, teamId, guardId, severity, guardName, timestamp, description }));
+    console.log('RESEND_API_KEY found:', Deno.env.get('RESEND_API_KEY') ? Deno.env.get('RESEND_API_KEY')?.substring(0, 10) + '...' : 'NOT FOUND');
+    console.log('Timestamp:', new Date().toISOString());
+
+    // Parse request data
+    const requestData = {
+      title,
+      siteId: siteId || '',
+      teamId: teamId || '',
+      guardId,
+      imageUrl: imageUrl || null,
+      severity,
+      guardName,
+      timestamp,
+      description
+    };
+    
+    console.log('Parsed request data:', JSON.stringify(requestData));
+
     if (siteId && !testMode) {
-      console.log('Looking for recipients for siteId:', siteId);
-      // Use the same table as emergency reports that actually works
-      const { data: siteRecipients } = await supabase
+      console.log('Looking for site-specific recipients for siteId:', siteId);
+      
+      const { data: siteRecipients, error: siteError } = await supabase
         .from('site_notification_settings')
         .select('email, name, notify_for_severity')
         .eq('site_id', siteId)
         .eq('active', true);
 
-      console.log('Raw site recipients found:', siteRecipients?.length || 0);
-      console.log('Site recipients before filtering:', siteRecipients);
+      if (siteError) {
+        console.error('Error fetching site recipients:', siteError);
+      }
+
+      console.log('Site-specific recipients found:', siteRecipients?.map(r => r.email) || []);
 
       if (siteRecipients && siteRecipients.length > 0) {
-        // Filter by severity - be more lenient with the filtering
         recipients = siteRecipients.filter(recipient => {
           if (!recipient.email) return false;
           
@@ -83,66 +105,25 @@ const handler = async (req: Request): Promise<Response> => {
           // If severity filter is not an array, include the recipient
           return true;
         });
-        console.log('Site recipients after severity filtering:', recipients.length);
+        
+        console.log('Site-specific recipients found:', recipients.map(r => r.email));
       }
     }
 
-    // If still no recipients and no siteId, try to get recipients for any active site in the team
-    if (recipients.length === 0 && !testMode && teamId && !siteId) {
-      console.log('No siteId provided, looking for recipients in team sites:', teamId);
+    // If we have a specific siteId, we should ONLY use site-specific recipients
+    // Do NOT fall back to team or admin recipients if siteId is provided
+    if (siteId && recipients.length === 0 && !testMode) {
+      console.log('No recipients found for specific site:', siteId);
+      console.log('This is expected behavior - only site-specific recipients should receive notifications');
       
-      const { data: teamSiteRecipients } = await supabase
-        .from('site_notification_settings')
-        .select(`
-          email, 
-          name, 
-          notify_for_severity,
-          guardian_sites!inner(team_id)
-        `)
-        .eq('guardian_sites.team_id', teamId)
-        .eq('active', true);
-
-      console.log('Team site recipients found:', teamSiteRecipients?.length || 0);
-
-      if (teamSiteRecipients && teamSiteRecipients.length > 0) {
-        recipients = teamSiteRecipients.filter(recipient => {
-          if (!recipient.email) return false;
-          
-          // If no severity filter is set, include the recipient
-          if (!recipient.notify_for_severity) return true;
-          
-          // If severity filter is set and is an array, check if it includes the severity
-          if (Array.isArray(recipient.notify_for_severity)) {
-            return recipient.notify_for_severity.includes(severity);
-          }
-          
-          // If severity filter is not an array, include the recipient
-          return true;
-        });
-        console.log('Team site recipients after filtering:', recipients.length);
-      }
-    }
-
-    // If still no recipients, use admin fallback (same as emergency reports)
-    if (recipients.length === 0 && !testMode) {
-      console.log('No specific recipients found, falling back to admins');
-      
-      const { data: adminUsers } = await supabase
-        .from('user_roles')
-        .select(`
-          user_id,
-          profiles!inner(email, first_name, last_name, full_name)
-        `)
-        .in('role', ['admin', 'super_admin']);
-
-      if (adminUsers) {
-        recipients = adminUsers.map(user => ({
-          email: user.profiles.email,
-          name: user.profiles.full_name || 
-                `${user.profiles.first_name} ${user.profiles.last_name}`.trim() ||
-                user.profiles.email
-        })).filter(recipient => recipient.email);
-      }
+      return new Response(
+        JSON.stringify({ 
+          message: 'No recipients configured for this site',
+          siteId: siteId,
+          observationId: observationId
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Handle test mode
