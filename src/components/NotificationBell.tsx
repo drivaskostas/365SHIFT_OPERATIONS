@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { el } from 'date-fns/locale';
 
@@ -25,6 +25,7 @@ export default function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -187,7 +188,7 @@ export default function NotificationBell() {
           />
           
           {/* Notifications Panel */}
-          <Card className="absolute right-0 top-full mt-2 w-80 sm:w-80 w-[95vw] sm:w-[400px] max-w-[400px] max-h-[80vh] z-50 shadow-lg border">
+          <Card className="absolute right-0 sm:right-0 left-2 sm:left-auto top-full mt-2 w-[calc(100vw-1rem)] sm:w-[400px] max-w-[400px] max-h-[80vh] z-50 shadow-lg border">
             <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-gray-50 dark:from-gray-800 dark:to-gray-900 border-b flex items-center justify-between">
               <h3 className="font-semibold text-sm sm:text-base">Ειδοποιήσεις</h3>
               <div className="flex items-center space-x-2">
