@@ -187,9 +187,9 @@ export default function NotificationBell() {
           />
           
           {/* Notifications Panel */}
-          <Card className="absolute right-0 top-full mt-2 w-80 sm:w-80 w-[90vw] max-w-[400px] max-h-[70vh] z-50 shadow-lg border">
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-gray-50 dark:from-gray-800 dark:to-gray-900 border-b flex items-center justify-between">
-              <h3 className="font-semibold text-sm">Ειδοποιήσεις</h3>
+          <Card className="absolute right-0 top-full mt-2 w-80 sm:w-80 w-[95vw] sm:w-[400px] max-w-[400px] max-h-[80vh] z-50 shadow-lg border">
+            <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-gray-50 dark:from-gray-800 dark:to-gray-900 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-sm sm:text-base">Ειδοποιήσεις</h3>
               <div className="flex items-center space-x-2">
                 {unreadCount > 0 && (
                   <>
@@ -225,7 +225,7 @@ export default function NotificationBell() {
               </div>
             </div>
             
-            <CardContent className="p-0 max-h-[50vh] overflow-y-auto">
+            <CardContent className="p-0 max-h-[60vh] overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="p-6 text-center text-gray-500">
                   <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -236,35 +236,38 @@ export default function NotificationBell() {
                   {notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
+                      className={`p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
                         !notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-l-blue-500' : ''
                       }`}
                       onClick={() => !notification.read && markAsRead(notification.id)}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <Badge 
-                              variant="secondary" 
-                              className={`text-xs px-2 py-1 ${getNotificationColor(notification.type)}`}
-                            >
-                              {notification.type}
-                            </Badge>
-                            {!notification.read && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                            )}
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Badge 
+                                variant="secondary" 
+                                className={`text-xs px-2 py-1 ${getNotificationColor(notification.type)}`}
+                              >
+                                {notification.type}
+                              </Badge>
+                              {!notification.read && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 flex-shrink-0">
+                              {formatTime(notification.created_at)}
+                            </p>
                           </div>
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {notification.title}
-                          </h4>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                            {notification.body}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            {formatTime(notification.created_at)}
-                          </p>
+                          
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-tight">
+                              {notification.title}
+                            </h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap break-words">
+                              {notification.body}
+                            </p>
+                          </div>
                         </div>
-                      </div>
                     </div>
                   ))}
                 </div>
