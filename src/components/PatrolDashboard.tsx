@@ -220,17 +220,26 @@ const PatrolDashboard = ({
   };
   const checkActivePatrol = async () => {
     if (!profile?.id) return;
+    
+    // Don't check if we're in the middle of ending a patrol
+    if (!legacyActivePatrol && !persistentPatrol) {
+      return; // Already no active patrol, no need to check
+    }
+    
     try {
       const patrol = await PatrolService.getActivePatrol(profile.id);
-      setLegacyActivePatrol(patrol);
       
-      // If no active patrol in database, clear persistent storage immediately
-      if (!patrol) {
-        if (isPatrolPersistent) {
-          clearPersistentPatrol();
+      // Only update state if there's actually an active patrol in the database
+      if (patrol && patrol.status === 'active') {
+        setLegacyActivePatrol(patrol);
+      } else if (!patrol) {
+        // Only clear if we had an active patrol before
+        if (legacyActivePatrol || persistentPatrol) {
+          setLegacyActivePatrol(null);
+          if (isPatrolPersistent) {
+            clearPersistentPatrol();
+          }
         }
-        // Force re-render by updating state
-        setLegacyActivePatrol(null);
       }
     } catch (error) {
       console.error('Error checking active patrol:', error);
@@ -365,25 +374,27 @@ const PatrolDashboard = ({
     if (!currentActivePatrol) return;
     
     try {
+      console.log('🛑 Ending patrol:', currentActivePatrol.id);
+      
       // Use persistent patrol end logic to ensure proper cleanup
-      await endPersistentPatrol(true);
+      const endedPatrol = await endPersistentPatrol(true);
       
-      // Force immediate state cleanup
-      setLegacyActivePatrol(null);
-      
-      // Wait for database state to update, then force refresh
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await checkActivePatrol();
-      
-      const modeText = isOnline ? "online" : "offline";
-      toast({
-        title: "Patrol Ended",
-        description: `Patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
-      });
-      
-      // Force refresh the dashboard data
-      await fetchDashboardStats();
-      await fetchRecentActivities();
+      if (endedPatrol) {
+        console.log('✅ Patrol ended successfully:', endedPatrol.id);
+        
+        // Force immediate state cleanup
+        setLegacyActivePatrol(null);
+        
+        const modeText = isOnline ? "online" : "offline";
+        toast({
+          title: "Patrol Ended",
+          description: `Patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
+        });
+        
+        // Force refresh the dashboard data
+        await fetchDashboardStats();
+        await fetchRecentActivities();
+      }
     } catch (error) {
       console.error('Error ending patrol:', error);
       toast({
