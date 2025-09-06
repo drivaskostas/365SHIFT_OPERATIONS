@@ -86,19 +86,25 @@ const LoginScreen = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-900 to-gray-900">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-card to-background">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
+      <Card className="w-full max-w-md card-tech relative z-10">
+        <CardHeader className="text-center space-y-6">
           <div className="flex justify-center">
-            <img 
-              src="/lovable-uploads/2f80a624-0bbb-431f-8440-671c1ad9fde4.png" 
-              alt="Ovit Security Logo" 
-              className="h-16 w-16 object-contain" 
-            />
+            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 shadow-neon">
+              <img 
+                src="/lovable-uploads/2f80a624-0bbb-431f-8440-671c1ad9fde4.png" 
+                alt="Ovit Security Logo" 
+                className="h-16 w-16 object-contain" 
+              />
+            </div>
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">Sentinel Patrol</CardTitle>
-            <p className="text-gray-600 mt-2">By Ovit Security</p>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              SENTINEL PATROL
+            </CardTitle>
+            <p className="text-muted-foreground mt-2 font-mono text-sm">OVIT.SECURITY.SYS</p>
+            <div className="mt-2 text-xs text-accent font-mono">[ SECURE ACCESS TERMINAL ]</div>
           </div>
         </CardHeader>
         <CardContent>
@@ -159,21 +165,30 @@ const LoginScreen = () => {
 
             <Button 
               type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700" 
+              variant="gradient"
+              className="w-full" 
               disabled={isLoading || !email || !password}
             >
-              {isLoading ? 'Signing In...' : 'Sign In'}
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+                  <span>AUTHENTICATING...</span>
+                </div>
+              ) : (
+                'INITIALIZE ACCESS'
+              )}
             </Button>
           </form>
 
-          <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-            <div className="flex items-center space-x-2 text-blue-700">
+          <div className="mt-6 p-4 surface-tech">
+            <div className="flex items-center space-x-2 text-primary">
               <Clock className="h-4 w-4" />
-              <span className="text-sm font-medium">Shift-Based Access</span>
+              <span className="text-sm font-medium font-mono">SHIFT-BASED ACCESS</span>
             </div>
-            <p className="text-xs text-blue-600 mt-1">
-              You can only login during your assigned shift times or 30 minutes before your shift starts. 
-              Patrols are restricted to your assigned site.
+            <p className="text-xs text-muted-foreground mt-2 font-mono">
+              {`> Access restricted to assigned shift windows`}<br/>
+              {`> 30-minute pre-shift authentication window`}<br/>
+              {`> Site-specific patrol authorization`}
             </p>
           </div>
         </CardContent>

@@ -95,23 +95,25 @@ function AppContent() {
       
       <div className="min-h-screen flex flex-col">
         {/* Header */}
-        {user && <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-900 to-blue-800 text-white p-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between shadow-lg backdrop-blur-sm">
+        {user && <header className="sticky top-0 z-50 bg-gradient-to-r from-background/95 via-card/90 to-background/95 backdrop-blur-xl border-b border-border/20 text-foreground p-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between shadow-card">
             <div className="flex items-center space-x-3 animate-fade-in">
-              <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-                <Shield className="h-6 w-6" />
+              <div className="p-2 bg-primary/10 rounded-xl backdrop-blur-sm border border-primary/20 shadow-glow">
+                <Shield className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg font-bold">Sentinel</h1>
-                
+                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  SENTINEL
+                </h1>
+                <div className="text-xs text-muted-foreground font-mono">SECURITY.SYS</div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <NotificationBell />
-              <Button variant="glass" size="sm" onClick={() => setDarkMode(!darkMode)} className="hover:scale-105">
+              <Button variant="glass" size="sm" onClick={() => setDarkMode(!darkMode)} className="hover:scale-110 hover:glow-primary">
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <LanguageToggle />
-              <Button variant="glass" size="sm" onClick={handleSettingsClick} title="Settings" className="hover:scale-105">
+              <Button variant="glass" size="sm" onClick={handleSettingsClick} title="Settings" className="hover:scale-110 hover:glow-primary">
                 <User className="h-4 w-4" />
               </Button>
             </div>
@@ -123,25 +125,25 @@ function AppContent() {
         </main>
 
         {/* Bottom Navigation */}
-        {user && currentScreen === 'dashboard' && <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 p-4 shadow-lg">
+        {user && currentScreen === 'dashboard' && <nav className="bg-card/80 backdrop-blur-xl border-t border-border/30 p-4 shadow-card pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <div className="flex justify-around max-w-md mx-auto">
-              <Button variant="ghost" className="flex flex-col items-center space-y-1 transition-all hover:scale-105 hover:bg-primary/10" onClick={() => setCurrentScreen('dashboard')}>
-                <div className="p-2 rounded-lg bg-primary/10">
+              <Button variant="ghost" className="flex flex-col items-center space-y-2 transition-all hover:scale-110 hover:bg-primary/10 rounded-xl p-3" onClick={() => setCurrentScreen('dashboard')}>
+                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 shadow-glow">
                   <Shield className="h-5 w-5 text-primary" />
                 </div>
-                <span className="text-xs font-medium">{t('nav.dashboard')}</span>
+                <span className="text-xs font-medium text-primary">{t('nav.dashboard')}</span>
               </Button>
-              <Button variant="ghost" className="flex flex-col items-center space-y-1 transition-all hover:scale-105 hover:bg-primary/10" onClick={() => setCurrentScreen('scanner')}>
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Camera className="h-5 w-5 text-primary" />
+              <Button variant="ghost" className="flex flex-col items-center space-y-2 transition-all hover:scale-110 hover:bg-accent/10 rounded-xl p-3" onClick={() => setCurrentScreen('scanner')}>
+                <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 shadow-glow">
+                  <Camera className="h-5 w-5 text-accent" />
                 </div>
-                <span className="text-xs font-medium">{t('nav.scan')}</span>
+                <span className="text-xs font-medium text-accent">{t('nav.scan')}</span>
               </Button>
-              <Button variant="ghost" className="flex flex-col items-center space-y-1 transition-all hover:scale-105 hover:bg-primary/10" onClick={() => setCurrentScreen('observation')}>
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <AlertTriangle className="h-5 w-5 text-primary" />
+              <Button variant="ghost" className="flex flex-col items-center space-y-2 transition-all hover:scale-110 hover:bg-destructive/10 rounded-xl p-3" onClick={() => setCurrentScreen('observation')}>
+                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 shadow-glow">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
                 </div>
-                <span className="text-xs font-medium">{t('nav.report')}</span>
+                <span className="text-xs font-medium text-destructive">{t('nav.report')}</span>
               </Button>
             </div>
           </nav>}

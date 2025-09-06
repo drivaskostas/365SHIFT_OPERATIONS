@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 240 10% 98%;
+    --background: 210 20% 98%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -13,33 +13,37 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 214 84% 56%;
+    --primary: 200 100% 40%;
+    --primary-glow: 195 100% 50%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 30% 94%;
+    --secondary-foreground: 222.2 84% 4.9%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 210 30% 94%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 214 84% 56%;
+    --accent: 193 100% 35%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 75% 45%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 214 84% 56%;
+    --border: 214.3 31.8% 88%;
+    --input: 214.3 31.8% 95%;
+    --ring: 200 100% 40%;
 
-    --radius: 0.75rem;
+    --radius: 12px;
     
-    /* Enhanced design tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(217 91% 60%));
-    --gradient-secondary: linear-gradient(135deg, hsl(210 40% 96%), hsl(214 31% 91%));
-    --shadow-elegant: 0 10px 30px -10px hsl(214 84% 56% / 0.2);
-    --shadow-card: 0 4px 20px -4px hsl(214 84% 56% / 0.1);
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* High-tech design tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(200 100% 40%), hsl(193 100% 35%));
+    --gradient-secondary: linear-gradient(135deg, hsl(210 30% 94%), hsl(210 30% 96%));
+    --gradient-accent: linear-gradient(135deg, hsl(193 100% 35%), hsl(200 100% 40%));
+    --gradient-cyber: linear-gradient(135deg, hsl(200 100% 40%) 0%, hsl(193 100% 35%) 50%, hsl(180 100% 30%) 100%);
+    --shadow-neon: 0 0 20px hsl(200 100% 40% / 0.2);
+    --shadow-glow: 0 0 40px hsl(200 100% 40% / 0.1);
+    --shadow-card: 0 8px 32px hsl(220 50% 20% / 0.15);
+    --transition-tech: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     
     /* Status colors */
     --success: 142 76% 36%;
@@ -67,39 +71,43 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 218 27% 5%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 20% 8%;
+    --card-foreground: 210 40% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 20% 8%;
+    --popover-foreground: 210 40% 95%;
 
-    --primary: 214 84% 56%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 200 100% 50%;
+    --primary-glow: 195 100% 60%;
+    --primary-foreground: 220 100% 5%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 15% 12%;
+    --secondary-foreground: 210 40% 95%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 15% 12%;
+    --muted-foreground: 220 10% 70%;
 
-    --accent: 214 84% 56%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 193 100% 45%;
+    --accent-foreground: 220 100% 5%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 75% 45%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 214 84% 56%;
+    --border: 220 20% 15%;
+    --input: 220 20% 10%;
+    --ring: 200 100% 50%;
     
-    /* Enhanced dark mode tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(217 91% 60%));
-    --gradient-secondary: linear-gradient(135deg, hsl(217 32% 17%), hsl(222 84% 4%));
-    --shadow-elegant: 0 10px 30px -10px hsl(214 84% 56% / 0.3);
-    --shadow-card: 0 4px 20px -4px hsl(214 84% 56% / 0.2);
+    /* High-tech dark mode tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(200 100% 50%), hsl(193 100% 45%));
+    --gradient-secondary: linear-gradient(135deg, hsl(220 20% 8%), hsl(240 15% 12%));
+    --gradient-accent: linear-gradient(135deg, hsl(193 100% 45%), hsl(200 100% 50%));
+    --gradient-cyber: linear-gradient(135deg, hsl(200 100% 50%) 0%, hsl(193 100% 45%) 50%, hsl(180 100% 40%) 100%);
+    --shadow-neon: 0 0 20px hsl(200 100% 50% / 0.3);
+    --shadow-glow: 0 0 40px hsl(200 100% 50% / 0.2);
+    --shadow-card: 0 8px 32px hsl(220 50% 5% / 0.8);
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -157,45 +165,72 @@
     animation: bounceSubtle 2s infinite;
   }
 
-  /* Card hover effects */
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  /* Modern tech components */
+  .card-tech {
+    @apply bg-card/80 backdrop-blur-md border border-border/50 rounded-xl shadow-card 
+           transition-all duration-300 hover:shadow-glow hover:scale-[1.02] hover:border-primary/30;
   }
 
-  /* Button enhancements */
-  .btn-gradient {
+  .btn-tech {
     background: var(--gradient-primary);
-    @apply text-primary-foreground border-0 hover:opacity-90;
+    @apply text-primary-foreground font-medium px-6 py-3 rounded-xl shadow-lg 
+           transition-all duration-300 hover:shadow-neon hover:scale-105
+           border border-primary/20 backdrop-blur-sm;
   }
 
   .btn-glass {
-    @apply bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20;
+    @apply bg-white/5 hover:bg-white/10 text-foreground border border-white/10 
+           rounded-xl px-4 py-2 transition-all duration-300 backdrop-blur-md
+           hover:border-primary/30 hover:shadow-glow;
   }
 
-  /* Loading states */
-  .loading-pulse {
-    @apply animate-pulse bg-gradient-to-r from-muted via-muted-foreground/20 to-muted;
+  .btn-cyber {
+    background: var(--gradient-cyber);
+    @apply text-primary-foreground font-medium px-6 py-3 rounded-xl shadow-lg 
+           transition-all duration-300 hover:shadow-neon hover:scale-105
+           border border-accent/30 backdrop-blur-sm;
   }
 
-  /* Status indicators */
-  .status-indicator {
-    @apply inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium;
+  .surface-tech {
+    @apply bg-secondary/50 backdrop-blur-md border border-border/30 rounded-xl
+           shadow-card transition-all duration-300;
   }
 
+  .glow-primary {
+    box-shadow: var(--shadow-neon);
+  }
+
+  .shadow-neon {
+    box-shadow: var(--shadow-neon);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Status indicators with tech styling */
   .status-success {
-    @apply bg-success/20 text-success border border-success/30;
+    @apply bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg px-3 py-1.5
+           backdrop-blur-sm font-mono text-xs;
   }
 
   .status-warning {
-    @apply bg-warning/20 text-warning border border-warning/30;
+    @apply bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-lg px-3 py-1.5
+           backdrop-blur-sm font-mono text-xs;
   }
 
   .status-error {
-    @apply bg-destructive/20 text-destructive border border-destructive/30;
+    @apply bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg px-3 py-1.5
+           backdrop-blur-sm font-mono text-xs;
   }
 
   .status-info {
-    @apply bg-info/20 text-info border border-info/30;
+    @apply bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg px-3 py-1.5
+           backdrop-blur-sm font-mono text-xs;
   }
 }
 

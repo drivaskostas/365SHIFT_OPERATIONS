@@ -762,32 +762,35 @@ const PatrolDashboard = ({
         </div>}
 
       {/* Welcome Section */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Welcome {profile?.last_name}
-        </h1>
-        {/* Mobile-optimized status indicators */}
-        <div className="grid grid-cols-2 lg:flex lg:items-center lg:space-x-4 gap-2 lg:gap-0 text-sm text-gray-600 dark:text-gray-300">
-          <div className="flex items-center space-x-1">
-            <Clock className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{currentTime.toLocaleTimeString()}</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <MapPin className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{currentActivePatrol ? 'On Patrol' : t('dashboard.on_duty')}</span>
-          </div>
-          {guardShiftInfo && <div className="flex items-center space-x-1 text-green-600 col-span-2 lg:col-span-1">
-              <Shield className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate font-medium">{guardShiftInfo.siteName}</span>
-            </div>}
-          {isTracking && <div className="flex items-center space-x-1 text-green-600 col-span-2 lg:col-span-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
-              <span className="truncate">Location Tracking Active</span>
-            </div>}
-          {/* Connection Status Indicator */}
-          <div className="flex items-center space-x-1">
-            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="truncate">{isOnline ? 'Online' : 'Offline'}</span>
+      <div className="mb-8">
+        <div className="p-6 surface-tech">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4 font-mono">
+            OPERATIVE {profile?.last_name?.toUpperCase()}
+          </h1>
+          {/* High-tech status indicators */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center space-x-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <Clock className="h-4 w-4 text-primary" />
+              <span className="text-primary font-mono text-sm">{currentTime.toLocaleTimeString()}</span>
+            </div>
+            <div className="flex items-center space-x-2 p-3 rounded-lg bg-accent/10 border border-accent/20">
+              <MapPin className="h-4 w-4 text-accent" />
+              <span className="text-accent font-mono text-sm truncate">{currentActivePatrol ? 'PATROL.ACTIVE' : 'STANDBY'}</span>
+            </div>
+            {guardShiftInfo && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
+                <Shield className="h-4 w-4 text-green-400" />
+                <span className="text-green-400 font-mono text-sm truncate">SITE: {guardShiftInfo.siteName?.toUpperCase()}</span>
+              </div>}
+            {isTracking && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-green-400 font-mono text-sm">GPS.TRACKING.ACTIVE</span>
+              </div>}
+            <div className="flex items-center space-x-2 p-3 rounded-lg col-span-2">
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <span className={`font-mono text-sm ${isOnline ? 'text-green-400' : 'text-red-400'}`}>
+                {isOnline ? 'NETWORK.ONLINE' : 'NETWORK.OFFLINE'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -953,31 +956,31 @@ const PatrolDashboard = ({
       )}
 
       {/* Status Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowPatrolSessions(true)}>
-          <CardContent className="p-3 lg:p-4">
-            <div className="space-y-2 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
-                  {t('dashboard.patrol_rounds')}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card className="card-tech cursor-pointer hover:scale-105" onClick={() => setShowPatrolSessions(true)}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-mono text-primary/80 mb-2">
+                  PATROLS
                 </p>
-                <p className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPatrols}</p>
+                <p className="text-3xl font-bold font-mono text-primary">{stats.totalPatrols}</p>
               </div>
-              <TrendingUp className="h-6 w-6 lg:h-8 lg:w-8 text-green-500 flex-shrink-0 self-end lg:self-auto" />
+              <TrendingUp className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowObservations(true)}>
-          <CardContent className="p-3 lg:p-4">
-            <div className="space-y-2 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
-                  {t('dashboard.observations')}
+        <Card className="card-tech cursor-pointer hover:scale-105" onClick={() => setShowObservations(true)}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-mono text-accent/80 mb-2">
+                  REPORTS
                 </p>
-                <p className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalObservations}</p>
+                <p className="text-3xl font-bold font-mono text-accent">{stats.totalObservations}</p>
               </div>
-              <AlertTriangle className="h-6 w-6 lg:h-8 lg:w-8 text-yellow-500 flex-shrink-0 self-end lg:self-auto" />
+              <AlertTriangle className="h-8 w-8 text-accent" />
             </div>
           </CardContent>
         </Card>
