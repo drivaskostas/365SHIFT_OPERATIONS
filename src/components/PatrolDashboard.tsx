@@ -368,8 +368,12 @@ const PatrolDashboard = ({
       // Use persistent patrol end logic to ensure proper cleanup
       await endPersistentPatrol(true);
       
-      // Force immediate local state update
+      // Force immediate state cleanup
       setLegacyActivePatrol(null);
+      
+      // Wait for database state to update, then force refresh
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await checkActivePatrol();
       
       const modeText = isOnline ? "online" : "offline";
       toast({
@@ -377,12 +381,9 @@ const PatrolDashboard = ({
         description: `Patrol completed ${modeText}. ${isOnline ? 'Location tracking stopped.' : 'Data will sync when connection is restored.'}`
       });
       
-      // Force refresh the dashboard data immediately
-      setTimeout(async () => {
-        await checkActivePatrol();
-        await fetchDashboardStats();
-        await fetchRecentActivities();
-      }, 0);
+      // Force refresh the dashboard data
+      await fetchDashboardStats();
+      await fetchRecentActivities();
     } catch (error) {
       console.error('Error ending patrol:', error);
       toast({
