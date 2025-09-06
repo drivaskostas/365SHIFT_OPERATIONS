@@ -200,8 +200,19 @@ export class PatrolService {
 
   static async endPatrol(patrolId: string): Promise<PatrolSession> {
     console.log('Attempting to end patrol:', patrolId);
-    const location = await this.getCurrentLocation();
-    console.log('Location for patrol end:', location);
+    
+    // Use a timeout wrapper for location to prevent hanging
+    let location: { latitude: number; longitude: number } | null = null;
+    try {
+      location = await Promise.race([
+        this.getCurrentLocation(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)) // 5 second timeout
+      ]);
+      console.log('Location for patrol end:', location);
+    } catch (error) {
+      console.warn('Location failed for patrol end:', error);
+      location = null;
+    }
 
     if (OfflineStorageService.isOnline()) {
       const { data, error } = await supabase
