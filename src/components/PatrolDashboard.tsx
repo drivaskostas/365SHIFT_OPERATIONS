@@ -621,7 +621,7 @@ const PatrolDashboard = ({
         data: recentObservations
       } = await supabase.from('patrol_observations').select(`
           *,
-          profiles!guard_id (
+          profiles!patrol_observations_guard_id_fkey (
             first_name,
             last_name,
             full_name
@@ -649,7 +649,7 @@ const PatrolDashboard = ({
         data: recentEmergencies
       } = await supabase.from('emergency_reports').select(`
           *,
-          profiles!guard_id (
+          profiles!emergency_reports_guard_id_fkey (
             first_name,
             last_name,
             full_name

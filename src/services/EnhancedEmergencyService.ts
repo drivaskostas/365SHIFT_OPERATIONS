@@ -231,7 +231,7 @@ export class EnhancedEmergencyService {
       .from('emergency_reports')
       .select(`
         *,
-        profiles!guard_id(first_name, last_name, full_name)
+        profiles!emergency_reports_guard_id_fkey(first_name, last_name, full_name)
       `)
       .order('created_at', { ascending: false })
 
