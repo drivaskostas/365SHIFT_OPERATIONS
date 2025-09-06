@@ -958,57 +958,57 @@ const PatrolDashboard = ({
       {/* Status Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Card className="card-tech cursor-pointer hover:scale-105" onClick={() => setShowPatrolSessions(true)}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-mono text-primary/80 mb-2">
-                  PATROLS
-                </p>
+          <CardContent className="p-6 text-center">
+            <div className="flex flex-col items-center space-y-3">
+              <p className="text-sm font-mono text-primary/80">
+                PATROLS
+              </p>
+              <div className="flex items-center space-x-2">
                 <p className="text-3xl font-bold font-mono text-primary">{stats.totalPatrols}</p>
+                <TrendingUp className="h-6 w-6 text-primary" />
               </div>
-              <TrendingUp className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="card-tech cursor-pointer hover:scale-105" onClick={() => setShowObservations(true)}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-mono text-accent/80 mb-2">
-                  REPORTS
-                </p>
+          <CardContent className="p-6 text-center">
+            <div className="flex flex-col items-center space-y-3">
+              <p className="text-sm font-mono text-accent/80">
+                REPORTS
+              </p>
+              <div className="flex items-center space-x-2">
                 <p className="text-3xl font-bold font-mono text-accent">{stats.totalObservations}</p>
+                <AlertTriangle className="h-6 w-6 text-accent" />
               </div>
-              <AlertTriangle className="h-8 w-8 text-accent" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden" onClick={() => setShowEmergencyReports(true)}>
-          <CardContent className="p-3 lg:p-4">
-            <div className="space-y-2 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
-                  {t('dashboard.incidents')}
-                </p>
-                <p className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalIncidents}</p>
+        <Card className="card-tech cursor-pointer hover:scale-105 transition-shadow overflow-hidden" onClick={() => setShowEmergencyReports(true)}>
+          <CardContent className="p-6 text-center">
+            <div className="flex flex-col items-center space-y-3">
+              <p className="text-sm font-mono text-destructive/80">
+                {t('dashboard.incidents').toUpperCase()}
+              </p>
+              <div className="flex items-center space-x-2">
+                <p className="text-3xl font-bold font-mono text-destructive">{stats.totalIncidents}</p>
+                <Shield className="h-6 w-6 text-destructive" />
               </div>
-              <Shield className="h-6 w-6 lg:h-8 lg:w-8 text-red-500 flex-shrink-0 self-end lg:self-auto" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden">
-          <CardContent className="p-3 lg:p-4">
-            <div className="space-y-2 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
-                  {t('dashboard.status')}
-                </p>
-                <p className="text-sm lg:text-base font-bold text-green-600 truncate">{currentActivePatrol ? 'On Patrol' : t('dashboard.active')}</p>
+        <Card className="card-tech overflow-hidden">
+          <CardContent className="p-6 text-center">
+            <div className="flex flex-col items-center space-y-3">
+              <p className="text-sm font-mono text-secondary/80">
+                {t('dashboard.status').toUpperCase()}
+              </p>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm font-bold font-mono text-green-400">{currentActivePatrol ? 'ON PATROL' : t('dashboard.active').toUpperCase()}</p>
+                <User className="h-6 w-6 text-secondary" />
               </div>
-              <User className="h-6 w-6 lg:h-8 lg:w-8 text-blue-500 flex-shrink-0 self-end lg:self-auto" />
             </div>
           </CardContent>
       </Card>
