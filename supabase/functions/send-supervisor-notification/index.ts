@@ -205,7 +205,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const emailResponse = await resend.emails.send({
-          from: 'OVIT Security <notifications@ovitsec.com>',
+          from: "OVIT Observations <observations@notifications.ovitguardly.com>",
           to: [email],
           subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()}`,
           html: htmlContent
