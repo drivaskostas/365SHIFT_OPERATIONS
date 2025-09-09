@@ -66,9 +66,19 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('Raw site recipients found:', siteRecipients?.length || 0);
       if (siteRecipients) {
         console.log('Site recipients before filtering:', siteRecipients);
-        recipients = siteRecipients.filter(recipient => 
-          recipient.notify_for_severity.includes(severity)
-        );
+        recipients = siteRecipients.filter(recipient => {
+          // Handle both array and string formats for notify_for_severity
+          const severityList = Array.isArray(recipient.notify_for_severity) 
+            ? recipient.notify_for_severity 
+            : (typeof recipient.notify_for_severity === 'string' 
+                ? [recipient.notify_for_severity] 
+                : []);
+          
+          console.log(`Checking recipient ${recipient.email} with severities:`, severityList, 'for severity:', severity);
+          const shouldNotify = severityList.includes(severity);
+          console.log(`Should notify ${recipient.email}:`, shouldNotify);
+          return shouldNotify;
+        });
         console.log('Site recipients after severity filtering:', recipients.length);
       }
     } else {
