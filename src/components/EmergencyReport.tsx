@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, AlertTriangle, Phone, MapPin, Clock, Send, Camera, X } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Phone, MapPin, Clock, Send, Camera, X, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,7 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -118,6 +119,34 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
 
   const removePhoto = (index: number) => {
     setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const selectFromLibrary = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith('image/') && photos.length < 5) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setPhotos(prev => [...prev, event.target!.result as string]);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Reset the input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -303,16 +332,38 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
                     </div>
                   </div>
                 ) : (
-                  <Button 
-                    type="button"
-                    onClick={startCamera}
-                    variant="outline" 
-                    className="w-full h-16 border-dashed border-red-300"
-                    disabled={photos.length >= 5}
-                  >
-                    <Camera className="h-6 w-6 mr-2" />
-                    {photos.length === 0 ? 'Capture Photos' : 'Add Another Photo'}
-                  </Button>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        type="button"
+                        onClick={startCamera}
+                        variant="outline" 
+                        className="h-16 border-dashed border-red-300"
+                        disabled={photos.length >= 5}
+                      >
+                        <Camera className="h-6 w-6 mr-2" />
+                        Take Photo
+                      </Button>
+                      <Button 
+                        type="button"
+                        onClick={selectFromLibrary}
+                        variant="outline" 
+                        className="h-16 border-dashed border-red-300"
+                        disabled={photos.length >= 5}
+                      >
+                        <ImageIcon className="h-6 w-6 mr-2" />
+                        Photo Library
+                      </Button>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </div>
                 )}
               </div>
 
