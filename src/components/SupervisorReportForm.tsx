@@ -268,7 +268,40 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
 
       if (error) throw error;
 
-      console.log('Supervisor report submitted successfully, notifications will be sent via database trigger');
+      console.log('Supervisor report submitted successfully, sending notifications...');
+
+      // Send notification email
+      try {
+        console.log('Calling supervisor notification with params:', {
+          title: reportData.title,
+          severity: reportData.severity,
+          supervisorName: reportData.supervisor_name,
+          siteId: reportData.site_id,
+          teamId: reportData.team_id,
+          supervisorId: reportData.supervisor_id
+        });
+
+        await supabase.functions.invoke('send-supervisor-notification', {
+          body: {
+            title: reportData.title,
+            description: reportData.description,
+            severity: reportData.severity,
+            supervisorName: reportData.supervisor_name,
+            timestamp: data.created_at || new Date().toISOString(),
+            location: reportData.location || '',
+            incidentTime: reportData.incident_time,
+            imageUrl: reportData.image_url,
+            siteId: reportData.site_id,
+            teamId: reportData.team_id,
+            supervisorId: reportData.supervisor_id
+          }
+        });
+
+        console.log('Supervisor notification sent successfully');
+      } catch (notificationError) {
+        console.error('Failed to send supervisor notification:', notificationError);
+        // Don't throw here - report was saved successfully, notification failure shouldn't block the user
+      }
 
       toast({
         title: language === 'el' ? 'Επιτυχία' : 'Success',
