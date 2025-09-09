@@ -221,8 +221,12 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send emails to all recipients
-    const emailPromises = recipients.map(async (recipient) => {
+    // Send emails to all recipients with delay to avoid rate limiting
+    const emailPromises = recipients.map(async (recipient, index) => {
+      // Add 600ms delay between emails to respect Resend's 2 requests per second limit
+      if (index > 0) {
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
       try {
         console.log(`Attempting to send email to ${recipient.email}...`);
         
