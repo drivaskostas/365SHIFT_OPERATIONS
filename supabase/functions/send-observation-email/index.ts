@@ -206,10 +206,29 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send emails to all recipients
-    const emailPromises = recipients.map(async (recipient) => {
+    // Send emails sequentially to avoid rate limiting
+    const emailResults: Array<{ success: boolean; email: string; error?: any; response?: any }> = [];
+    
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i];
+      
+      // Add delay between emails (600ms = 1.67 req/s, safely under 2 req/s limit)
+      if (i > 0) {
+        console.log(`⏳ Waiting 600ms before sending next observation email...`);
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+      
       try {
-        console.log(`Attempting to send observation email to ${recipient.email}...`);
+        console.log(`📧 Sending observation email ${i + 1}/${recipients.length} to ${recipient.email}...`);
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(recipient.email)) {
+          console.error(`❌ Invalid email format: ${recipient.email}`);
+          emailResults.push({ success: false, email: recipient.email, error: 'Invalid email format' });
+          continue;
+        }
+
         const emailResponse = await resend.emails.send({
           from: "OVIT Observations <observations@notifications.ovitguardly.com>",
           to: [recipient.email],
@@ -217,37 +236,64 @@ const handler = async (req: Request): Promise<Response> => {
           html: emailHtml,
         });
 
-        console.log(`Observation email sent successfully to ${recipient.email}:`, emailResponse);
-        return { success: true, email: recipient.email, response: emailResponse };
-      } catch (error) {
-        console.error(`Failed to send observation email to ${recipient.email}:`, error);
-        console.error(`Resend error details:`, JSON.stringify(error, null, 2));
-        return { success: false, email: recipient.email, error: error.message };
+        console.log(`✅ Observation email sent successfully to ${recipient.email}:`, emailResponse);
+        
+        // Check if Resend returned an error in the response
+        if (emailResponse.error) {
+          console.error(`❌ Resend API error for ${recipient.email}:`, emailResponse.error);
+          emailResults.push({ success: false, email: recipient.email, error: emailResponse.error });
+        } else {
+          emailResults.push({ success: true, email: recipient.email, response: emailResponse });
+        }
+      } catch (error: any) {
+        console.error(`❌ Failed to send observation email to ${recipient.email}:`, error);
+        console.error(`Full error object:`, {
+          name: error.name,
+          message: error.message,
+          status: error.status,
+          statusText: error.statusText,
+          stack: error.stack
+        });
+        emailResults.push({ success: false, email: recipient.email, error: error.message || 'Unknown error' });
       }
-    });
-
-    const emailResults = await Promise.allSettled(emailPromises);
-    console.log('All observation email results:', emailResults);
+    }
+    console.log('📧 All observation email results summary:', emailResults.map(result => ({
+      email: result.email,
+      success: result.success,
+      error: result.error
+    })));
     
-    const successCount = emailResults.filter(result => 
-      result.status === 'fulfilled' && result.value.success
-    ).length;
+    const successfulEmails = emailResults.filter(result => result.success);
+    const failedEmails = emailResults.filter(result => !result.success);
     
-    const failedResults = emailResults.filter(result => 
-      result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success)
-    );
+    console.log(`📊 Observation email delivery summary:`);
+    console.log(`✅ Successful: ${successfulEmails.length}/${recipients.length}`);
+    console.log(`❌ Failed: ${failedEmails.length}/${recipients.length}`);
     
-    if (failedResults.length > 0) {
-      console.error('Failed observation email results:', failedResults);
+    if (successfulEmails.length > 0) {
+      console.log('✅ Successfully sent to:', successfulEmails.map(r => r.email));
+    }
+    
+    if (failedEmails.length > 0) {
+      console.error('❌ Failed to send to:');
+      failedEmails.forEach(result => {
+        console.error(`  - ${result.email}: ${result.error}`);
+      });
     }
 
-    console.log(`Observation notification completed: ${successCount}/${recipients.length} emails sent successfully`);
+    console.log(`🏁 Observation notification completed: ${successfulEmails.length}/${recipients.length} emails sent successfully`);
 
     return new Response(
       JSON.stringify({
         message: 'Observation notifications processed',
         recipients: recipients.length,
-        emailsSent: successCount,
+        emailsSent: successfulEmails.length,
+        failedEmails: failedEmails.length,
+        successfulEmails: successfulEmails.map(r => r.email),
+        failedEmailDetails: failedEmails.map(r => ({
+          email: r.email,
+          error: r.error
+        })),
         observationId: observationId
       }),
       {
