@@ -192,6 +192,14 @@ const handler = async (req: Request): Promise<Response> => {
     const emailPromises = recipients.map(async (recipient) => {
       try {
         console.log(`Attempting to send email to ${recipient.email}...`);
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(recipient.email)) {
+          console.error(`Invalid email format: ${recipient.email}`);
+          return { success: false, email: recipient.email, error: 'Invalid email format' };
+        }
+
         const emailResponse = await resend.emails.send({
           from: "OVIT Emergency <emergency@notifications.ovitguardly.com>",
           to: [recipient.email],
@@ -199,37 +207,78 @@ const handler = async (req: Request): Promise<Response> => {
           html: emailHtml,
         });
 
-        console.log(`Email sent successfully to ${recipient.email}:`, emailResponse);
-        return { success: true, email: recipient.email, response: emailResponse };
-      } catch (error) {
-        console.error(`Failed to send email to ${recipient.email}:`, error);
-        console.error(`Resend error details:`, JSON.stringify(error, null, 2));
-        return { success: false, email: recipient.email, error: error.message };
+        console.log(`✅ Email sent successfully to ${recipient.email}:`, emailResponse);
+        
+        // Check if Resend returned an error in the response
+        if (emailResponse.error) {
+          console.error(`❌ Resend API error for ${recipient.email}:`, emailResponse.error);
+          return { success: false, email: recipient.email, error: emailResponse.error };
+        }
+
+        return { success: true, email: recipient.email, response: emailResponse, id: emailResponse.data?.id };
+      } catch (error: any) {
+        console.error(`❌ Failed to send email to ${recipient.email}:`, error);
+        console.error(`Full error object:`, {
+          name: error.name,
+          message: error.message,
+          status: error.status,
+          statusText: error.statusText,
+          stack: error.stack
+        });
+        return { success: false, email: recipient.email, error: error.message || 'Unknown error' };
       }
     });
 
     const emailResults = await Promise.allSettled(emailPromises);
-    console.log('All email results:', emailResults);
+    console.log('📧 All email results summary:', emailResults.map(result => ({
+      status: result.status,
+      email: result.status === 'fulfilled' ? result.value.email : 'unknown',
+      success: result.status === 'fulfilled' ? result.value.success : false,
+      error: result.status === 'fulfilled' ? result.value.error : result.reason
+    })));
     
-    const successCount = emailResults.filter(result => 
+    const successfulEmails = emailResults.filter(result => 
       result.status === 'fulfilled' && result.value.success
-    ).length;
+    );
     
-    const failedResults = emailResults.filter(result => 
+    const failedEmails = emailResults.filter(result => 
       result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success)
     );
     
-    if (failedResults.length > 0) {
-      console.error('Failed email results:', failedResults);
+    console.log(`📊 Email delivery summary:`);
+    console.log(`✅ Successful: ${successfulEmails.length}/${recipients.length}`);
+    console.log(`❌ Failed: ${failedEmails.length}/${recipients.length}`);
+    
+    if (successfulEmails.length > 0) {
+      console.log('✅ Successfully sent to:', successfulEmails.map(r => 
+        r.status === 'fulfilled' ? r.value.email : 'unknown'
+      ));
+    }
+    
+    if (failedEmails.length > 0) {
+      console.error('❌ Failed to send to:');
+      failedEmails.forEach(result => {
+        if (result.status === 'fulfilled') {
+          console.error(`  - ${result.value.email}: ${result.value.error}`);
+        } else {
+          console.error(`  - Unknown email: ${result.reason}`);
+        }
+      });
     }
 
-    console.log(`Emergency notification completed: ${successCount}/${recipients.length} emails sent successfully`);
+    console.log(`🏁 Emergency notification completed: ${successfulEmails.length}/${recipients.length} emails sent successfully`);
 
     return new Response(
       JSON.stringify({
         message: 'Emergency notifications processed',
         recipients: recipients.length,
-        emailsSent: successCount,
+        emailsSent: successfulEmails.length,
+        failedEmails: failedEmails.length,
+        successfulEmails: successfulEmails.map(r => r.status === 'fulfilled' ? r.value.email : 'unknown'),
+        failedEmailDetails: failedEmails.map(r => ({
+          email: r.status === 'fulfilled' ? r.value.email : 'unknown',
+          error: r.status === 'fulfilled' ? r.value.error : r.reason
+        })),
         reportId: reportId
       }),
       {
