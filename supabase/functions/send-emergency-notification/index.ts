@@ -221,20 +221,27 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Send emails to all recipients with delay to avoid rate limiting
-    const emailPromises = recipients.map(async (recipient, index) => {
-      // Add 600ms delay between emails to respect Resend's 2 requests per second limit
-      if (index > 0) {
+    // Send emails sequentially to avoid rate limiting
+    const emailResults: Array<{ success: boolean; email: string; error?: any; response?: any; id?: string }> = [];
+    
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i];
+      
+      // Add delay between emails (600ms = 1.67 req/s, safely under 2 req/s limit)
+      if (i > 0) {
+        console.log(`⏳ Waiting 600ms before sending next email...`);
         await new Promise(resolve => setTimeout(resolve, 600));
       }
+      
       try {
-        console.log(`Attempting to send email to ${recipient.email}...`);
+        console.log(`📧 Sending email ${i + 1}/${recipients.length} to ${recipient.email}...`);
         
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(recipient.email)) {
-          console.error(`Invalid email format: ${recipient.email}`);
-          return { success: false, email: recipient.email, error: 'Invalid email format' };
+          console.error(`❌ Invalid email format: ${recipient.email}`);
+          emailResults.push({ success: false, email: recipient.email, error: 'Invalid email format' });
+          continue;
         }
 
         const emailResponse = await resend.emails.send({
@@ -249,10 +256,15 @@ const handler = async (req: Request): Promise<Response> => {
         // Check if Resend returned an error in the response
         if (emailResponse.error) {
           console.error(`❌ Resend API error for ${recipient.email}:`, emailResponse.error);
-          return { success: false, email: recipient.email, error: emailResponse.error };
+          emailResults.push({ success: false, email: recipient.email, error: emailResponse.error });
+        } else {
+          emailResults.push({ 
+            success: true, 
+            email: recipient.email, 
+            response: emailResponse, 
+            id: emailResponse.data?.id 
+          });
         }
-
-        return { success: true, email: recipient.email, response: emailResponse, id: emailResponse.data?.id };
       } catch (error: any) {
         console.error(`❌ Failed to send email to ${recipient.email}:`, error);
         console.error(`Full error object:`, {
@@ -262,44 +274,30 @@ const handler = async (req: Request): Promise<Response> => {
           statusText: error.statusText,
           stack: error.stack
         });
-        return { success: false, email: recipient.email, error: error.message || 'Unknown error' };
+        emailResults.push({ success: false, email: recipient.email, error: error.message || 'Unknown error' });
       }
-    });
-
-    const emailResults = await Promise.allSettled(emailPromises);
+    }
     console.log('📧 All email results summary:', emailResults.map(result => ({
-      status: result.status,
-      email: result.status === 'fulfilled' ? result.value.email : 'unknown',
-      success: result.status === 'fulfilled' ? result.value.success : false,
-      error: result.status === 'fulfilled' ? result.value.error : result.reason
+      email: result.email,
+      success: result.success,
+      error: result.error
     })));
     
-    const successfulEmails = emailResults.filter(result => 
-      result.status === 'fulfilled' && result.value.success
-    );
-    
-    const failedEmails = emailResults.filter(result => 
-      result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success)
-    );
+    const successfulEmails = emailResults.filter(result => result.success);
+    const failedEmails = emailResults.filter(result => !result.success);
     
     console.log(`📊 Email delivery summary:`);
     console.log(`✅ Successful: ${successfulEmails.length}/${recipients.length}`);
     console.log(`❌ Failed: ${failedEmails.length}/${recipients.length}`);
     
     if (successfulEmails.length > 0) {
-      console.log('✅ Successfully sent to:', successfulEmails.map(r => 
-        r.status === 'fulfilled' ? r.value.email : 'unknown'
-      ));
+      console.log('✅ Successfully sent to:', successfulEmails.map(r => r.email));
     }
     
     if (failedEmails.length > 0) {
       console.error('❌ Failed to send to:');
       failedEmails.forEach(result => {
-        if (result.status === 'fulfilled') {
-          console.error(`  - ${result.value.email}: ${result.value.error}`);
-        } else {
-          console.error(`  - Unknown email: ${result.reason}`);
-        }
+        console.error(`  - ${result.email}: ${result.error}`);
       });
     }
 
@@ -311,10 +309,10 @@ const handler = async (req: Request): Promise<Response> => {
         recipients: recipients.length,
         emailsSent: successfulEmails.length,
         failedEmails: failedEmails.length,
-        successfulEmails: successfulEmails.map(r => r.status === 'fulfilled' ? r.value.email : 'unknown'),
+        successfulEmails: successfulEmails.map(r => r.email),
         failedEmailDetails: failedEmails.map(r => ({
-          email: r.status === 'fulfilled' ? r.value.email : 'unknown',
-          error: r.status === 'fulfilled' ? r.value.error : r.reason
+          email: r.email,
+          error: r.error
         })),
         reportId: reportId
       }),
