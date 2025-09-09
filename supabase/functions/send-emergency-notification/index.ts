@@ -55,17 +55,34 @@ const handler = async (req: Request): Promise<Response> => {
     // Get notification recipients based on site and severity
     let recipients: any[] = [];
 
+    console.log('🔍 DEBUGGING: Starting recipient search');
+    console.log('🔍 siteId:', siteId);
+    console.log('🔍 severity:', severity);
+
     if (siteId) {
-      console.log('Looking for recipients for siteId:', siteId);
-      const { data: siteRecipients } = await supabase
+      console.log('🔍 Looking for recipients for siteId:', siteId);
+      
+      // First, let's see ALL notification settings for debugging
+      const { data: allSettings, error: allError } = await supabase
+        .from('site_notification_settings')
+        .select('*');
+      
+      console.log('🔍 ALL notification settings in database:', allSettings?.length || 0);
+      if (allError) console.error('🔍 Error fetching all settings:', allError);
+      
+      // Now get the specific site recipients
+      const { data: siteRecipients, error: siteError } = await supabase
         .from('site_notification_settings')
         .select('email, name, notify_for_severity')
         .eq('site_id', siteId)
         .eq('active', true);
 
-      console.log('Raw site recipients found:', siteRecipients?.length || 0);
-      if (siteRecipients) {
-        console.log('Site recipients before filtering:', siteRecipients);
+      console.log('🔍 Raw site recipients found:', siteRecipients?.length || 0);
+      if (siteError) console.error('🔍 Error fetching site recipients:', siteError);
+      
+      if (siteRecipients && siteRecipients.length > 0) {
+        console.log('🔍 Site recipients before filtering:', JSON.stringify(siteRecipients, null, 2));
+        
         recipients = siteRecipients.filter(recipient => {
           // Handle both array and string formats for notify_for_severity
           const severityList = Array.isArray(recipient.notify_for_severity) 
@@ -74,20 +91,25 @@ const handler = async (req: Request): Promise<Response> => {
                 ? [recipient.notify_for_severity] 
                 : []);
           
-          console.log(`Checking recipient ${recipient.email} with severities:`, severityList, 'for severity:', severity);
+          console.log(`🔍 Checking recipient ${recipient.email} with severities:`, severityList, 'for severity:', severity);
           const shouldNotify = severityList.includes(severity);
-          console.log(`Should notify ${recipient.email}:`, shouldNotify);
+          console.log(`🔍 Should notify ${recipient.email}:`, shouldNotify);
           return shouldNotify;
         });
-        console.log('Site recipients after severity filtering:', recipients.length);
+        console.log('🔍 Site recipients after severity filtering:', recipients.length);
+        console.log('🔍 Final filtered recipients:', recipients.map(r => r.email));
+      } else {
+        console.log('🔍 No site-specific recipients found, will fall back to admins');
       }
     } else {
-      console.log('No siteId provided, skipping site-specific recipients');
+      console.log('🔍 No siteId provided, skipping site-specific recipients');
     }
 
     // If no site-specific recipients or no siteId, get admin users
     if (recipients.length === 0) {
-      const { data: adminUsers } = await supabase
+      console.log('🔍 FALLBACK: No site recipients found, fetching admin users');
+      
+      const { data: adminUsers, error: adminError } = await supabase
         .from('user_roles')
         .select(`
           user_id,
@@ -95,13 +117,24 @@ const handler = async (req: Request): Promise<Response> => {
         `)
         .in('role', ['admin', 'super_admin']);
 
+      console.log('🔍 Admin users found:', adminUsers?.length || 0);
+      if (adminError) console.error('🔍 Error fetching admin users:', adminError);
+
       if (adminUsers) {
+        console.log('🔍 Raw admin data:', JSON.stringify(adminUsers, null, 2));
+        
         recipients = adminUsers.map(user => ({
           email: user.profiles.email,
           name: user.profiles.full_name || 
                 `${user.profiles.first_name} ${user.profiles.last_name}`.trim() ||
                 user.profiles.email
-        })).filter(recipient => recipient.email);
+        })).filter(recipient => {
+          const hasEmail = recipient.email && recipient.email.trim() !== '';
+          console.log(`🔍 Admin recipient ${recipient.email}: valid = ${hasEmail}`);
+          return hasEmail;
+        });
+        
+        console.log('🔍 Final admin recipients:', recipients.map(r => `${r.name} <${r.email}>`));
       }
     }
 
