@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { EmergencyService } from '@/services/EmergencyService';
 import { PatrolService } from '@/services/PatrolService';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/hooks/useLanguage';
 import type { PatrolSession } from '@/types/database';
 
 interface EmergencyReportProps {
@@ -19,6 +20,7 @@ interface EmergencyReportProps {
 const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('critical');
@@ -194,7 +196,7 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
             <ArrowLeft className="h-6 w-6" />
           </Button>
           <AlertTriangle className="h-6 w-6" />
-          <h1 className="text-lg font-semibold">EMERGENCY REPORT</h1>
+          <h1 className="text-lg font-semibold">{t('emergency.title')}</h1>
         </div>
       </div>
 
