@@ -138,10 +138,20 @@ const handler = async (req: Request): Promise<Response> => {
       parsedDescription = { behavioral_observation: report.description };
     }
 
-    // Build image attachments array for embedding
+    // Build image attachments array for embedding - Handle both single image and array
     const imageAttachments = [];
-    if (report.images && report.images.length > 0) {
-      for (const imageUrl of report.images) {
+    let reportImages = [];
+    
+    // Handle image_url field (single image) and images array
+    if (report.image_url) {
+      reportImages.push(report.image_url);
+    }
+    if (report.images && Array.isArray(report.images)) {
+      reportImages = reportImages.concat(report.images);
+    }
+    
+    if (reportImages.length > 0) {
+      for (const imageUrl of reportImages) {
         try {
           // Fetch image data
           const response = await fetch(imageUrl);
@@ -211,6 +221,27 @@ const handler = async (req: Request): Promise<Response> => {
                 ${report.shiftDate ? `
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Shift Date:</strong> ${new Date(report.shiftDate).toLocaleDateString('el-GR')}</p>
                 ` : ''}
+                ${parsedDescription?.report_type ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Type:</strong> ${parsedDescription.report_type}</p>
+                ` : ''}
+                ${parsedDescription?.observation_type ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Observation Type:</strong> ${parsedDescription.observation_type}</p>
+                ` : ''}
+                ${parsedDescription?.performance_rating ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Performance Rating:</strong> ${parsedDescription.performance_rating}</p>
+                ` : ''}
+                ${parsedDescription?.compliance_status ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Compliance Status:</strong> ${parsedDescription.compliance_status}</p>
+                ` : ''}
+                ${parsedDescription?.equipment_status ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Equipment Status:</strong> ${parsedDescription.equipment_status}</p>
+                ` : ''}
+                ${parsedDescription?.immediate_action_taken ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Immediate Action:</strong> ${parsedDescription.immediate_action_taken}</p>
+                ` : ''}
+                ${parsedDescription?.weather_conditions ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Weather:</strong> ${parsedDescription.weather_conditions}</p>
+                ` : ''}
               </div>
             </div>
             
@@ -249,6 +280,27 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
             ` : ''}
 
+            ${parsedDescription?.other_findings ? `
+              <div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 3px solid #f87171; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">Other Findings:</p>
+                <p style="margin: 0; color: #dc2626; line-height: 1.5;">${parsedDescription.other_findings}</p>
+              </div>
+            ` : ''}
+
+            ${parsedDescription?.corrective_measures ? `
+              <div style="background: #fffbeb; padding: 15px; border-radius: 6px; border-left: 3px solid #fbbf24; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; color: #92400e; font-weight: 600;">Corrective Measures:</p>
+                <p style="margin: 0; color: #d97706; line-height: 1.5;">${parsedDescription.corrective_measures}</p>
+              </div>
+            ` : ''}
+
+            ${parsedDescription?.additional_notes ? `
+              <div style="background: #f8fafc; padding: 15px; border-radius: 6px; border-left: 3px solid #64748b; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; color: #334155; font-weight: 600;">Additional Notes:</p>
+                <p style="margin: 0; color: #475569; line-height: 1.5;">${parsedDescription.additional_notes}</p>
+              </div>
+            ` : ''}
+
             ${fullReportData?.overall_rating ? `
               <div style="background: #fff3e0; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #e65100; font-weight: 600;">Overall Rating:</p>
@@ -268,9 +320,9 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
             ` : ''}
 
-            ${report.images && report.images.length > 0 ? `
+            ${imageAttachments.length > 0 ? `
               <div style="margin: 20px 0;">
-                <p style="margin: 0 0 10px 0; color: #374151; font-weight: 600;">Evidence Photos (${report.images.length}):</p>
+                <p style="margin: 0 0 10px 0; color: #374151; font-weight: 600;">Evidence Photos (${imageAttachments.length}):</p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0;">
                   ${imageAttachments.map((attachment, index) => `
                     <div style="text-align: center;">
