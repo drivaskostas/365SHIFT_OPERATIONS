@@ -262,12 +262,12 @@ const PatrolDashboard = ({
       const teamIds = teamMembers.map(tm => tm.team_id);
       console.log('Fetching missions for teams:', teamIds);
       
-      // Then get active missions for any of those teams
+      // Then get current missions for any of those teams (pending or active)
       const { data: missions, error } = await supabase
         .from('missions')
         .select('*')
         .in('team_id', teamIds)
-        .eq('status', 'active')
+        .in('status', ['pending', 'active'])
         .eq('is_expired', false)
         .order('created_at', { ascending: false })
         .limit(1);
