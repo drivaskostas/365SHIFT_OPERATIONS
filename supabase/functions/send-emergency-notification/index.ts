@@ -24,6 +24,11 @@ interface EmergencyNotificationRequest {
   resolvedBy?: string;
   status?: string;
   notes?: any[];
+  latitude?: number;
+  longitude?: number;
+  patrolId?: string;
+  location?: string;
+  imageUrl?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -54,7 +59,12 @@ const handler = async (req: Request): Promise<Response> => {
       incidentTime,
       resolvedBy,
       status,
-      notes
+      notes,
+      latitude,
+      longitude,
+      patrolId,
+      location,
+      imageUrl
     }: EmergencyNotificationRequest = await req.json();
 
     console.log('Processing emergency notification for report:', reportId);
@@ -186,20 +196,33 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build image attachments array for embedding
     const imageAttachments = [];
+    let reportImages = [];
+    
+    // Handle single image from imageUrl field
+    if (imageUrl) {
+      reportImages.push(imageUrl);
+    }
+    
+    // Handle images array
     if (images && images.length > 0) {
-      for (const imageUrl of images) {
+      reportImages = reportImages.concat(images);
+    }
+    
+    // Download and encode all images for embedding
+    if (reportImages.length > 0) {
+      for (const imgUrl of reportImages) {
         try {
           // Fetch image data
-          const response = await fetch(imageUrl);
+          const response = await fetch(imgUrl);
           if (response.ok) {
             const arrayBuffer = await response.arrayBuffer();
             const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
             
             // Determine MIME type from URL or use default
             let mimeType = 'image/jpeg';
-            if (imageUrl.includes('.png')) mimeType = 'image/png';
-            else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
-            else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+            if (imgUrl.includes('.png')) mimeType = 'image/png';
+            else if (imgUrl.includes('.gif')) mimeType = 'image/gif';
+            else if (imgUrl.includes('.webp')) mimeType = 'image/webp';
             
             imageAttachments.push({
               filename: `emergency_image_${imageAttachments.length + 1}.${mimeType.split('/')[1]}`,
@@ -209,7 +232,7 @@ const handler = async (req: Request): Promise<Response> => {
             });
           }
         } catch (error) {
-          console.error('Error processing image:', imageUrl, error);
+          console.error('Error processing image:', imgUrl, error);
         }
       }
     }
@@ -233,7 +256,7 @@ const handler = async (req: Request): Promise<Response> => {
               
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
                 <div>
-                  <strong>Emergency Type:</strong> ${emergencyType.replace('_', ' ').toUpperCase()}
+                  <strong>Emergency Type:</strong> ${emergencyType.replace(/_/g, ' ').toUpperCase()}
                 </div>
                 <div>
                   <strong>Reported by:</strong> ${guardName}
@@ -256,12 +279,22 @@ const handler = async (req: Request): Promise<Response> => {
                   <strong>Resolved By:</strong> ${resolvedBy}
                 </div>
                 ` : ''}
+                ${patrolId ? `
+                <div>
+                  <strong>Patrol ID:</strong> ${patrolId}
+                </div>
+                ` : ''}
+                ${latitude && longitude ? `
+                <div>
+                  <strong>GPS Coordinates:</strong> ${latitude.toFixed(6)}, ${longitude.toFixed(6)}
+                </div>
+                ` : ''}
               </div>
 
               <div style="margin: 20px 0;">
                 <strong>Location:</strong>
                 <div style="background: white; padding: 10px; border-left: 4px solid #007bff; margin: 5px 0; border-radius: 4px;">
-                  ${locationDescription}
+                  ${locationDescription || location || 'Location not specified'}
                 </div>
               </div>
               
@@ -293,9 +326,9 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
               ` : ''}
               
-              ${images.length > 0 ? `
+              ${imageAttachments.length > 0 ? `
                 <div style="margin: 20px 0;">
-                  <strong>Evidence Photos (${images.length}):</strong>
+                  <strong>Evidence Photos (${imageAttachments.length}):</strong>
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0;">
                     ${imageAttachments.map((attachment, index) => `
                       <div style="text-align: center;">
