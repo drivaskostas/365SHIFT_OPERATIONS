@@ -124,6 +124,13 @@ const PatrolDashboard = ({
       restoreOfflinePatrols(); // Restore any offline patrol sessions
     }
   }, [profile?.id, restoreOfflinePatrols]);
+
+  // Re-fetch mission when guardShiftInfo changes
+  useEffect(() => {
+    if (profile?.id && guardShiftInfo) {
+      fetchCurrentMission();
+    }
+  }, [guardShiftInfo, profile?.id]);
   
   // Add a useEffect to sync states and refresh data periodically  
   useEffect(() => {
@@ -167,6 +174,7 @@ const PatrolDashboard = ({
           // Refresh dashboard stats
           fetchDashboardStats();
           fetchRecentActivities();
+          fetchCurrentMission(); // Also refresh mission data
         }
       )
       .subscribe();
@@ -232,22 +240,51 @@ const PatrolDashboard = ({
   };
 
   const fetchCurrentMission = async () => {
-    if (!profile?.id || !guardShiftInfo?.teamId) return;
+    if (!profile?.id) return;
     
     try {
+      // First get all teams the user belongs to
+      const { data: teamMembers, error: teamError } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', profile.id);
+      
+      if (teamError) {
+        console.error('Error fetching user teams:', teamError);
+        return;
+      }
+      
+      if (!teamMembers || teamMembers.length === 0) {
+        console.log('No teams found for user');
+        return;
+      }
+      
+      const teamIds = teamMembers.map(tm => tm.team_id);
+      console.log('Fetching missions for teams:', teamIds);
+      
+      // Then get active missions for any of those teams
       const { data: missions, error } = await supabase
         .from('missions')
         .select('*')
-        .eq('team_id', guardShiftInfo.teamId)
+        .in('team_id', teamIds)
         .eq('status', 'active')
         .eq('is_expired', false)
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching missions:', error);
+        return;
+      }
+      
+      console.log('Found missions:', missions);
       
       if (missions && missions.length > 0) {
         setCurrentMission(missions[0]);
+        console.log('Set current mission:', missions[0]);
+      } else {
+        console.log('No active missions found');
+        setCurrentMission(null);
       }
     } catch (error) {
       console.error('Error fetching current mission:', error);
