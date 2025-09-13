@@ -15,10 +15,14 @@ interface SupervisorReportRequest {
   timestamp: string;
   location: string;
   incidentTime: string;
-  imageUrl?: string;
+  images?: string[];
   siteId: string;
   teamId: string;
   supervisorId: string;
+  guardId?: string;
+  guardName?: string;
+  shiftDate?: string;
+  notes?: any[];
   testMode?: boolean;
 }
 
@@ -112,12 +116,56 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`📧 Sending emails to ${recipients.size} recipients`);
 
+    // Get complete supervisor report data from database if available
+    let fullReportData = null;
+    const { data: reportData } = await supabase
+      .from('supervisor_reports')
+      .select('*')
+      .eq('supervisor_id', report.supervisorId)
+      .eq('site_id', report.siteId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    if (reportData && reportData.length > 0) {
+      fullReportData = reportData[0];
+    }
+
     // Parse description if it's JSON
     let parsedDescription;
     try {
       parsedDescription = JSON.parse(report.description);
     } catch {
       parsedDescription = { behavioral_observation: report.description };
+    }
+
+    // Build image attachments array for embedding
+    const imageAttachments = [];
+    if (report.images && report.images.length > 0) {
+      for (const imageUrl of report.images) {
+        try {
+          // Fetch image data
+          const response = await fetch(imageUrl);
+          if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            
+            // Determine MIME type from URL or use default
+            let mimeType = 'image/jpeg';
+            if (imageUrl.includes('.png')) mimeType = 'image/png';
+            else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
+            else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+            
+            imageAttachments.push({
+              filename: `supervisor_report_image_${imageAttachments.length + 1}.${mimeType.split('/')[1]}`,
+              content: base64,
+              content_id: `supervisor_img_${imageAttachments.length + 1}`,
+              disposition: 'inline'
+            });
+          }
+        } catch (error) {
+          console.error('Error processing image:', imageUrl, error);
+        }
+      }
     }
 
     // Create HTML email content
@@ -131,7 +179,7 @@ const handler = async (req: Request): Promise<Response> => {
     const severityColor = severityColors[report.severity as keyof typeof severityColors] || '#6B7280';
 
     const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px;">
+      <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; background: #f8fafc; padding: 20px;">
         <div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #1f2937; margin: 0; font-size: 24px;">OVIT Security</h1>
@@ -148,24 +196,89 @@ const handler = async (req: Request): Promise<Response> => {
             <h2 style="color: #374151; margin: 0 0 15px 0; font-size: 20px;">${report.title}</h2>
             
             <div style="background: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-              <p style="margin: 0 0 8px 0; color: #374151; font-weight: 600;">Site Details:</p>
-              <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Site:</strong> ${siteName}</p>
-              <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Location:</strong> ${report.location || 'Not specified'}</p>
-              <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Supervisor:</strong> ${report.supervisorName}</p>
-              <p style="margin: 0; color: #6b7280;"><strong>Date:</strong> ${new Date(report.timestamp).toLocaleString('el-GR')}</p>
+              <p style="margin: 0 0 8px 0; color: #374151; font-weight: 600;">Report Details:</p>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Site:</strong> ${siteName}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Supervisor:</strong> ${report.supervisorName}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Location:</strong> ${report.location || 'Not specified'}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Date:</strong> ${new Date(report.timestamp).toLocaleString('el-GR')}</p>
+                ${report.incidentTime ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Incident Time:</strong> ${new Date(report.incidentTime).toLocaleString('el-GR')}</p>
+                ` : ''}
+                ${report.guardName ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Guard:</strong> ${report.guardName}</p>
+                ` : ''}
+                ${report.shiftDate ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Shift Date:</strong> ${new Date(report.shiftDate).toLocaleDateString('el-GR')}</p>
+                ` : ''}
+              </div>
             </div>
             
             ${parsedDescription?.behavioral_observation ? `
-              <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; border-left: 3px solid #0ea5e9;">
-                <p style="margin: 0 0 8px 0; color: #0c4a6e; font-weight: 600;">Observations:</p>
+              <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; border-left: 3px solid #0ea5e9; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; color: #0c4a6e; font-weight: 600;">Behavioral Observations:</p>
                 <p style="margin: 0; color: #0369a1; line-height: 1.5;">${parsedDescription.behavioral_observation}</p>
               </div>
             ` : ''}
             
             ${parsedDescription?.safety_concerns ? `
-              <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 3px solid #f59e0b; margin-top: 15px;">
+              <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 3px solid #f59e0b; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #92400e; font-weight: 600;">Safety Concerns:</p>
                 <p style="margin: 0; color: #b45309; line-height: 1.5;">${parsedDescription.safety_concerns}</p>
+              </div>
+            ` : ''}
+
+            ${parsedDescription?.performance_feedback ? `
+              <div style="background: #e0f2fe; padding: 15px; border-radius: 6px; border-left: 3px solid #0288d1; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; color: #01579b; font-weight: 600;">Performance Feedback:</p>
+                <p style="margin: 0; color: #0277bd; line-height: 1.5;">${parsedDescription.performance_feedback}</p>
+              </div>
+            ` : ''}
+
+            ${parsedDescription?.client_feedback ? `
+              <div style="background: #f3e5f5; padding: 15px; border-radius: 6px; border-left: 3px solid #9c27b0; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; color: #4a148c; font-weight: 600;">Client Feedback:</p>
+                <p style="margin: 0; color: #7b1fa2; line-height: 1.5;">${parsedDescription.client_feedback}</p>
+              </div>
+            ` : ''}
+
+            ${parsedDescription?.recommendations ? `
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 6px; border-left: 3px solid #4caf50; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; color: #1b5e20; font-weight: 600;">Recommendations:</p>
+                <p style="margin: 0; color: #2e7d32; line-height: 1.5;">${parsedDescription.recommendations}</p>
+              </div>
+            ` : ''}
+
+            ${fullReportData?.overall_rating ? `
+              <div style="background: #fff3e0; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; color: #e65100; font-weight: 600;">Overall Rating:</p>
+                <p style="margin: 0; color: #f57c00; font-size: 18px; font-weight: bold;">${fullReportData.overall_rating}/5 ⭐</p>
+              </div>
+            ` : ''}
+
+            ${report.notes && report.notes.length > 0 ? `
+              <div style="margin: 20px 0;">
+                <p style="margin: 0 0 10px 0; color: #374151; font-weight: 600;">Additional Notes:</p>
+                ${report.notes.map((note: any, index: number) => `
+                  <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 4px; border-left: 3px solid #6c757d;">
+                    <small style="color: #6c757d;">Note ${index + 1}:</small><br>
+                    ${typeof note === 'string' ? note : note.text || JSON.stringify(note)}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+
+            ${report.images && report.images.length > 0 ? `
+              <div style="margin: 20px 0;">
+                <p style="margin: 0 0 10px 0; color: #374151; font-weight: 600;">Evidence Photos (${report.images.length}):</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0;">
+                  ${imageAttachments.map((attachment, index) => `
+                    <div style="text-align: center;">
+                      <img src="cid:${attachment.content_id}" alt="Report Evidence ${index + 1}" style="max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #ddd;" />
+                      <p style="margin: 5px 0; font-size: 12px; color: #666;">Evidence Photo ${index + 1}</p>
+                    </div>
+                  `).join('')}
+                </div>
               </div>
             ` : ''}
           </div>
@@ -204,12 +317,19 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
-        const emailResponse = await resend.emails.send({
+        const emailData: any = {
           from: "OVIT Observations <observations@notifications.ovitguardly.com>",
           to: [email],
           subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()}`,
           html: htmlContent
-        });
+        };
+
+        // Add attachments if we have images
+        if (imageAttachments.length > 0) {
+          emailData.attachments = imageAttachments;
+        }
+
+        const emailResponse = await resend.emails.send(emailData);
 
         console.log(`✅ Supervisor email sent successfully to ${email}:`, emailResponse);
         

@@ -17,7 +17,11 @@ interface ObservationNotificationRequest {
   teamId?: string;
   siteId?: string;
   guardId: string;
-  imageUrl?: string;
+  images?: string[];
+  location?: string;
+  notes?: string;
+  incidentTime?: string;
+  category?: string;
   testMode?: boolean;
   testEmail?: string;
 }
@@ -45,7 +49,11 @@ const handler = async (req: Request): Promise<Response> => {
       teamId,
       siteId,
       guardId,
-      imageUrl,
+      images = [],
+      location,
+      notes,
+      incidentTime,
+      category,
       testMode = false,
       testEmail
     }: ObservationNotificationRequest = await req.json();
@@ -156,6 +164,47 @@ const handler = async (req: Request): Promise<Response> => {
       low: 'LOW'
     };
 
+    // Get complete observation data from database if available
+    let fullObservationData = null;
+    if (observationId) {
+      const { data: observationData } = await supabase
+        .from('patrol_observations')
+        .select('*')
+        .eq('id', observationId)
+        .single();
+      fullObservationData = observationData;
+    }
+
+    // Build image attachments array for embedding
+    const imageAttachments = [];
+    if (images && images.length > 0) {
+      for (const imageUrl of images) {
+        try {
+          // Fetch image data
+          const response = await fetch(imageUrl);
+          if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            
+            // Determine MIME type from URL or use default
+            let mimeType = 'image/jpeg';
+            if (imageUrl.includes('.png')) mimeType = 'image/png';
+            else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
+            else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+            
+            imageAttachments.push({
+              filename: `observation_image_${imageAttachments.length + 1}.${mimeType.split('/')[1]}`,
+              content: base64,
+              content_id: `observation_img_${imageAttachments.length + 1}`,
+              disposition: 'inline'
+            });
+          }
+        } catch (error) {
+          console.error('Error processing image:', imageUrl, error);
+        }
+      }
+    }
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -164,7 +213,7 @@ const handler = async (req: Request): Promise<Response> => {
           <title>Patrol Observation Notification</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="max-width: 700px; margin: 0 auto; padding: 20px;">
             <div style="background: ${severityColors[severity as keyof typeof severityColors]}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
               <h1 style="margin: 0; font-size: 24px;">👁️ PATROL OBSERVATION</h1>
               <p style="margin: 5px 0 0 0; font-size: 18px;">Severity: ${severityLabels[severity as keyof typeof severityLabels]}</p>
@@ -173,24 +222,75 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="background: #f9f9f9; padding: 20px; border: 1px solid #ddd;">
               <h2 style="color: #333; margin-top: 0;">${title}</h2>
               
-              <div style="margin: 15px 0;">
-                <strong>Reported by:</strong> ${guardName}
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+                <div>
+                  <strong>Reported by:</strong> ${guardName}
+                </div>
+                <div>
+                  <strong>Observation Time:</strong> ${new Date(timestamp).toLocaleString('el-GR')}
+                </div>
+                ${incidentTime ? `
+                <div>
+                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR')}
+                </div>
+                ` : ''}
+                ${location ? `
+                <div>
+                  <strong>Location:</strong> ${location}
+                </div>
+                ` : ''}
+                ${category ? `
+                <div>
+                  <strong>Category:</strong> ${category}
+                </div>
+                ` : ''}
               </div>
               
-              <div style="margin: 15px 0;">
-                <strong>Time:</strong> ${new Date(timestamp).toLocaleString()}
-              </div>
-              
-              <div style="margin: 15px 0;">
+              <div style="margin: 20px 0;">
                 <strong>Description:</strong>
-                <p style="background: white; padding: 10px; border-left: 4px solid ${severityColors[severity as keyof typeof severityColors]}; margin: 5px 0;">
+                <div style="background: white; padding: 15px; border-left: 4px solid ${severityColors[severity as keyof typeof severityColors]}; margin: 10px 0; border-radius: 4px;">
                   ${description}
-                </p>
+                </div>
               </div>
-              
-              ${imageUrl ? `
+
+              ${notes ? `
+                <div style="margin: 20px 0;">
+                  <strong>Additional Notes:</strong>
+                  <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 10px 0; border-radius: 4px;">
+                    ${notes}
+                  </div>
+                </div>
+              ` : ''}
+
+              ${fullObservationData?.weather_conditions ? `
                 <div style="margin: 15px 0;">
-                  <strong>Evidence Photo:</strong> Photo attached
+                  <strong>Weather Conditions:</strong> ${fullObservationData.weather_conditions}
+                </div>
+              ` : ''}
+
+              ${fullObservationData?.witness_name ? `
+                <div style="margin: 15px 0;">
+                  <strong>Witness:</strong> ${fullObservationData.witness_name}
+                </div>
+              ` : ''}
+
+              ${fullObservationData?.follow_up_required ? `
+                <div style="margin: 15px 0; background: #fef3c7; padding: 10px; border-radius: 4px;">
+                  <strong>⚠️ Follow-up Required</strong>
+                </div>
+              ` : ''}
+              
+              ${images.length > 0 ? `
+                <div style="margin: 20px 0;">
+                  <strong>Evidence Photos (${images.length}):</strong>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0;">
+                    ${imageAttachments.map((attachment, index) => `
+                      <div style="text-align: center;">
+                        <img src="cid:${attachment.content_id}" alt="Evidence Photo ${index + 1}" style="max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #ddd;" />
+                        <p style="margin: 5px 0; font-size: 12px; color: #666;">Photo ${index + 1}</p>
+                      </div>
+                    `).join('')}
+                  </div>
                 </div>
               ` : ''}
             </div>
@@ -229,12 +329,19 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
-        const emailResponse = await resend.emails.send({
+        const emailData: any = {
           from: "OVIT Observations <observations@notifications.ovitguardly.com>",
           to: [recipient.email],
           subject: `👁️ PATROL OBSERVATION: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}`,
           html: emailHtml,
-        });
+        };
+
+        // Add attachments if we have images
+        if (imageAttachments.length > 0) {
+          emailData.attachments = imageAttachments;
+        }
+
+        const emailResponse = await resend.emails.send(emailData);
 
         console.log(`✅ Observation email sent successfully to ${recipient.email}:`, emailResponse);
         

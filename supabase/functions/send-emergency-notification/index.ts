@@ -19,6 +19,11 @@ interface EmergencyNotificationRequest {
   teamId?: string;
   siteId?: string;
   images?: string[];
+  involvedPersons?: string;
+  incidentTime?: string;
+  resolvedBy?: string;
+  status?: string;
+  notes?: any[];
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -44,7 +49,12 @@ const handler = async (req: Request): Promise<Response> => {
       guardName,
       teamId,
       siteId,
-      images = []
+      images = [],
+      involvedPersons,
+      incidentTime,
+      resolvedBy,
+      status,
+      notes
     }: EmergencyNotificationRequest = await req.json();
 
     console.log('Processing emergency notification for report:', reportId);
@@ -163,6 +173,47 @@ const handler = async (req: Request): Promise<Response> => {
       low: 'LOW'
     };
 
+    // Get complete emergency data from database if available
+    let fullEmergencyData = null;
+    if (reportId) {
+      const { data: emergencyData } = await supabase
+        .from('emergency_reports')
+        .select('*')
+        .eq('id', reportId)
+        .single();
+      fullEmergencyData = emergencyData;
+    }
+
+    // Build image attachments array for embedding
+    const imageAttachments = [];
+    if (images && images.length > 0) {
+      for (const imageUrl of images) {
+        try {
+          // Fetch image data
+          const response = await fetch(imageUrl);
+          if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            
+            // Determine MIME type from URL or use default
+            let mimeType = 'image/jpeg';
+            if (imageUrl.includes('.png')) mimeType = 'image/png';
+            else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
+            else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+            
+            imageAttachments.push({
+              filename: `emergency_image_${imageAttachments.length + 1}.${mimeType.split('/')[1]}`,
+              content: base64,
+              content_id: `emergency_img_${imageAttachments.length + 1}`,
+              disposition: 'inline'
+            });
+          }
+        } catch (error) {
+          console.error('Error processing image:', imageUrl, error);
+        }
+      }
+    }
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -171,7 +222,7 @@ const handler = async (req: Request): Promise<Response> => {
           <title>Emergency Report Notification</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="max-width: 700px; margin: 0 auto; padding: 20px;">
             <div style="background: ${severityColors[severity as keyof typeof severityColors]}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
               <h1 style="margin: 0; font-size: 24px;">🚨 EMERGENCY REPORT</h1>
               <p style="margin: 5px 0 0 0; font-size: 18px;">Severity: ${severityLabels[severity as keyof typeof severityLabels]}</p>
@@ -180,32 +231,79 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="background: #f9f9f9; padding: 20px; border: 1px solid #ddd;">
               <h2 style="color: #333; margin-top: 0;">${title}</h2>
               
-              <div style="margin: 15px 0;">
-                <strong>Type:</strong> ${emergencyType.replace('_', ' ').toUpperCase()}
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+                <div>
+                  <strong>Emergency Type:</strong> ${emergencyType.replace('_', ' ').toUpperCase()}
+                </div>
+                <div>
+                  <strong>Reported by:</strong> ${guardName}
+                </div>
+                <div>
+                  <strong>Report Time:</strong> ${new Date().toLocaleString('el-GR')}
+                </div>
+                ${incidentTime ? `
+                <div>
+                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR')}
+                </div>
+                ` : ''}
+                ${status ? `
+                <div>
+                  <strong>Status:</strong> <span style="text-transform: uppercase; font-weight: bold;">${status}</span>
+                </div>
+                ` : ''}
+                ${resolvedBy ? `
+                <div>
+                  <strong>Resolved By:</strong> ${resolvedBy}
+                </div>
+                ` : ''}
+              </div>
+
+              <div style="margin: 20px 0;">
+                <strong>Location:</strong>
+                <div style="background: white; padding: 10px; border-left: 4px solid #007bff; margin: 5px 0; border-radius: 4px;">
+                  ${locationDescription}
+                </div>
               </div>
               
-              <div style="margin: 15px 0;">
-                <strong>Location:</strong> ${locationDescription}
-              </div>
-              
-              <div style="margin: 15px 0;">
-                <strong>Reported by:</strong> ${guardName}
-              </div>
-              
-              <div style="margin: 15px 0;">
-                <strong>Time:</strong> ${new Date().toLocaleString()}
-              </div>
-              
-              <div style="margin: 15px 0;">
+              <div style="margin: 20px 0;">
                 <strong>Description:</strong>
-                <p style="background: white; padding: 10px; border-left: 4px solid ${severityColors[severity as keyof typeof severityColors]}; margin: 5px 0;">
+                <div style="background: white; padding: 15px; border-left: 4px solid ${severityColors[severity as keyof typeof severityColors]}; margin: 10px 0; border-radius: 4px;">
                   ${description}
-                </p>
+                </div>
               </div>
+
+              ${involvedPersons ? `
+                <div style="margin: 20px 0;">
+                  <strong>Involved Persons:</strong>
+                  <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 10px 0; border-radius: 4px;">
+                    ${involvedPersons}
+                  </div>
+                </div>
+              ` : ''}
+
+              ${notes && notes.length > 0 ? `
+                <div style="margin: 20px 0;">
+                  <strong>Additional Notes:</strong>
+                  ${notes.map((note: any, index: number) => `
+                    <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 4px; border-left: 3px solid #6c757d;">
+                      <small style="color: #6c757d;">Note ${index + 1}:</small><br>
+                      ${typeof note === 'string' ? note : note.text || JSON.stringify(note)}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
               
               ${images.length > 0 ? `
-                <div style="margin: 15px 0;">
-                  <strong>Evidence Photos:</strong> ${images.length} image(s) attached
+                <div style="margin: 20px 0;">
+                  <strong>Evidence Photos (${images.length}):</strong>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0;">
+                    ${imageAttachments.map((attachment, index) => `
+                      <div style="text-align: center;">
+                        <img src="cid:${attachment.content_id}" alt="Emergency Evidence ${index + 1}" style="max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #ddd;" />
+                        <p style="margin: 5px 0; font-size: 12px; color: #666;">Evidence Photo ${index + 1}</p>
+                      </div>
+                    `).join('')}
+                  </div>
                 </div>
               ` : ''}
             </div>
@@ -244,12 +342,19 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
-        const emailResponse = await resend.emails.send({
+        const emailData: any = {
           from: "OVIT Emergency <emergency@notifications.ovitguardly.com>",
           to: [recipient.email],
           subject: `🚨 EMERGENCY: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}`,
           html: emailHtml,
-        });
+        };
+
+        // Add attachments if we have images
+        if (imageAttachments.length > 0) {
+          emailData.attachments = imageAttachments;
+        }
+
+        const emailResponse = await resend.emails.send(emailData);
 
         console.log(`✅ Email sent successfully to ${recipient.email}:`, emailResponse);
         
