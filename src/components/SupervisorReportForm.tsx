@@ -291,6 +291,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
             location: reportData.location || '',
             incidentTime: reportData.incident_time,
             imageUrl: reportData.image_url,
+            images: (reportData as any).images, // Include images array if present
             siteId: reportData.site_id,
             teamId: reportData.team_id,
             supervisorId: reportData.supervisor_id

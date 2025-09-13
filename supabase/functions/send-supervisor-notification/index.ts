@@ -142,9 +142,12 @@ const handler = async (req: Request): Promise<Response> => {
     const imageAttachments = [];
     let reportImages = [];
     
-    // Handle image_url field (single image) and images array
+    // Handle image_url, imageUrl fields (single image) and images array
     if (report.image_url) {
       reportImages.push(report.image_url);
+    }
+    if (report.imageUrl) {
+      reportImages.push(report.imageUrl);
     }
     if (report.images && Array.isArray(report.images)) {
       reportImages = reportImages.concat(report.images);
