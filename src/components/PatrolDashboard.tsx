@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square, FileText } from 'lucide-react';
+import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square, FileText, Target, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckpointGroupSelector } from '@/components/CheckpointGroupSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
@@ -103,6 +104,9 @@ const PatrolDashboard = ({
     instructions: string[];
   } | null>(null);
   const [guardShiftInfo, setGuardShiftInfo] = useState<any>(null);
+  const [currentShift, setCurrentShift] = useState<any>(null);
+  const [currentMission, setCurrentMission] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('overview');
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -113,6 +117,8 @@ const PatrolDashboard = ({
       fetchRecentActivities();
       checkActivePatrol();
       loadGuardShiftInfo();
+      fetchCurrentShift();
+      fetchCurrentMission();
       checkLocationPermission();
       fetchUserRoles();
       restoreOfflinePatrols(); // Restore any offline patrol sessions
@@ -199,6 +205,52 @@ const PatrolDashboard = ({
       } catch (error) {
         console.error('Error parsing shift info:', error);
       }
+    }
+  };
+
+  const fetchCurrentShift = async () => {
+    if (!profile?.id) return;
+    
+    try {
+      const { data: shifts, error } = await supabase
+        .from('team_schedules')
+        .select('*')
+        .contains('assigned_guards', [profile.id])
+        .lte('start_date', new Date().toISOString())
+        .gte('end_date', new Date().toISOString())
+        .order('start_date', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+      
+      if (shifts && shifts.length > 0) {
+        setCurrentShift(shifts[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching current shift:', error);
+    }
+  };
+
+  const fetchCurrentMission = async () => {
+    if (!profile?.id || !guardShiftInfo?.teamId) return;
+    
+    try {
+      const { data: missions, error } = await supabase
+        .from('missions')
+        .select('*')
+        .eq('team_id', guardShiftInfo.teamId)
+        .eq('status', 'active')
+        .eq('is_expired', false)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+      
+      if (missions && missions.length > 0) {
+        setCurrentMission(missions[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching current mission:', error);
     }
   };
   const checkLocationPermission = async () => {
@@ -767,31 +819,112 @@ const PatrolDashboard = ({
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4 font-mono">
             OPERATIVE {profile?.last_name?.toUpperCase()}
           </h1>
-          {/* High-tech status indicators */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center space-x-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <Clock className="h-4 w-4 text-primary" />
-              <span className="text-primary font-mono text-sm">{currentTime.toLocaleTimeString()}</span>
+          
+          {/* Shift Title Display */}
+          {(currentShift?.title || guardShiftInfo?.shiftTitle) && (
+            <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-blue-400" />
+                <span className="text-blue-400 font-mono text-sm font-semibold">
+                  SHIFT: {(currentShift?.title || guardShiftInfo?.shiftTitle)?.toUpperCase()}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center space-x-2 p-3 rounded-lg bg-accent/10 border border-accent/20">
-              <MapPin className="h-4 w-4 text-accent" />
-              <span className="text-accent font-mono text-sm truncate">{currentActivePatrol ? 'PATROL.ACTIVE' : 'STANDBY'}</span>
-            </div>
-            {guardShiftInfo && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
-                <Shield className="h-4 w-4 text-green-400" />
-                <span className="text-green-400 font-mono text-sm truncate">SITE: {guardShiftInfo.siteName?.toUpperCase()}</span>
-              </div>}
-            {isTracking && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-green-400 font-mono text-sm">GPS.TRACKING.ACTIVE</span>
-              </div>}
-            <div className="flex items-center space-x-2 p-3 rounded-lg col-span-2">
-              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'}`}></div>
-              <span className={`font-mono text-sm ${isOnline ? 'text-green-400' : 'text-red-400'}`}>
-                {isOnline ? 'NETWORK.ONLINE' : 'NETWORK.OFFLINE'}
-              </span>
-            </div>
-          </div>
+          )}
+
+          {/* Tabs for Overview and Mission */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="overview" className="font-mono">OVERVIEW</TabsTrigger>
+              <TabsTrigger value="mission" className="font-mono" disabled={!currentMission}>
+                MISSION {currentMission ? '●' : ''}
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="overview" className="space-y-4">
+              {/* High-tech status indicators */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center space-x-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-primary font-mono text-sm">{currentTime.toLocaleTimeString()}</span>
+                </div>
+                <div className="flex items-center space-x-2 p-3 rounded-lg bg-accent/10 border border-accent/20">
+                  <MapPin className="h-4 w-4 text-accent" />
+                  <span className="text-accent font-mono text-sm truncate">{currentActivePatrol ? 'PATROL.ACTIVE' : 'STANDBY'}</span>
+                </div>
+                {guardShiftInfo && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
+                    <Shield className="h-4 w-4 text-green-400" />
+                    <span className="text-green-400 font-mono text-sm truncate">SITE: {guardShiftInfo.siteName?.toUpperCase()}</span>
+                  </div>}
+                {isTracking && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-green-400 font-mono text-sm">GPS.TRACKING.ACTIVE</span>
+                  </div>}
+                <div className="flex items-center space-x-2 p-3 rounded-lg col-span-2">
+                  <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                  <span className={`font-mono text-sm ${isOnline ? 'text-green-400' : 'text-red-400'}`}>
+                    {isOnline ? 'NETWORK.ONLINE' : 'NETWORK.OFFLINE'}
+                  </span>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="mission" className="space-y-4">
+              {currentMission ? (
+                <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Target className="h-5 w-5 text-orange-400" />
+                    <h3 className="text-orange-400 font-mono font-semibold">ACTIVE MISSION</h3>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-white font-semibold mb-1">{currentMission.title}</div>
+                      <div className="text-sm text-gray-300 mb-2">Category: {currentMission.category}</div>
+                    </div>
+                    
+                    {currentMission.description && (
+                      <div className="p-3 bg-gray-800 rounded text-sm text-gray-300">
+                        {currentMission.description}
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {currentMission.start_date && (
+                        <div>
+                          <span className="text-gray-400">Start:</span>
+                          <div className="text-white">{new Date(currentMission.start_date).toLocaleDateString()}</div>
+                        </div>
+                      )}
+                      {currentMission.end_date && (
+                        <div>
+                          <span className="text-gray-400">End:</span>
+                          <div className="text-white">{new Date(currentMission.end_date).toLocaleDateString()}</div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {currentMission.attachment_url && (
+                      <div>
+                        <a 
+                          href={currentMission.attachment_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 text-sm underline"
+                        >
+                          View Attachment
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  No active mission assigned
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
