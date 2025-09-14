@@ -18,6 +18,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
 import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
 import { useLanguage } from '@/hooks/useLanguage';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Device } from '@capacitor/device';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -107,45 +109,103 @@ const PatrolDashboard = ({
   const [currentShift, setCurrentShift] = useState<any>(null);
   const [currentMission, setCurrentMission] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showAlarmOptions, setShowAlarmOptions] = useState(false);
   
-  // Simple browser-based alarm functionality  
-  const setPatrolAlarm = useCallback(async () => {
+  // Alarm time options in minutes
+  const alarmOptions = [
+    { minutes: 10, label: '10 λεπτά' },
+    { minutes: 15, label: '15 λεπτά' },
+    { minutes: 30, label: '30 λεπτά' },
+    { minutes: 60, label: '1 ώρα' },
+  ];
+  
+  // Enhanced alarm functionality with native mobile support
+  const setPatrolAlarm = useCallback(async (minutes: number) => {
     try {
-      const nextPatrolTime = new Date();
-      nextPatrolTime.setHours(nextPatrolTime.getHours() + 8);
+      const alarmTime = new Date();
+      alarmTime.setMinutes(alarmTime.getMinutes() + minutes);
       
-      if ('Notification' in window) {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
+      // Check if we're on a mobile device with Capacitor
+      const isMobile = !!(window as any).Capacitor;
+      
+      if (isMobile) {
+        // Native mobile alarm using Capacitor LocalNotifications
+        const permResult = await LocalNotifications.requestPermissions();
+        
+        if (permResult.display !== 'granted') {
           toast({
-            title: "Συναγερμός Ρυθμίστηκε",
-            description: `Υπενθύμιση στις ${nextPatrolTime.toLocaleTimeString()}`,
-          });
-          
-          const timeUntilAlarm = 8 * 60 * 60 * 1000;
-          setTimeout(() => {
-            new Notification("🚨 Υπενθύμιση Περιπολίας", {
-              body: `Ώρα για περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
-              icon: '/icon-192.png'
-            });
-          }, timeUntilAlarm);
-        } else {
-          toast({
-            title: "Άδεια Απαιτείται", 
-            description: "Δώστε άδεια για ειδοποιήσεις",
+            title: "Άδεια Απαιτείται",
+            description: "Απαιτείται άδεια για ειδοποιήσεις συναγερμού",
             variant: "destructive",
           });
+          return;
         }
-      } else {
-        toast({
-          title: "Υπενθύμιση Περιπολίας",
-          description: `Ρυθμίστε συναγερμό στο τηλέφωνό σας για ${nextPatrolTime.toLocaleTimeString()}`,
+
+        // Schedule native notification with alarm sound
+        await LocalNotifications.schedule({
+          notifications: [{
+            title: "🚨 Υπενθύμιση Περιπολίας",
+            body: `Ώρα για περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
+            id: Math.floor(Math.random() * 100000),
+            schedule: { at: alarmTime },
+            sound: 'alarm.wav', // Will use system alarm sound
+            actionTypeId: "",
+            extra: {
+              type: 'patrol_reminder'
+            }
+          }]
         });
+
+        toast({
+          title: "Συναγερμός Ρυθμίστηκε 📱",
+          description: `Θα ηχήσει σε ${minutes} λεπτά (${alarmTime.toLocaleTimeString()})`,
+          variant: "default",
+        });
+        
+      } else {
+        // Web browser fallback
+        if ('Notification' in window) {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            toast({
+              title: "Υπενθύμιση Ρυθμίστηκε 🔔",
+              description: `Ειδοποίηση σε ${minutes} λεπτά (${alarmTime.toLocaleTimeString()})`,
+              variant: "default",
+            });
+            
+            const timeUntilAlarm = minutes * 60 * 1000; // Convert to milliseconds
+            setTimeout(() => {
+              new Notification("🚨 Υπενθύμιση Περιπολίας", {
+                body: `Ώρα για περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
+                icon: '/icon-192.png',
+                tag: 'patrol-reminder',
+                requireInteraction: true
+              });
+            }, timeUntilAlarm);
+          } else {
+            toast({
+              title: "Άδεια Απαιτείται", 
+              description: "Δώστε άδεια για ειδοποιήσεις",
+              variant: "destructive",
+            });
+          }
+        } else {
+          // Final fallback - just show instructions
+          toast({
+            title: "Υπενθύμιση Περιπολίας ⏰",
+            description: `Ρυθμίστε συναγερμό στο τηλέφωνό σας για ${alarmTime.toLocaleTimeString()}`,
+            variant: "default",
+          });
+        }
       }
+      
+      setShowAlarmOptions(false);
+      
     } catch (error) {
+      console.error('Error setting alarm:', error);
       toast({
         title: "Σφάλμα",
-        description: "Πρόβλημα με τον συναγερμό", 
+        description: "Πρόβλημα με τη ρύθμιση συναγερμού", 
         variant: "destructive",
       });
     }
@@ -951,14 +1011,44 @@ const PatrolDashboard = ({
               
               {/* Set Alarm Button */}
               <div className="mt-4">
-                <Button
-                  onClick={setPatrolAlarm}
-                  className="w-full font-mono"
-                  variant="outline"
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  {t('alarm.set_reminder')}
-                </Button>
+                {!showAlarmOptions ? (
+                  <Button
+                    onClick={() => setShowAlarmOptions(true)}
+                    className="w-full font-mono"
+                    variant="outline"
+                  >
+                    <Clock className="h-4 w-4 mr-2" />
+                    {t('alarm.set_reminder')}
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground text-center font-mono mb-2">
+                      ΕΠΙΛΕΞΤΕ ΧΡΟΝΟ:
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {alarmOptions.map((option) => (
+                        <Button
+                          key={option.minutes}
+                          onClick={() => setPatrolAlarm(option.minutes)}
+                          className="text-xs font-mono"
+                          variant="default"
+                          size="sm"
+                        >
+                          <Clock className="h-3 w-3 mr-1" />
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={() => setShowAlarmOptions(false)}
+                      className="w-full text-xs font-mono"
+                      variant="ghost"
+                      size="sm"
+                    >
+                      Ακύρωση
+                    </Button>
+                  </div>
+                )}
               </div>
             </TabsContent>
             
