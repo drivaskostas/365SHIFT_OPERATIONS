@@ -18,8 +18,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
 import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
 import { useLanguage } from '@/hooks/useLanguage';
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { Device } from '@capacitor/device';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -130,73 +128,48 @@ const PatrolDashboard = ({
       
       if (isMobile) {
         // Native mobile alarm using Capacitor LocalNotifications
-        const permResult = await LocalNotifications.requestPermissions();
-        
-        if (permResult.display !== 'granted') {
-          toast({
-            title: "Άδεια Απαιτείται",
-            description: "Απαιτείται άδεια για ειδοποιήσεις συναγερμού",
-            variant: "destructive",
+        try {
+          const { LocalNotifications } = await import('@capacitor/local-notifications');
+          const permResult = await LocalNotifications.requestPermissions();
+          
+          if (permResult.display !== 'granted') {
+            toast({
+              title: "Άδεια Απαιτείται",
+              description: "Απαιτείται άδεια για ειδοποιήσεις συναγερμού",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          // Schedule native notification with alarm sound
+          await LocalNotifications.schedule({
+            notifications: [{
+              title: "🚨 Υπενθύμιση Περιπολίας",
+              body: `Ώρα για περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
+              id: Math.floor(Math.random() * 100000),
+              schedule: { at: alarmTime },
+              sound: 'alarm.wav', // Will use system alarm sound
+              actionTypeId: "",
+              extra: {
+                type: 'patrol_reminder'
+              }
+            }]
           });
-          return;
+
+          toast({
+            title: "Συναγερμός Ρυθμίστηκε 📱",
+            description: `Θα ηχήσει σε ${minutes} λεπτά (${alarmTime.toLocaleTimeString()})`,
+            variant: "default",
+          });
+        } catch (capacitorError) {
+          console.log('Capacitor not available, falling back to browser notifications');
+          // Fall back to browser notifications if Capacitor fails
+          await setBrowserNotification(minutes, alarmTime);
         }
-
-        // Schedule native notification with alarm sound
-        await LocalNotifications.schedule({
-          notifications: [{
-            title: "🚨 Υπενθύμιση Περιπολίας",
-            body: `Ώρα για περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
-            id: Math.floor(Math.random() * 100000),
-            schedule: { at: alarmTime },
-            sound: 'alarm.wav', // Will use system alarm sound
-            actionTypeId: "",
-            extra: {
-              type: 'patrol_reminder'
-            }
-          }]
-        });
-
-        toast({
-          title: "Συναγερμός Ρυθμίστηκε 📱",
-          description: `Θα ηχήσει σε ${minutes} λεπτά (${alarmTime.toLocaleTimeString()})`,
-          variant: "default",
-        });
         
       } else {
         // Web browser fallback
-        if ('Notification' in window) {
-          const permission = await Notification.requestPermission();
-          if (permission === 'granted') {
-            toast({
-              title: "Υπενθύμιση Ρυθμίστηκε 🔔",
-              description: `Ειδοποίηση σε ${minutes} λεπτά (${alarmTime.toLocaleTimeString()})`,
-              variant: "default",
-            });
-            
-            const timeUntilAlarm = minutes * 60 * 1000; // Convert to milliseconds
-            setTimeout(() => {
-              new Notification("🚨 Υπενθύμιση Περιπολίας", {
-                body: `Ώρα για περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
-                icon: '/icon-192.png',
-                tag: 'patrol-reminder',
-                requireInteraction: true
-              });
-            }, timeUntilAlarm);
-          } else {
-            toast({
-              title: "Άδεια Απαιτείται", 
-              description: "Δώστε άδεια για ειδοποιήσεις",
-              variant: "destructive",
-            });
-          }
-        } else {
-          // Final fallback - just show instructions
-          toast({
-            title: "Υπενθύμιση Περιπολίας ⏰",
-            description: `Ρυθμίστε συναγερμό στο τηλέφωνό σας για ${alarmTime.toLocaleTimeString()}`,
-            variant: "default",
-          });
-        }
+        await setBrowserNotification(minutes, alarmTime);
       }
       
       setShowAlarmOptions(false);
@@ -210,6 +183,43 @@ const PatrolDashboard = ({
       });
     }
   }, [guardShiftInfo?.siteName, toast]);
+
+  // Browser notification fallback function
+  const setBrowserNotification = async (minutes: number, alarmTime: Date) => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        toast({
+          title: "Υπενθύμιση Ρυθμίστηκε 🔔",
+          description: `Ειδοποίηση σε ${minutes} λεπτά (${alarmTime.toLocaleTimeString()})`,
+          variant: "default",
+        });
+        
+        const timeUntilAlarm = minutes * 60 * 1000; // Convert to milliseconds
+        setTimeout(() => {
+          new Notification("🚨 Υπενθύμιση Περιπολίας", {
+            body: `Ώρα για περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
+            icon: '/icon-192.png',
+            tag: 'patrol-reminder',
+            requireInteraction: true
+          });
+        }, timeUntilAlarm);
+      } else {
+        toast({
+          title: "Άδεια Απαιτείται", 
+          description: "Δώστε άδεια για ειδοποιήσεις",
+          variant: "destructive",
+        });
+      }
+    } else {
+      // Final fallback - just show instructions
+      toast({
+        title: "Υπενθύμιση Περιπολίας ⏰",
+        description: `Ρυθμίστε συναγερμό στο τηλέφωνό σας για ${alarmTime.toLocaleTimeString()}`,
+        variant: "default",
+      });
+    }
+  };
   
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);

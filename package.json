@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/core": "^7.4.3",
     "@capacitor/device": "^7.0.2",
     "@capacitor/local-notifications": "^7.0.3",
     "@hookform/resolvers": "^3.9.0",
