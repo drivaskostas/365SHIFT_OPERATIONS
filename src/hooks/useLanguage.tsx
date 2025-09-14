@@ -130,6 +130,9 @@ const translations = {
     // Mission/Work Instructions
     'mission.title': 'Mission',
     
+    // Alarm
+    'alarm.set_reminder': 'Set Alarm',
+    
     // Validation messages
     'validation.min_characters': 'minimum characters',
     'validation.required': 'This field is required',
@@ -263,6 +266,9 @@ const translations = {
     
     // Mission/Work Instructions
     'mission.title': 'Οδηγίες Εργασίας',
+    
+    // Alarm
+    'alarm.set_reminder': 'Σετ Συναγερμού',
 
     // Validation messages
     'validation.min_characters': 'ελάχιστοι χαρακτήρες',

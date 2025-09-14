@@ -18,6 +18,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
 import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
 import { useLanguage } from '@/hooks/useLanguage';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Device } from '@capacitor/device';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -107,6 +109,57 @@ const PatrolDashboard = ({
   const [currentShift, setCurrentShift] = useState<any>(null);
   const [currentMission, setCurrentMission] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Alarm functionality
+  const setPatrolAlarm = async () => {
+    try {
+      // Request permissions first
+      const permResult = await LocalNotifications.requestPermissions();
+      
+      if (permResult.display !== 'granted') {
+        toast({
+          title: "Άδεια Απαιτείται",
+          description: "Απαιτείται άδεια ειδοποιήσεων για τον συναγερμό",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Calculate next patrol time (assuming next shift or 8 hours from now)
+      const nextPatrolTime = new Date();
+      nextPatrolTime.setHours(nextPatrolTime.getHours() + 8);
+      
+      // Schedule notification
+      await LocalNotifications.schedule({
+        notifications: [{
+          title: "🚨 Υπενθύμιση Περιπολίας",
+          body: `Ώρα για την επόμενη περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
+          id: Math.floor(Math.random() * 100000),
+          schedule: { at: nextPatrolTime },
+          sound: 'default',
+          attachments: undefined,
+          actionTypeId: "",
+          extra: {
+            type: 'patrol_reminder'
+          }
+        }]
+      });
+
+      toast({
+        title: "Συναγερμός Ρυθμίστηκε",
+        description: `Υπενθύμιση στις ${nextPatrolTime.toLocaleTimeString()}`,
+        variant: "default",
+      });
+      
+    } catch (error) {
+      console.error('Error setting alarm:', error);
+      toast({
+        title: "Σφάλμα",
+        description: "Δεν ήταν δυνατή η ρύθμιση συναγερμού",
+        variant: "destructive",
+      });
+    }
+  };
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -903,6 +956,18 @@ const PatrolDashboard = ({
                     {isOnline ? 'NETWORK.ONLINE' : 'NETWORK.OFFLINE'}
                   </span>
                 </div>
+              </div>
+              
+              {/* Set Alarm Button */}
+              <div className="mt-4">
+                <Button
+                  onClick={setPatrolAlarm}
+                  className="w-full font-mono"
+                  variant="outline"
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  {t('alarm.set_reminder')}
+                </Button>
               </div>
             </TabsContent>
             
