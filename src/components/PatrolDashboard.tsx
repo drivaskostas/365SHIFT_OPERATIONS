@@ -874,7 +874,7 @@ const PatrolDashboard = ({
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="overview" className="font-mono">OVERVIEW</TabsTrigger>
               <TabsTrigger value="mission" className="font-mono" disabled={!currentMission}>
-                {t('mission.title').toUpperCase()} {currentMission ? '●' : ''}
+                MISSION {currentMission ? '●' : ''}
               </TabsTrigger>
             </TabsList>
             

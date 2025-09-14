@@ -127,9 +127,6 @@ const translations = {
     'placeholder.location_description': 'Describe the exact location of the incident',
     'placeholder.involved_persons': 'List any persons involved in the incident...',
     
-    // Mission/Work Instructions
-    'mission.title': 'Mission',
-    
     // Validation messages
     'validation.min_characters': 'minimum characters',
     'validation.required': 'This field is required',
@@ -261,9 +258,6 @@ const translations = {
     'placeholder.location_description': 'Περιγράψτε την ακριβή τοποθεσία του περιστατικού',
     'placeholder.involved_persons': 'Αναφέρετε τυχόν άτομα που εμπλέκονται στο περιστατικό...',
     
-    // Mission/Work Instructions
-    'mission.title': 'Οδηγίες Εργασίας',
-
     // Validation messages
     'validation.min_characters': 'ελάχιστοι χαρακτήρες',
     'validation.required': 'Αυτό το πεδίο είναι υποχρεωτικό',
