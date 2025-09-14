@@ -117,7 +117,7 @@ const PatrolDashboard = ({
     { minutes: 60, label: '1 ώρα' },
   ];
   
-  // Enhanced alarm functionality to open native alarm app
+  // Enhanced alarm functionality - iOS friendly approach
   const setPatrolAlarm = useCallback(async (minutes: number) => {
     try {
       const alarmTime = new Date();
@@ -125,57 +125,70 @@ const PatrolDashboard = ({
       
       const hours = alarmTime.getHours();
       const mins = alarmTime.getMinutes();
+      const timeString = alarmTime.toLocaleTimeString('el-GR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
       
-      // Try to open native alarm app
-      const openNativeAlarm = () => {
-        // For Android devices
-        if (navigator.userAgent.toLowerCase().includes('android')) {
-          // Try Android alarm intent
-          const androidIntent = `intent://alarm?hour=${hours}&minutes=${mins}#Intent;scheme=alarm;package=com.android.deskclock;end`;
-          window.location.href = androidIntent;
-          
-          // Fallback to generic alarm intent
-          setTimeout(() => {
-            const fallbackIntent = `intent://alarm#Intent;action=android.intent.action.SET_ALARM;category=android.intent.category.DEFAULT;component=com.android.deskclock/.AlarmClock;S.android.intent.extra.alarm.HOUR=${hours};S.android.intent.extra.alarm.MINUTES=${mins};S.android.intent.extra.alarm.MESSAGE=Υπενθύμιση Περιπολίας;end`;
-            window.location.href = fallbackIntent;
-          }, 100);
-          
-        } else if (navigator.userAgent.toLowerCase().includes('iphone') || navigator.userAgent.toLowerCase().includes('ipad')) {
-          // For iOS devices - try various URL schemes
-          const iosAlarmUrl = `clock-alarm://`;
-          window.location.href = iosAlarmUrl;
-          
-          // Fallback to shortcuts app
-          setTimeout(() => {
-            window.location.href = `shortcuts://run-shortcut?name=Set%20Alarm&input=${hours}:${mins}`;
-          }, 100);
-          
-        } else {
-          // Web browser fallback - show instructions
-          toast({
-            title: "Ρυθμίστε Συναγερμό Μανουαλώς",
-            description: `Ανοίξτε την εφαρμογή ξυπνητηριού και ρυθμίστε για ${alarmTime.toLocaleTimeString()}`,
-            variant: "default",
-          });
-          return;
-        }
-        
+      // Check device type
+      const isIOS = navigator.userAgent.toLowerCase().includes('iphone') || 
+                   navigator.userAgent.toLowerCase().includes('ipad');
+      const isAndroid = navigator.userAgent.toLowerCase().includes('android');
+      
+      if (isIOS) {
+        // For iOS - provide clear instructions
         toast({
-          title: "Άνοιγμα Εφαρμογής Συναγερμού 📱",
-          description: `Ρύθμιση για ${alarmTime.toLocaleTimeString()} (σε ${minutes} λεπτά)`,
+          title: "Ρύθμιση Συναγερμού iOS 📱",
+          description: `Ανοίξτε την εφαρμογή Ρολόι και ρυθμίστε συναγερμό για ${timeString}`,
           variant: "default",
         });
-      };
+        
+        // Try to open Clock app (may work in some iOS versions)
+        setTimeout(() => {
+          try {
+            window.location.href = "clock://";
+          } catch (e) {
+            // Silently fail if doesn't work
+          }
+        }, 1500);
+        
+      } else if (isAndroid) {
+        // For Android - try alarm intent
+        try {
+          const androidIntent = `intent://alarm#Intent;action=android.intent.action.SET_ALARM;category=android.intent.category.DEFAULT;S.android.intent.extra.alarm.HOUR=${hours};S.android.intent.extra.alarm.MINUTES=${mins};S.android.intent.extra.alarm.MESSAGE=Υπενθύμιση Περιπολίας;end`;
+          window.location.href = androidIntent;
+          
+          toast({
+            title: "Άνοιγμα Εφαρμογής Συναγερμού 📱",
+            description: `Ρύθμιση για ${timeString} (σε ${minutes} λεπτά)`,
+            variant: "default",
+          });
+        } catch (e) {
+          // Fallback for Android
+          toast({
+            title: "Ρύθμιση Συναγερμού Android 📱",
+            description: `Ανοίξτε την εφαρμογή Ρολόι και ρυθμίστε για ${timeString}`,
+            variant: "default",
+          });
+        }
+        
+      } else {
+        // For desktop/web - show instructions
+        toast({
+          title: "Ρύθμιση Συναγερμού ⏰",
+          description: `Ρυθμίστε συναγερμό στη συσκευή σας για ${timeString} (σε ${minutes} λεπτά)`,
+          variant: "default",
+        });
+      }
       
-      openNativeAlarm();
       setShowAlarmOptions(false);
       
     } catch (error) {
-      console.error('Error opening alarm app:', error);
+      console.error('Error setting alarm:', error);
       toast({
-        title: "Σφάλμα",
-        description: "Δεν ήταν δυνατό το άνοιγμα της εφαρμογής συναγερμού", 
-        variant: "destructive",
+        title: "Οδηγίες Συναγερμού",
+        description: "Ρυθμίστε συναγερμό μανουαλώς στη συσκευή σας", 
+        variant: "default",
       });
     }
   }, [toast]);
