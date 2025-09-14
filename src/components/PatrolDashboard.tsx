@@ -18,8 +18,25 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
 import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
 import { useLanguage } from '@/hooks/useLanguage';
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { Device } from '@capacitor/device';
+import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square, FileText, Target, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CheckpointGroupSelector } from '@/components/CheckpointGroupSelector';
+import { useAuth } from '@/hooks/useAuth';
+import { useLocationTracking } from '@/hooks/useLocationTracking';
+import { supabase } from '@/integrations/supabase/client';
+import { PatrolService } from '@/services/PatrolService';
+import { ShiftValidationService } from '@/services/ShiftValidationService';
+import TeamObservations from '@/components/TeamObservations';
+import PatrolSessions from '@/components/PatrolSessions';
+import TeamEmergencyReports from '@/components/TeamEmergencyReports';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
+import SupervisorReportForm from '@/components/SupervisorReportForm';
+import { useToast } from '@/components/ui/use-toast';
+import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
+import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -110,10 +127,87 @@ const PatrolDashboard = ({
   const [currentMission, setCurrentMission] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
   
+  // Simple browser-based alarm functionality  
+  const setPatrolAlarm = useCallback(async () => {
+    try {
+      const nextPatrolTime = new Date();
+      nextPatrolTime.setHours(nextPatrolTime.getHours() + 8);
+      
+      if ('Notification' in window) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          toast({
+            title: "Συναγερμός Ρυθμίστηκε",
+            description: `Υπενθύμιση στις ${nextPatrolTime.toLocaleTimeString()}`,
+          });
+          
+          const timeUntilAlarm = 8 * 60 * 60 * 1000;
+          setTimeout(() => {
+            new Notification("🚨 Υπενθύμιση Περιπολίας", {
+              body: `Ώρα για περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
+              icon: '/icon-192.png'
+            });
+          }, timeUntilAlarm);
+        } else {
+          toast({
+            title: "Άδεια Απαιτείται", 
+            description: "Δώστε άδεια για ειδοποιήσεις",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Υπενθύμιση Περιπολίας",
+          description: `Ρυθμίστε συναγερμό στο τηλέφωνό σας για ${nextPatrolTime.toLocaleTimeString()}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Σφάλμα",
+        description: "Πρόβλημα με τον συναγερμό", 
+        variant: "destructive",
+      });
+    }
+  }, [guardShiftInfo?.siteName, toast]);
+  
   // Alarm functionality
   const setPatrolAlarm = async () => {
     try {
-      // Request permissions first
+  // Alarm functionality
+  const setPatrolAlarm = async () => {
+    try {
+      // Check if we're in a web environment or mobile
+      const isWeb = !(window as any).Capacitor;
+      
+      if (isWeb) {
+        // Web browser fallback - just show a toast with instructions
+        const nextPatrolTime = new Date();
+        nextPatrolTime.setHours(nextPatrolTime.getHours() + 8);
+        
+        toast({
+          title: "Υπενθύμιση Περιπολίας",
+          description: `Ρυθμίστε συναγερμό στο τηλέφωνό σας για ${nextPatrolTime.toLocaleTimeString()}`,
+          variant: "default",
+        });
+        
+        // Try to use browser notification API as fallback
+        if ('Notification' in window) {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            // For web, we'll set a timeout instead of a persistent alarm
+            const timeUntilAlarm = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+            setTimeout(() => {
+              new Notification("🚨 Υπενθύμιση Περιπολίας", {
+                body: `Ώρα για την επόμενη περιπολία στο ${guardShiftInfo?.siteName || 'χώρο εργασίας'}`,
+                icon: '/icon-192.png'
+              });
+            }, timeUntilAlarm);
+          }
+        }
+        return;
+      }
+      
+      // Mobile app - use Capacitor LocalNotifications
       const permResult = await LocalNotifications.requestPermissions();
       
       if (permResult.display !== 'granted') {
@@ -154,12 +248,13 @@ const PatrolDashboard = ({
     } catch (error) {
       console.error('Error setting alarm:', error);
       toast({
-        title: "Σφάλμα",
+        title: "Σφάλμα", 
         description: "Δεν ήταν δυνατή η ρύθμιση συναγερμού",
         variant: "destructive",
       });
     }
   };
+  
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
