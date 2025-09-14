@@ -131,7 +131,7 @@ const translations = {
     'mission.title': 'Mission',
     
     // Alarm
-    'alarm.set_reminder': 'Set Alarm',
+    'alarm.set_reminder': 'Υπενθύμιση περιπολίας',
     
     // Validation messages
     'validation.min_characters': 'minimum characters',
@@ -268,7 +268,7 @@ const translations = {
     'mission.title': 'Οδηγίες Εργασίας',
     
     // Alarm
-    'alarm.set_reminder': 'Σετ Συναγερμού',
+    'alarm.set_reminder': 'Υπενθύμιση περιπολίας',
 
     // Validation messages
     'validation.min_characters': 'ελάχιστοι χαρακτήρες',
