@@ -1019,46 +1019,25 @@ const PatrolDashboard = ({
                 </div>
               </div>
               
-              {/* Set Alarm Button */}
+              {/* Direct Alarm Buttons */}
               <div className="mt-4">
-                {!showAlarmOptions ? (
-                  <Button
-                    onClick={() => setShowAlarmOptions(true)}
-                    className="w-full font-mono"
-                    variant="outline"
-                  >
-                    <Clock className="h-4 w-4 mr-2" />
-                    {t('alarm.set_reminder')}
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground text-center font-mono mb-2">
-                      ΕΠΙΛΕΞΤΕ ΧΡΟΝΟ:
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {alarmOptions.map((option) => (
-                        <Button
-                          key={option.minutes}
-                          onClick={() => setPatrolAlarm(option.minutes)}
-                          className="text-xs font-mono"
-                          variant="default"
-                          size="sm"
-                        >
-                          <Clock className="h-3 w-3 mr-1" />
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
+                <div className="text-sm text-muted-foreground text-center font-mono mb-2">
+                  ΥΠΕΝΘΥΜΙΣΗ ΠΕΡΙΠΟΛΙΑΣ:
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {alarmOptions.map((option) => (
                     <Button
-                      onClick={() => setShowAlarmOptions(false)}
-                      className="w-full text-xs font-mono"
-                      variant="ghost"
+                      key={option.minutes}
+                      onClick={() => setPatrolAlarm(option.minutes)}
+                      className="text-xs font-mono"
+                      variant="default"
                       size="sm"
                     >
-                      Ακύρωση
+                      <Clock className="h-3 w-3 mr-1" />
+                      {option.label}
                     </Button>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
             </TabsContent>
             
