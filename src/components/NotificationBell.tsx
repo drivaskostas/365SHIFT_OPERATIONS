@@ -53,7 +53,10 @@ export default function NotificationBell() {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true, updated_at: new Date().toISOString() })
+        .update({ read: true, updated_at: (() => {
+          const greekTime = new Date().toLocaleString("sv-SE", {timeZone: "Europe/Athens"});
+          return new Date(greekTime).toISOString();
+        })() })
         .eq('id', notificationId)
         .eq('user_id', profile?.id);
 
@@ -77,7 +80,10 @@ export default function NotificationBell() {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true, updated_at: new Date().toISOString() })
+        .update({ read: true, updated_at: (() => {
+          const greekTime = new Date().toLocaleString("sv-SE", {timeZone: "Europe/Athens"});
+          return new Date(greekTime).toISOString();
+        })() })
         .eq('user_id', profile.id)
         .eq('read', false);
 

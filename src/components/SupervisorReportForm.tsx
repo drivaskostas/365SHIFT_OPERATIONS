@@ -63,7 +63,10 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
     severity: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     guard_id: '',
     location_text: '',
-    incident_time: new Date().toISOString().slice(0, 16),
+    incident_time: (() => {
+      const greekTime = new Date().toLocaleString("sv-SE", {timeZone: "Europe/Athens"});
+      return greekTime.slice(0, 16);
+    })(),
     followup_deadline: '',
     // Structured description fields
     description: {
@@ -247,7 +250,11 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
         location: formData.location_text,
         latitude: location.latitude,
         longitude: location.longitude,
-        incident_time: formData.incident_time ? new Date(formData.incident_time).toISOString() : null,
+        incident_time: formData.incident_time ? (() => {
+          // Convert to Greek timezone and then to ISO string
+          const greekTime = new Date(formData.incident_time);
+          return new Date(greekTime.getTime() + (greekTime.getTimezoneOffset() * 60000)).toISOString();
+        })() : null,
         image_url: imageUrl || null,
         notes: JSON.stringify(formData.description.selected_guards?.map(guardId => {
           const guard = guards.find(g => g.profile_id === guardId);
@@ -287,7 +294,13 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
             description: reportData.description,
             severity: reportData.severity,
             supervisorName: reportData.supervisor_name,
-            timestamp: data.created_at || new Date().toISOString(),
+            timestamp: (() => {
+              // If data.created_at exists, convert to Greek timezone, otherwise use current Greek time
+              if (data.created_at) {
+                return new Date(data.created_at).toLocaleString("en-US", {timeZone: "Europe/Athens"});
+              }
+              return new Date().toLocaleString("en-US", {timeZone: "Europe/Athens"});
+            })(),
             location: reportData.location || '',
             incidentTime: reportData.incident_time,
             imageUrl: reportData.image_url,

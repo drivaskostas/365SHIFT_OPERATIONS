@@ -214,15 +214,15 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Site:</strong> ${siteName}</p>
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Supervisor:</strong> ${report.supervisorName}</p>
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Location:</strong> ${report.location || 'Not specified'}</p>
-                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Date:</strong> ${new Date(report.timestamp).toLocaleString('el-GR')}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Date:</strong> ${new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}</p>
                 ${report.incidentTime ? `
-                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Incident Time:</strong> ${new Date(report.incidentTime).toLocaleString('el-GR')}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Incident Time:</strong> ${new Date(report.incidentTime).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}</p>
                 ` : ''}
                 ${report.guardName ? `
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Guard:</strong> ${report.guardName}</p>
                 ` : ''}
                 ${report.shiftDate ? `
-                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Shift Date:</strong> ${new Date(report.shiftDate).toLocaleDateString('el-GR')}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Shift Date:</strong> ${new Date(report.shiftDate).toLocaleDateString('el-GR', {timeZone: 'Europe/Athens'})}</p>
                 ` : ''}
                 ${parsedDescription?.report_type ? `
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Type:</strong> ${parsedDescription.report_type}</p>
@@ -375,7 +375,7 @@ const handler = async (req: Request): Promise<Response> => {
         const emailData: any = {
           from: "OVIT Observations <observations@notifications.ovitguardly.com>",
           to: [email],
-          subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()}`,
+          subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}`,
           html: htmlContent
         };
 
