@@ -106,7 +106,7 @@ export class ObservationService {
     title: string,
     description: string,
     severity: 'low' | 'medium' | 'high' | 'critical',
-    imageUrl?: string,
+    images?: string[],
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolObservation> {
     console.log('📝 Creating observation with data:', {
@@ -116,7 +116,7 @@ export class ObservationService {
       title,
       description,
       severity,
-      imageUrl: imageUrl ? 'provided' : 'none',
+      images: images ? `${images.length} photos` : 'none',
       location: location ? `${location.latitude}, ${location.longitude}` : 'none'
     });
 
@@ -191,7 +191,7 @@ export class ObservationService {
       description,
       severity,
       status: 'pending',
-      image_url: imageUrl,
+      image_url: images?.[0] || null,
       latitude: finalLocation?.latitude || null,
       longitude: finalLocation?.longitude || null,
       timestamp: new Date().toISOString(),
@@ -215,7 +215,7 @@ export class ObservationService {
 
     // Send observation notification using existing edge function
     try {
-      await this.sendObservationNotification(data, guardName, finalLocation, siteId);
+      await this.sendObservationNotification(data, guardName, finalLocation, siteId, images);
     } catch (notificationError) {
       console.warn('Failed to send observation notification:', notificationError);
     }
@@ -227,7 +227,8 @@ export class ObservationService {
     observation: PatrolObservation,
     guardName: string,
     location: { latitude: number; longitude: number } | null,
-    siteId: string | null
+    siteId: string | null,
+    images?: string[]
   ): Promise<void> {
     try {
       // Call the existing observation notification edge function
@@ -251,7 +252,8 @@ export class ObservationService {
           teamId: observation.team_id,
           siteId: siteId,
           guardId: observation.guard_id,
-          imageUrl: observation.image_url,
+          images: images || [],
+          location: location ? `${location.latitude}, ${location.longitude}` : undefined,
           testMode: false
         }
       });

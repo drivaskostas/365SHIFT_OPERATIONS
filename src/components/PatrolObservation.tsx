@@ -241,7 +241,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
         title,
         description,
         severity,
-        photos[0] || undefined,
+        photos.length > 0 ? photos : undefined,
         locationInfo.coordinates || undefined
       );
       

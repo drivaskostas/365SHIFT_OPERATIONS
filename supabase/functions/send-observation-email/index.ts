@@ -177,26 +177,41 @@ const handler = async (req: Request): Promise<Response> => {
     // Build image attachments array for embedding
     const imageAttachments = [];
     if (images && images.length > 0) {
-      for (const imageUrl of images) {
+      for (let i = 0; i < images.length; i++) {
+        const imageUrl = images[i];
         try {
-          // Fetch image data
-          const response = await fetch(imageUrl);
-          if (response.ok) {
-            const arrayBuffer = await response.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-            
-            // Determine MIME type from URL or use default
-            let mimeType = 'image/jpeg';
-            if (imageUrl.includes('.png')) mimeType = 'image/png';
-            else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
-            else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+          if (imageUrl.startsWith('data:')) {
+            // Handle base64 data URLs (from camera/file selection)
+            const [mimeTypeSection, base64Data] = imageUrl.split(',');
+            const mimeType = mimeTypeSection.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+            const extension = mimeType.split('/')[1] || 'jpg';
             
             imageAttachments.push({
-              filename: `observation_image_${imageAttachments.length + 1}.${mimeType.split('/')[1]}`,
-              content: base64,
-              content_id: `observation_img_${imageAttachments.length + 1}`,
+              filename: `observation_photo_${i + 1}.${extension}`,
+              content: base64Data,
+              content_id: `observation_img_${i + 1}`,
               disposition: 'inline'
             });
+          } else {
+            // Handle regular URLs (fetch and convert)
+            const response = await fetch(imageUrl);
+            if (response.ok) {
+              const arrayBuffer = await response.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+              
+              // Determine MIME type from URL or use default
+              let mimeType = 'image/jpeg';
+              if (imageUrl.includes('.png')) mimeType = 'image/png';
+              else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
+              else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+              
+              imageAttachments.push({
+                filename: `observation_photo_${i + 1}.${mimeType.split('/')[1]}`,
+                content: base64,
+                content_id: `observation_img_${i + 1}`,
+                disposition: 'inline'
+              });
+            }
           }
         } catch (error) {
           console.error('Error processing image:', imageUrl, error);
@@ -226,11 +241,11 @@ const handler = async (req: Request): Promise<Response> => {
                   <strong>Reported by:</strong> ${guardName}
                 </div>
                 <div>
-                  <strong>Observation Time:</strong> ${new Date(timestamp).toLocaleString('el-GR')}
+                  <strong>Observation Time:</strong> ${new Date(timestamp).toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
                 </div>
                 ${incidentTime ? `
                 <div>
-                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR')}
+                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
                 </div>
                 ` : ''}
                 ${location ? `
