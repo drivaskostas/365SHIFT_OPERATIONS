@@ -242,6 +242,7 @@ export class ObservationService {
       
       await supabase.functions.invoke('send-observation-email', {
         body: {
+          observationId: observation.id,
           title: observation.title,
           description: observation.description,
           severity: observation.severity,
