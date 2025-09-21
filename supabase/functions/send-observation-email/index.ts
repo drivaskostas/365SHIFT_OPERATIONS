@@ -74,7 +74,6 @@ const handler = async (req: Request): Promise<Response> => {
       siteId: siteId || '',
       teamId: teamId || '',
       guardId,
-      imageUrl: imageUrl || null,
       severity,
       guardName,
       timestamp,
