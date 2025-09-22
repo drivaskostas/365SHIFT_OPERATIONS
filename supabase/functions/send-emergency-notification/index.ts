@@ -210,26 +210,41 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Download and encode all images for embedding
     if (reportImages.length > 0) {
-      for (const imgUrl of reportImages) {
+      for (let i = 0; i < reportImages.length; i++) {
+        const imgUrl = reportImages[i];
         try {
-          // Fetch image data
-          const response = await fetch(imgUrl);
-          if (response.ok) {
-            const arrayBuffer = await response.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-            
-            // Determine MIME type from URL or use default
-            let mimeType = 'image/jpeg';
-            if (imgUrl.includes('.png')) mimeType = 'image/png';
-            else if (imgUrl.includes('.gif')) mimeType = 'image/gif';
-            else if (imgUrl.includes('.webp')) mimeType = 'image/webp';
+          if (imgUrl.startsWith('data:')) {
+            // Handle base64 data URLs (from camera/file selection)
+            const [mimeTypeSection, base64Data] = imgUrl.split(',');
+            const mimeType = mimeTypeSection.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+            const extension = mimeType.split('/')[1] || 'jpg';
             
             imageAttachments.push({
-              filename: `emergency_image_${imageAttachments.length + 1}.${mimeType.split('/')[1]}`,
-              content: base64,
-              content_id: `emergency_img_${imageAttachments.length + 1}`,
+              filename: `emergency_image_${i + 1}.${extension}`,
+              content: base64Data,
+              content_id: `emergency_img_${i + 1}`,
               disposition: 'inline'
             });
+          } else {
+            // Handle regular URLs (fetch and convert)
+            const response = await fetch(imgUrl);
+            if (response.ok) {
+              const arrayBuffer = await response.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+              
+              // Determine MIME type from URL or use default
+              let mimeType = 'image/jpeg';
+              if (imgUrl.includes('.png')) mimeType = 'image/png';
+              else if (imgUrl.includes('.gif')) mimeType = 'image/gif';
+              else if (imgUrl.includes('.webp')) mimeType = 'image/webp';
+              
+              imageAttachments.push({
+                filename: `emergency_image_${i + 1}.${mimeType.split('/')[1]}`,
+                content: base64,
+                content_id: `emergency_img_${i + 1}`,
+                disposition: 'inline'
+              });
+            }
           }
         } catch (error) {
           console.error('Error processing image:', imgUrl, error);
