@@ -64,7 +64,8 @@ const handler = async (req: Request): Promise<Response> => {
     let recipients: any[] = [];
 
     console.log('=== OBSERVATION EMAIL NOTIFICATION START ===');
-    console.log('Raw request body:', JSON.stringify({ title, siteId, teamId, guardId, severity, guardName, timestamp, description }));
+    console.log('Raw request body:', JSON.stringify({ title, siteId, teamId, guardId, severity, guardName, timestamp, description, images }));
+    console.log('Images received:', images?.length || 0, 'images');
     console.log('RESEND_API_KEY found:', Deno.env.get('RESEND_API_KEY') ? Deno.env.get('RESEND_API_KEY')?.substring(0, 10) + '...' : 'NOT FOUND');
     console.log('Timestamp:', new Date().toISOString());
 
@@ -176,6 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build image attachments array for embedding
     const imageAttachments = [];
+    console.log('Processing images for observation:', images?.length || 0, 'images found');
     if (images && images.length > 0) {
       for (let i = 0; i < images.length; i++) {
         const imageUrl = images[i];
@@ -217,6 +219,9 @@ const handler = async (req: Request): Promise<Response> => {
           console.error('Error processing image:', imageUrl, error);
         }
       }
+      console.log('Successfully processed', imageAttachments.length, 'images for email attachments');
+    } else {
+      console.log('No images to process for this observation');
     }
 
     const emailHtml = `
