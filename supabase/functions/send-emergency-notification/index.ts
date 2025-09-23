@@ -194,28 +194,42 @@ const handler = async (req: Request): Promise<Response> => {
       fullEmergencyData = emergencyData;
     }
 
-    // Build image attachments array for embedding
+    // Build image attachments array for embedding - prevent duplication
     const imageAttachments = [];
     let reportImages = [];
     
-    // Handle single image from imageUrl field
+    // Collect all images from different sources
     if (imageUrl) {
       reportImages.push(imageUrl);
     }
     
-    // Handle images array
     if (images && images.length > 0) {
       reportImages = reportImages.concat(images);
     }
     
-    // Download and encode all images for embedding
-    if (reportImages.length > 0) {
-      for (let i = 0; i < reportImages.length; i++) {
-        const imgUrl = reportImages[i];
+    // Remove duplicates and limit to 5 images max
+    const uniqueImages = Array.from(new Set(reportImages)).slice(0, 5);
+    console.log('Processing emergency images:', {
+      originalCount: reportImages.length,
+      uniqueCount: uniqueImages.length,
+      finalCount: uniqueImages.length
+    });
+    
+    // Download and encode all unique images for embedding
+    if (uniqueImages.length > 0) {
+      for (let i = 0; i < uniqueImages.length; i++) {
+        const imgUrl = uniqueImages[i];
+        console.log(`Processing emergency image ${i + 1}/${uniqueImages.length}:`, imgUrl.substring(0, 50) + '...');
+        
         try {
           if (imgUrl.startsWith('data:')) {
             // Handle base64 data URLs (from camera/file selection)
             const [mimeTypeSection, base64Data] = imgUrl.split(',');
+            if (!base64Data) {
+              console.error('Invalid data URL format for emergency image:', i + 1);
+              continue;
+            }
+            
             const mimeType = mimeTypeSection.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
             const extension = mimeType.split('/')[1] || 'jpg';
             
@@ -225,8 +239,10 @@ const handler = async (req: Request): Promise<Response> => {
               content_id: `emergency_img_${i + 1}`,
               disposition: 'inline'
             });
+            console.log(`✅ Successfully processed emergency data URL image ${i + 1} (${mimeType})`);
           } else {
             // Handle regular URLs (fetch and convert)
+            console.log(`Fetching emergency external image ${i + 1}:`, imgUrl);
             const response = await fetch(imgUrl);
             if (response.ok) {
               const arrayBuffer = await response.arrayBuffer();
@@ -244,12 +260,18 @@ const handler = async (req: Request): Promise<Response> => {
                 content_id: `emergency_img_${i + 1}`,
                 disposition: 'inline'
               });
+              console.log(`✅ Successfully processed emergency external image ${i + 1} (${mimeType})`);
+            } else {
+              console.error(`Failed to fetch emergency external image ${i + 1}:`, response.status, response.statusText);
             }
           }
         } catch (error) {
-          console.error('Error processing image:', imgUrl, error);
+          console.error(`Error processing emergency image ${i + 1}:`, error);
         }
       }
+      console.log('📸 Final emergency image attachments count:', imageAttachments.length);
+    } else {
+      console.log('No images to process for this emergency report');
     }
 
     const emailHtml = `
