@@ -175,27 +175,43 @@ const handler = async (req: Request): Promise<Response> => {
       fullObservationData = observationData;
     }
 
-    // Build image attachments array for embedding
+    // Build image attachments array for embedding - limit to first 5 images to prevent duplication
     const imageAttachments = [];
     console.log('Processing images for observation:', images?.length || 0, 'images found');
-    if (images && images.length > 0) {
-      for (let i = 0; i < images.length; i++) {
-        const imageUrl = images[i];
+    
+    // Ensure we only process unique images and limit to 5
+    const uniqueImages = Array.from(new Set(images || [])).slice(0, 5);
+    console.log('Processing unique images:', uniqueImages.length, 'after deduplication and limiting to 5');
+    
+    if (uniqueImages.length > 0) {
+      for (let i = 0; i < uniqueImages.length; i++) {
+        const imageUrl = uniqueImages[i];
+        console.log(`Processing image ${i + 1}/${uniqueImages.length}:`, imageUrl.substring(0, 50) + '...');
+        
         try {
           if (imageUrl.startsWith('data:')) {
             // Handle base64 data URLs (from camera/file selection)
             const [mimeTypeSection, base64Data] = imageUrl.split(',');
+            if (!base64Data) {
+              console.error('Invalid data URL format for image:', i + 1);
+              continue;
+            }
+            
             const mimeType = mimeTypeSection.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
             const extension = mimeType.split('/')[1] || 'jpg';
             
-            imageAttachments.push({
+            const attachment = {
               filename: `observation_photo_${i + 1}.${extension}`,
               content: base64Data,
               content_id: `observation_img_${i + 1}`,
               disposition: 'inline'
-            });
+            };
+            
+            imageAttachments.push(attachment);
+            console.log(`✅ Successfully processed data URL image ${i + 1} (${mimeType})`);
           } else {
             // Handle regular URLs (fetch and convert)
+            console.log(`Fetching external image ${i + 1}:`, imageUrl);
             const response = await fetch(imageUrl);
             if (response.ok) {
               const arrayBuffer = await response.arrayBuffer();
@@ -207,19 +223,24 @@ const handler = async (req: Request): Promise<Response> => {
               else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
               else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
               
-              imageAttachments.push({
+              const attachment = {
                 filename: `observation_photo_${i + 1}.${mimeType.split('/')[1]}`,
                 content: base64,
                 content_id: `observation_img_${i + 1}`,
                 disposition: 'inline'
-              });
+              };
+              
+              imageAttachments.push(attachment);
+              console.log(`✅ Successfully processed external image ${i + 1} (${mimeType})`);
+            } else {
+              console.error(`Failed to fetch external image ${i + 1}:`, response.status, response.statusText);
             }
           }
         } catch (error) {
-          console.error('Error processing image:', imageUrl, error);
+          console.error(`Error processing image ${i + 1}:`, error);
         }
       }
-      console.log('Successfully processed', imageAttachments.length, 'images for email attachments');
+      console.log('📸 Final image attachments count:', imageAttachments.length);
     } else {
       console.log('No images to process for this observation');
     }
