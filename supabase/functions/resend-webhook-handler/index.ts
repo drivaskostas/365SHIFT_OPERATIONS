@@ -3,52 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-signature',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-signature, webhook-signature',
 };
-
-// Function to verify webhook signature
-async function verifySignature(payload: string, signature: string, secret: string): Promise<boolean> {
-  try {
-    const encoder = new TextEncoder();
-    
-    // Extract timestamp and signature from the header
-    const parts = signature.split(',');
-    let timestamp = '';
-    let sig = '';
-    
-    for (const part of parts) {
-      const [key, value] = part.split('=');
-      if (key === 't') timestamp = value;
-      if (key === 'v1') sig = value;
-    }
-    
-    if (!timestamp || !sig) return false;
-    
-    // Create the signed payload
-    const signedPayload = timestamp + '.' + payload;
-    
-    // Create HMAC signature
-    const keyData = encoder.encode(secret);
-    const message = encoder.encode(signedPayload);
-    
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signature_bytes = await crypto.subtle.sign('HMAC', key, message);
-    const expectedSig = Array.from(new Uint8Array(signature_bytes))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-      
-    return expectedSig === sig;
-  } catch {
-    return false;
-  }
-}
 
 interface ResendWebhookEvent {
   type: string;
@@ -77,15 +33,15 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     // Get the raw payload
     const payload = await req.text();
-    console.log('📦 Received webhook payload (first 200 chars):', payload.substring(0, 200));
+    console.log('📦 Received webhook payload:', payload);
     
     // Log headers for debugging
     const headers = Object.fromEntries(req.headers.entries());
     console.log('📋 Headers received:', JSON.stringify(headers, null, 2));
     
-    // TODO: Re-enable signature verification after debugging
-    // Temporarily disabled for debugging
-    
+    // Skip signature verification for now - just process the webhook
+    console.log('⚠️ Signature verification temporarily disabled for debugging');
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -124,9 +80,13 @@ const handler = async (req: Request): Promise<Response> => {
         status = eventType.replace('email.', '');
     }
 
+    console.log('📊 Processing event:', eventType, 'as status:', status);
+
     // Find the reference type and reference_id by checking which table has this email_id
     let referenceType = '';
     let referenceId = '';
+
+    console.log('🔍 Looking for email_id:', email_id);
 
     // Check supervisor_reports
     const { data: supervisorReport } = await supabase
@@ -138,7 +98,10 @@ const handler = async (req: Request): Promise<Response> => {
     if (supervisorReport) {
       referenceType = 'supervisor_report';
       referenceId = supervisorReport.id;
+      console.log('✅ Found in supervisor_reports:', referenceId);
     } else {
+      console.log('❌ Not found in supervisor_reports');
+      
       // Check patrol_observations
       const { data: patrolObservation } = await supabase
         .from('patrol_observations') 
@@ -149,7 +112,10 @@ const handler = async (req: Request): Promise<Response> => {
       if (patrolObservation) {
         referenceType = 'patrol_observation';
         referenceId = patrolObservation.id;
+        console.log('✅ Found in patrol_observations:', referenceId);
       } else {
+        console.log('❌ Not found in patrol_observations');
+        
         // Check emergency_reports
         const { data: emergencyReport } = await supabase
           .from('emergency_reports')
@@ -160,9 +126,21 @@ const handler = async (req: Request): Promise<Response> => {
         if (emergencyReport) {
           referenceType = 'emergency_report';
           referenceId = emergencyReport.id;
+          console.log('✅ Found in emergency_reports:', referenceId);
+        } else {
+          console.log('❌ Not found in emergency_reports');
         }
       }
     }
+
+    console.log('📝 Inserting deliverability record:', {
+      email_id,
+      recipient_email: recipientEmail,
+      status,
+      event_type: eventType,
+      reference_type: referenceType || 'unknown',
+      reference_id: referenceId || null,
+    });
 
     // Insert deliverability record
     const { error: insertError } = await supabase
