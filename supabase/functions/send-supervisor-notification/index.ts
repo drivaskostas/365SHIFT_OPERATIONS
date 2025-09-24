@@ -140,6 +140,10 @@ const handler = async (req: Request): Promise<Response> => {
       parsedDescription = { behavioral_observation: report.description };
     }
 
+    // Use actual timestamp from database if available, otherwise use request timestamp
+    const reportTimestamp = fullReportData?.created_at || fullReportData?.updated_at || report.timestamp;
+    const incidentTimestamp = fullReportData?.incident_time || report.incidentTime;
+
     // Build image attachments array for embedding - Handle both single image and array
     const imageAttachments = [];
     let reportImages = [];
@@ -216,9 +220,9 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Site:</strong> ${siteName}</p>
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Supervisor:</strong> ${report.supervisorName}</p>
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Location:</strong> ${report.location || 'Not specified'}</p>
-                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Date:</strong> ${new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}</p>
-                ${report.incidentTime ? `
-                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Incident Time:</strong> ${new Date(report.incidentTime).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Date:</strong> ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}</p>
+                ${fullReportData?.incident_time || report.incidentTime ? `
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Incident Time:</strong> ${new Date(fullReportData?.incident_time || report.incidentTime).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}</p>
                 ` : ''}
                 ${report.guardName ? `
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Guard:</strong> ${report.guardName}</p>
@@ -377,7 +381,7 @@ const handler = async (req: Request): Promise<Response> => {
         const emailData: any = {
           from: "OVIT Observations <observations@notifications.ovitguardly.com>",
           to: [email],
-          subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}`,
+          subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}`,
           html: htmlContent
         };
 
