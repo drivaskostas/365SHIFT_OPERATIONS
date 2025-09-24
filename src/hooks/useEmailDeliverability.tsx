@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 
 interface DeliverabilityEvent {
   id: string;
@@ -26,6 +26,12 @@ interface UseEmailDeliverabilityProps {
   reportId: string;
   referenceType: 'supervisor_report' | 'patrol_observation' | 'emergency_report';
 }
+
+// Create untyped client to avoid type issues during development
+const supabase = createClient(
+  'https://igcqqrcdtqpecopvuuva.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnY3FxcmNkdHFwZWNvcHZ1dXZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0OTI5MzAsImV4cCI6MjA1NjA2ODkzMH0.w5Ac9bpsfXpkAa4FJi2pDlMzpM6j1pEe3bL36fpzuQE'
+);
 
 export const useEmailDeliverability = ({ reportId, referenceType }: UseEmailDeliverabilityProps) => {
   const [data, setData] = useState<DeliverabilityEvent[]>([]);
@@ -56,10 +62,11 @@ export const useEmailDeliverability = ({ reportId, referenceType }: UseEmailDeli
         throw fetchError;
       }
 
-      setData(deliverabilityData || []);
+      const typedData = (deliverabilityData || []) as DeliverabilityEvent[];
+      setData(typedData);
 
       // Calculate stats
-      const statsData = (deliverabilityData || []).reduce((acc, event) => {
+      const statsData = typedData.reduce((acc, event) => {
         acc.total++;
         switch (event.status) {
           case 'delivered':
