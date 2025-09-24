@@ -3,8 +3,52 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-signature',
 };
+
+// Function to verify webhook signature
+async function verifySignature(payload: string, signature: string, secret: string): Promise<boolean> {
+  try {
+    const encoder = new TextEncoder();
+    
+    // Extract timestamp and signature from the header
+    const parts = signature.split(',');
+    let timestamp = '';
+    let sig = '';
+    
+    for (const part of parts) {
+      const [key, value] = part.split('=');
+      if (key === 't') timestamp = value;
+      if (key === 'v1') sig = value;
+    }
+    
+    if (!timestamp || !sig) return false;
+    
+    // Create the signed payload
+    const signedPayload = timestamp + '.' + payload;
+    
+    // Create HMAC signature
+    const keyData = encoder.encode(secret);
+    const message = encoder.encode(signedPayload);
+    
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signature_bytes = await crypto.subtle.sign('HMAC', key, message);
+    const expectedSig = Array.from(new Uint8Array(signature_bytes))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+      
+    return expectedSig === sig;
+  } catch {
+    return false;
+  }
+}
 
 interface ResendWebhookEvent {
   type: string;
@@ -31,12 +75,35 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET');
+    if (!webhookSecret) {
+      console.error('❌ RESEND_WEBHOOK_SECRET not configured');
+      return new Response('Webhook secret not configured', { status: 500 });
+    }
+
+    // Get the raw payload and signature
+    const payload = await req.text();
+    const signature = req.headers.get('svix-signature') || req.headers.get('webhook-signature');
+    
+    if (!signature) {
+      console.error('❌ No signature found in request headers');
+      return new Response('Missing signature', { status: 401 });
+    }
+
+    // Verify the webhook signature
+    const isValid = await verifySignature(payload, signature, webhookSecret);
+    if (!isValid) {
+      console.error('❌ Invalid webhook signature');
+      return new Response('Invalid signature', { status: 401 });
+    }
+
+    console.log('✅ Webhook signature verified successfully');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    const event: ResendWebhookEvent = await req.json();
+    const event: ResendWebhookEvent = JSON.parse(payload);
     console.log('📨 Received webhook event:', event.type, 'for email:', event.data.email_id);
 
     const { email_id, to } = event.data;
