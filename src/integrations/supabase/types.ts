@@ -387,6 +387,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "assigned_teams_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "assigned_teams_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -457,11 +464,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "behavior_records_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "behavior_records_recorded_by_fkey"
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "behavior_records_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "behavior_records_team_id_fkey"
@@ -731,6 +752,7 @@ export type Database = {
           additional_comments: string | null
           client_id: string
           communication_score: number | null
+          company_representation_score: number | null
           created_at: string | null
           evaluation_period: string
           evaluation_year: number
@@ -752,6 +774,7 @@ export type Database = {
           additional_comments?: string | null
           client_id: string
           communication_score?: number | null
+          company_representation_score?: number | null
           created_at?: string | null
           evaluation_period: string
           evaluation_year?: number
@@ -773,6 +796,7 @@ export type Database = {
           additional_comments?: string | null
           client_id?: string
           communication_score?: number | null
+          company_representation_score?: number | null
           created_at?: string | null
           evaluation_period?: string
           evaluation_year?: number
@@ -799,11 +823,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_evaluations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "client_evaluations_guard_id_fkey"
             columns: ["guard_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_evaluations_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "client_evaluations_team_id_fkey"
@@ -885,6 +923,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_teams_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "client_teams_team_id_fkey"
@@ -1050,6 +1095,48 @@ export type Database = {
         }
         Relationships: []
       }
+      email_deliverability: {
+        Row: {
+          created_at: string | null
+          email_id: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          occurred_at: string
+          recipient_email: string
+          reference_id: string | null
+          reference_type: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_id: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          occurred_at: string
+          recipient_email: string
+          reference_id?: string | null
+          reference_type?: string
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_id?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          recipient_email?: string
+          reference_id?: string | null
+          reference_type?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       email_notifications: {
         Row: {
           created_at: string | null
@@ -1152,6 +1239,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          email_id: string | null
           guard_id: string
           guard_name: string | null
           id: string
@@ -1174,6 +1262,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          email_id?: string | null
           guard_id: string
           guard_name?: string | null
           id?: string
@@ -1196,6 +1285,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          email_id?: string | null
           guard_id?: string
           guard_name?: string | null
           id?: string
@@ -1225,6 +1315,54 @@ export type Database = {
           },
         ]
       }
+      employee_awards: {
+        Row: {
+          award_period: string
+          award_type: string
+          awarded_at: string | null
+          base_score: number
+          created_at: string | null
+          final_score: number
+          guard_id: string
+          id: string
+          justification: string
+          performance_breakdown: Json
+          performance_grade: string
+          rank_position: number
+          total_candidates: number
+        }
+        Insert: {
+          award_period: string
+          award_type: string
+          awarded_at?: string | null
+          base_score: number
+          created_at?: string | null
+          final_score: number
+          guard_id: string
+          id?: string
+          justification: string
+          performance_breakdown: Json
+          performance_grade: string
+          rank_position?: number
+          total_candidates: number
+        }
+        Update: {
+          award_period?: string
+          award_type?: string
+          awarded_at?: string | null
+          base_score?: number
+          created_at?: string | null
+          final_score?: number
+          guard_id?: string
+          id?: string
+          justification?: string
+          performance_breakdown?: Json
+          performance_grade?: string
+          rank_position?: number
+          total_candidates?: number
+        }
+        Relationships: []
+      }
       equipment_types: {
         Row: {
           base_price: number
@@ -1245,6 +1383,60 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      guard_complaints: {
+        Row: {
+          complaint_date: string
+          complaint_description: string
+          complaint_title: string
+          created_at: string
+          guard_id: string
+          guard_satisfied_with_resolution: boolean | null
+          id: string
+          resolution_notes: string | null
+          resolution_timestamp: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          team_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          complaint_date?: string
+          complaint_description: string
+          complaint_title: string
+          created_at?: string
+          guard_id: string
+          guard_satisfied_with_resolution?: boolean | null
+          id?: string
+          resolution_notes?: string | null
+          resolution_timestamp?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          team_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          complaint_date?: string
+          complaint_description?: string
+          complaint_title?: string
+          created_at?: string
+          guard_id?: string
+          guard_satisfied_with_resolution?: boolean | null
+          id?: string
+          resolution_notes?: string | null
+          resolution_timestamp?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          team_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1295,6 +1487,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "guard_equipment_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "guard_equipment_equipment_id_fkey"
             columns: ["equipment_id"]
             isOneToOne: false
@@ -1308,7 +1507,50 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "guard_equipment_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
         ]
+      }
+      guard_fatigue_levels: {
+        Row: {
+          created_at: string
+          factors: string | null
+          fatigue_level: number
+          guard_id: string
+          id: string
+          shift_date: string
+          shift_duration_hours: number | null
+          team_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          factors?: string | null
+          fatigue_level: number
+          guard_id: string
+          id?: string
+          shift_date?: string
+          shift_duration_hours?: number | null
+          team_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          factors?: string | null
+          fatigue_level?: number
+          guard_id?: string
+          id?: string
+          shift_date?: string
+          shift_duration_hours?: number | null
+          team_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       guard_locations: {
         Row: {
@@ -1319,6 +1561,7 @@ export type Database = {
           id: string
           latitude: number
           longitude: number
+          observation: string | null
           on_duty: boolean
           patrol_id: string | null
           speed: number | null
@@ -1333,6 +1576,7 @@ export type Database = {
           id?: string
           latitude: number
           longitude: number
+          observation?: string | null
           on_duty?: boolean
           patrol_id?: string | null
           speed?: number | null
@@ -1347,6 +1591,7 @@ export type Database = {
           id?: string
           latitude?: number
           longitude?: number
+          observation?: string | null
           on_duty?: boolean
           patrol_id?: string | null
           speed?: number | null
@@ -1409,6 +1654,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_performance_achievements_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1547,13 +1799,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "guard_performance_evaluations_evaluated_by_fkey"
+            columns: ["evaluated_by"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "guard_performance_evaluations_guard_id_fkey"
             columns: ["guard_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "guard_performance_evaluations_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
         ]
+      }
+      guard_satisfaction_ratings: {
+        Row: {
+          comments: string | null
+          created_at: string
+          guard_id: string
+          id: string
+          rating_date: string
+          satisfaction_score: number
+          team_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          guard_id: string
+          id?: string
+          rating_date?: string
+          satisfaction_score: number
+          team_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          guard_id?: string
+          id?: string
+          rating_date?: string
+          satisfaction_score?: number
+          team_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       guard_upcoming_shifts: {
         Row: {
@@ -1646,6 +1945,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_work_stats_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1806,6 +2112,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           name: string
+          supervisor_id: string | null
           team_id: string
         }
         Insert: {
@@ -1819,6 +2126,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name: string
+          supervisor_id?: string | null
           team_id: string
         }
         Update: {
@@ -1832,6 +2140,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name?: string
+          supervisor_id?: string | null
           team_id?: string
         }
         Relationships: [
@@ -2387,6 +2696,120 @@ export type Database = {
           },
         ]
       }
+      live_performance_calculations: {
+        Row: {
+          base_score: number | null
+          behavior_score: number | null
+          calculated_at: string
+          calculation_period: string
+          client_evaluations_count: number | null
+          client_feedback_score: number | null
+          created_at: string
+          data_updated_at: string
+          emergency_reporting_points: number | null
+          emergency_reports_count: number | null
+          evaluation_semester: string
+          evaluation_year: number
+          final_score: number | null
+          guard_id: string
+          guard_name: string
+          has_behavior_records: boolean | null
+          has_client_evaluations: boolean | null
+          has_operational_activity: boolean | null
+          has_ovit_evaluation: boolean | null
+          has_supervisor_reports: boolean | null
+          id: string
+          negative_behaviors: number | null
+          ovit_evaluations_count: number | null
+          patrol_observations_count: number | null
+          patrol_observations_points: number | null
+          performance_details: Json | null
+          performance_grade: string | null
+          positive_behaviors: number | null
+          punctuality_score: number | null
+          supervisor_reports_count: number | null
+          supervisor_reports_points: number | null
+          team_id: string | null
+          team_name: string | null
+          total_shifts: number | null
+          updated_at: string
+        }
+        Insert: {
+          base_score?: number | null
+          behavior_score?: number | null
+          calculated_at?: string
+          calculation_period: string
+          client_evaluations_count?: number | null
+          client_feedback_score?: number | null
+          created_at?: string
+          data_updated_at?: string
+          emergency_reporting_points?: number | null
+          emergency_reports_count?: number | null
+          evaluation_semester: string
+          evaluation_year: number
+          final_score?: number | null
+          guard_id: string
+          guard_name: string
+          has_behavior_records?: boolean | null
+          has_client_evaluations?: boolean | null
+          has_operational_activity?: boolean | null
+          has_ovit_evaluation?: boolean | null
+          has_supervisor_reports?: boolean | null
+          id?: string
+          negative_behaviors?: number | null
+          ovit_evaluations_count?: number | null
+          patrol_observations_count?: number | null
+          patrol_observations_points?: number | null
+          performance_details?: Json | null
+          performance_grade?: string | null
+          positive_behaviors?: number | null
+          punctuality_score?: number | null
+          supervisor_reports_count?: number | null
+          supervisor_reports_points?: number | null
+          team_id?: string | null
+          team_name?: string | null
+          total_shifts?: number | null
+          updated_at?: string
+        }
+        Update: {
+          base_score?: number | null
+          behavior_score?: number | null
+          calculated_at?: string
+          calculation_period?: string
+          client_evaluations_count?: number | null
+          client_feedback_score?: number | null
+          created_at?: string
+          data_updated_at?: string
+          emergency_reporting_points?: number | null
+          emergency_reports_count?: number | null
+          evaluation_semester?: string
+          evaluation_year?: number
+          final_score?: number | null
+          guard_id?: string
+          guard_name?: string
+          has_behavior_records?: boolean | null
+          has_client_evaluations?: boolean | null
+          has_operational_activity?: boolean | null
+          has_ovit_evaluation?: boolean | null
+          has_supervisor_reports?: boolean | null
+          id?: string
+          negative_behaviors?: number | null
+          ovit_evaluations_count?: number | null
+          patrol_observations_count?: number | null
+          patrol_observations_points?: number | null
+          performance_details?: Json | null
+          performance_grade?: string | null
+          positive_behaviors?: number | null
+          punctuality_score?: number | null
+          supervisor_reports_count?: number | null
+          supervisor_reports_points?: number | null
+          team_id?: string | null
+          team_name?: string | null
+          total_shifts?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       manager_teams: {
         Row: {
           assigned_at: string
@@ -2689,6 +3112,129 @@ export type Database = {
         }
         Relationships: []
       }
+      ovit_evaluation_criteria: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+          weight: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      ovit_evaluation_responses: {
+        Row: {
+          comments: string | null
+          created_at: string | null
+          criterion_id: string
+          evaluation_id: string
+          id: string
+          score: number
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string | null
+          criterion_id: string
+          evaluation_id: string
+          id?: string
+          score: number
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string | null
+          criterion_id?: string
+          evaluation_id?: string
+          id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ovit_evaluation_responses_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "ovit_evaluation_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ovit_evaluation_responses_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "ovit_evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ovit_evaluations: {
+        Row: {
+          created_at: string | null
+          evaluation_date: string
+          evaluation_period: string | null
+          evaluation_year: number | null
+          evaluator_id: string
+          guard_id: string
+          id: string
+          notes: string | null
+          overall_score: number
+          status: string
+          updated_at: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          evaluation_date?: string
+          evaluation_period?: string | null
+          evaluation_year?: number | null
+          evaluator_id: string
+          guard_id: string
+          id?: string
+          notes?: string | null
+          overall_score?: number
+          status?: string
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          evaluation_date?: string
+          evaluation_period?: string | null
+          evaluation_year?: number | null
+          evaluator_id?: string
+          guard_id?: string
+          id?: string
+          notes?: string | null
+          overall_score?: number
+          status?: string
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       patrol_alerts: {
         Row: {
           alert_type: string
@@ -2861,6 +3407,7 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
+          email_id: string | null
           guard_id: string
           guard_name: string | null
           id: string
@@ -2881,6 +3428,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
+          email_id?: string | null
           guard_id: string
           guard_name?: string | null
           id?: string
@@ -2901,6 +3449,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string | null
+          email_id?: string | null
           guard_id?: string
           guard_name?: string | null
           id?: string
@@ -3065,6 +3614,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "patrol_sessions_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "patrol_sessions_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -3079,6 +3635,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      performance_cache_status: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          last_updated_at: string
+          records_updated: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_updated_at?: string
+          records_updated?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_updated_at?: string
+          records_updated?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       performance_metrics_config: {
         Row: {
@@ -3122,6 +3708,71 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_snapshots: {
+        Row: {
+          base_score: number
+          behavior_points: number | null
+          client_evaluation_points: number | null
+          created_at: string | null
+          details: Json | null
+          emergency_reports_points: number | null
+          final_score: number
+          guard_id: string
+          id: string
+          ovit_evaluation_id: string | null
+          patrol_activity_points: number | null
+          performance_grade: string
+          punctuality_points: number | null
+          snapshot_date: string
+          snapshot_type: string
+          supervisor_reports_points: number | null
+        }
+        Insert: {
+          base_score: number
+          behavior_points?: number | null
+          client_evaluation_points?: number | null
+          created_at?: string | null
+          details?: Json | null
+          emergency_reports_points?: number | null
+          final_score: number
+          guard_id: string
+          id?: string
+          ovit_evaluation_id?: string | null
+          patrol_activity_points?: number | null
+          performance_grade: string
+          punctuality_points?: number | null
+          snapshot_date: string
+          snapshot_type: string
+          supervisor_reports_points?: number | null
+        }
+        Update: {
+          base_score?: number
+          behavior_points?: number | null
+          client_evaluation_points?: number | null
+          created_at?: string | null
+          details?: Json | null
+          emergency_reports_points?: number | null
+          final_score?: number
+          guard_id?: string
+          id?: string
+          ovit_evaluation_id?: string | null
+          patrol_activity_points?: number | null
+          performance_grade?: string
+          punctuality_points?: number | null
+          snapshot_date?: string
+          snapshot_type?: string
+          supervisor_reports_points?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_snapshots_ovit_evaluation_id_fkey"
+            columns: ["ovit_evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "ovit_evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           afm: string | null
@@ -3133,6 +3784,7 @@ export type Database = {
           emergency_contact: string | null
           first_name: string | null
           full_name: string | null
+          gender: string | null
           hiring_date: string | null
           id: string
           last_name: string | null
@@ -3154,6 +3806,7 @@ export type Database = {
           emergency_contact?: string | null
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
           hiring_date?: string | null
           id: string
           last_name?: string | null
@@ -3175,6 +3828,7 @@ export type Database = {
           emergency_contact?: string | null
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
           hiring_date?: string | null
           id?: string
           last_name?: string | null
@@ -3858,6 +4512,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shift_changes_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shift_changes_schedule_id_fkey"
             columns: ["schedule_id"]
             isOneToOne: false
@@ -4024,6 +4685,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "site_guards_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "site_guards_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -4109,6 +4777,75 @@ export type Database = {
         }
         Relationships: []
       }
+      site_supervisors: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          site_id: string
+          supervisor_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          site_id: string
+          supervisor_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          site_id?: string
+          supervisor_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_supervisors_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_supervisors_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "site_supervisors_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "guardian_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_supervisors_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_supervisors_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
       supervisor_report_history: {
         Row: {
           action_type: string
@@ -4157,6 +4894,7 @@ export type Database = {
         Row: {
           created_at: string
           description: Json | null
+          email_id: string | null
           guard_id: string | null
           id: string
           image_url: string | null
@@ -4179,6 +4917,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: Json | null
+          email_id?: string | null
           guard_id?: string | null
           id?: string
           image_url?: string | null
@@ -4201,6 +4940,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: Json | null
+          email_id?: string | null
           guard_id?: string | null
           id?: string
           image_url?: string | null
@@ -4219,6 +4959,83 @@ export type Database = {
           team_id?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      supervisor_site_targets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          monthly_target: number
+          notes: string | null
+          site_id: string
+          supervisor_id: string
+          updated_at: string
+          weekly_target: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          monthly_target?: number
+          notes?: string | null
+          site_id: string
+          supervisor_id: string
+          updated_at?: string
+          weekly_target?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          monthly_target?: number
+          notes?: string | null
+          site_id?: string
+          supervisor_id?: string
+          updated_at?: string
+          weekly_target?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_site_targets_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "guardian_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervisor_targets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          monthly_target: number
+          notes: string | null
+          supervisor_id: string
+          updated_at: string
+          weekly_target: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          monthly_target?: number
+          notes?: string | null
+          supervisor_id: string
+          updated_at?: string
+          weekly_target?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          monthly_target?: number
+          notes?: string | null
+          supervisor_id?: string
+          updated_at?: string
+          weekly_target?: number
         }
         Relationships: []
       }
@@ -4269,6 +5086,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_equipment_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "team_equipment_equipment_id_fkey"
@@ -4373,6 +5197,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_team_members_profile_id"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "team_members_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -4413,6 +5244,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "team_messages_team_id_fkey"
@@ -5680,7 +6518,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      complaint_resolution_stats: {
+        Row: {
+          satisfaction_percentage: number | null
+          satisfied_resolutions: number | null
+          total_resolved_complaints: number | null
+          unsatisfied_resolutions: number | null
+        }
+        Relationships: []
+      }
+      supervisor_metrics: {
+        Row: {
+          active_assignments_count: number | null
+          assigned_sites_count: number | null
+          monthly_achievement_percentage: number | null
+          monthly_reports_count: number | null
+          monthly_target: number | null
+          supervisor_email: string | null
+          supervisor_id: string | null
+          supervisor_name: string | null
+          weekly_achievement_percentage: number | null
+          weekly_reports_count: number | null
+          weekly_target: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       acknowledge_shift_notification: {
@@ -5698,6 +6560,14 @@ export type Database = {
       auto_checkout_guards: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      bulk_update_live_performance_calculations: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      bulk_update_live_performance_calculations_with_failover: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       bytea_to_text: {
         Args: { data: string }
@@ -5728,10 +6598,11 @@ export type Database = {
       calculate_client_evaluation_score: {
         Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
         Returns: {
-          average_overall_satisfaction: number
+          average_professionalism: number
+          average_reliability: number
+          average_satisfaction: number
           details: Json
           evaluation_count: number
-          recommendation_rate: number
           total_score: number
         }[]
       }
@@ -5739,15 +6610,45 @@ export type Database = {
         Args: { p_end_date: string; p_guard_id: string; p_start_date: string }
         Returns: {
           base_score: number
+          behavior_details: Json
+          behavior_distinction: boolean
           behavior_points: number
+          behavior_score: number
+          client_distinction: boolean
+          client_evaluation_details: Json
           client_evaluation_points: number
+          client_evaluation_score: number
+          client_evaluations_count: number
           details: Json
           emergency_reports_points: number
           final_score: number
-          patrol_activity_points: number
+          guard_id: string
+          has_behavior_records: boolean
+          has_client_evaluations: boolean
+          has_operational_activity: boolean
+          has_ovit_evaluation: boolean
+          has_supervisor_reports: boolean
+          latest_ovit_score: number
+          negative_behaviors: number
+          operational_activity_details: Json
+          operational_activity_points: number
+          operational_activity_score: number
+          operational_distinction: boolean
+          ovit_evaluations_count: number
+          patrol_observations_count: number
+          patrol_observations_points: number
           performance_grade: string
+          positive_behaviors: number
+          punctuality_details: Json
+          punctuality_distinction: boolean
           punctuality_points: number
+          punctuality_score: number
+          supervisor_distinction: boolean
+          supervisor_reports_count: number
+          supervisor_reports_details: Json
           supervisor_reports_points: number
+          supervisor_reports_score: number
+          total_shifts: number
         }[]
       }
       calculate_patrol_performance_score: {
@@ -5777,8 +6678,13 @@ export type Database = {
           details: Json
           negative_score: number
           positive_score: number
-          total_score: number
+          report_count: number
+          score: number
         }[]
+      }
+      can_access_guard_performance: {
+        Args: { p_guard_id: string }
+        Returns: boolean
       }
       check_and_close_expired_sessions: {
         Args: Record<PropertyKey, never>
@@ -5884,6 +6790,16 @@ export type Database = {
         Args: { score: number }
         Returns: string
       }
+      get_current_semester_info: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          end_date: string
+          period: string
+          semester: string
+          start_date: string
+          year: number
+        }[]
+      }
       get_geocoding_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -5919,6 +6835,22 @@ export type Database = {
           total_patrols: number
         }[]
       }
+      get_latest_fatigue_levels: {
+        Args: { days_limit?: number; guard_ids: string[] }
+        Returns: {
+          fatigue_level: number
+          guard_id: string
+          shift_date: string
+        }[]
+      }
+      get_latest_satisfaction_ratings: {
+        Args: { days_limit?: number; guard_ids: string[] }
+        Returns: {
+          guard_id: string
+          rating_date: string
+          satisfaction_score: number
+        }[]
+      }
       get_pending_shift_notifications: {
         Args: { minutes_ahead?: number }
         Returns: {
@@ -5930,6 +6862,14 @@ export type Database = {
           shift_start_time: string
           shift_title: string
           team_id: string
+        }[]
+      }
+      get_performance_cron_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active: boolean
+          jobname: string
+          schedule: string
         }[]
       }
       get_schedule_history_simple: {
@@ -6090,6 +7030,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      is_admin_or_super_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       is_client_for_team: {
         Args: { team_id: string; user_id?: string }
         Returns: boolean
@@ -6099,6 +7043,10 @@ export type Database = {
         Returns: boolean
       }
       is_manager: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      is_super_admin: {
         Args: { user_id: string }
         Returns: boolean
       }
@@ -6138,9 +7086,21 @@ export type Database = {
         Args: { data: string }
         Returns: string
       }
+      update_cache_status: {
+        Args: {
+          p_error_message?: string
+          p_records_updated: number
+          p_status?: string
+        }
+        Returns: undefined
+      }
       update_leave_request_status: {
         Args: { new_status: string; request_id: string }
         Returns: boolean
+      }
+      update_live_performance_calculation: {
+        Args: { p_guard_id: string; p_semester?: string; p_year?: number }
+        Returns: undefined
       }
       update_notification_status: {
         Args: {
