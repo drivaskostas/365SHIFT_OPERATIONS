@@ -29,6 +29,7 @@ interface EmergencyNotificationRequest {
   patrolId?: string;
   location?: string;
   imageUrl?: string;
+  timestamp?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -64,7 +65,8 @@ const handler = async (req: Request): Promise<Response> => {
       longitude,
       patrolId,
       location,
-      imageUrl
+      imageUrl,
+      timestamp
     }: EmergencyNotificationRequest = await req.json();
 
     console.log('Processing emergency notification for report:', reportId);
@@ -316,11 +318,11 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 ` : ''}
                 <div>
-                  <strong>Report Time:</strong> ${new Date().toLocaleString('el-GR')}
+                  <strong>Report Time:</strong> ${timestamp ? new Date(timestamp).toLocaleString('el-GR', { timeZone: 'Europe/Athens' }) : new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
                 </div>
                 ${incidentTime ? `
                 <div>
-                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR')}
+                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
                 </div>
                 ` : ''}
                 ${status ? `
