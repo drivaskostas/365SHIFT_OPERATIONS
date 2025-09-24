@@ -391,10 +391,16 @@ const handler = async (req: Request): Promise<Response> => {
               This supervisor report was submitted through the OVIT Security system.<br>
               Site: ${siteName} | Supervisor: ${report.supervisorName}
             </p>
-            <a href="mailto:${recipientArray.join(',')}?subject=Re: Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}" 
-               style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 5px;">
-              📧 Reply to All
-            </a>
+            <table cellpadding="0" cellspacing="0" style="margin: 15px auto;">
+              <tr>
+                <td style="background-color: #007bff; border-radius: 6px; text-align: center;">
+                  <a href="mailto:${recipientArray.join(',')}?subject=Re: Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}" 
+                     style="display: inline-block; padding: 12px 24px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 6px;">
+                    📧 Reply to All
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
         </div>
       </div>

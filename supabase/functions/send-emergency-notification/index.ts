@@ -402,10 +402,16 @@ const handler = async (req: Request): Promise<Response> => {
                 This is an automated notification from Sentinel Guard Emergency Reporting System.
                 <br>Please respond appropriately based on your emergency protocols.
               </p>
-              <a href="mailto:${recipients.map(r => r.email).join(',')}?subject=Re: 🚨 EMERGENCY: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}" 
-                 style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 5px;">
-                📧 Reply to All
-              </a>
+              <table cellpadding="0" cellspacing="0" style="margin: 15px auto;">
+                <tr>
+                  <td style="background-color: #007bff; border-radius: 6px; text-align: center;">
+                    <a href="mailto:${recipients.map(r => r.email).join(',')}?subject=Re: 🚨 EMERGENCY: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}" 
+                       style="display: inline-block; padding: 12px 24px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 6px;">
+                      📧 Reply to All
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
           </div>
         </body>
