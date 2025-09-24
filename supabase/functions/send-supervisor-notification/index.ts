@@ -118,6 +118,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`📧 Sending emails to ${recipients.size} recipients`);
 
+    // Convert recipients Set to array for easier handling
+    const recipientArray = Array.from(recipients);
+
     // Get complete supervisor report data from database if available
     let fullReportData = null;
     const { data: reportData } = await supabase
@@ -159,32 +162,71 @@ const handler = async (req: Request): Promise<Response> => {
       reportImages = reportImages.concat(report.images);
     }
     
-    if (reportImages.length > 0) {
-      for (const imageUrl of reportImages) {
+    // Remove duplicates and limit to 5 images max
+    const uniqueImages = Array.from(new Set(reportImages)).slice(0, 5);
+    console.log('Processing supervisor images:', {
+      originalCount: reportImages.length,
+      uniqueCount: uniqueImages.length,
+      finalCount: uniqueImages.length
+    });
+    
+    // Download and encode all unique images for embedding
+    if (uniqueImages.length > 0) {
+      for (let i = 0; i < uniqueImages.length; i++) {
+        const imgUrl = uniqueImages[i];
+        console.log(`Processing supervisor image ${i + 1}/${uniqueImages.length}:`, imgUrl.substring(0, 50) + '...');
+        
         try {
-          // Fetch image data
-          const response = await fetch(imageUrl);
-          if (response.ok) {
-            const arrayBuffer = await response.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          if (imgUrl.startsWith('data:')) {
+            // Handle base64 data URLs (from camera/file selection)
+            const [mimeTypeSection, base64Data] = imgUrl.split(',');
+            if (!base64Data) {
+              console.error('Invalid data URL format for supervisor image:', i + 1);
+              continue;
+            }
             
-            // Determine MIME type from URL or use default
-            let mimeType = 'image/jpeg';
-            if (imageUrl.includes('.png')) mimeType = 'image/png';
-            else if (imageUrl.includes('.gif')) mimeType = 'image/gif';
-            else if (imageUrl.includes('.webp')) mimeType = 'image/webp';
+            const mimeType = mimeTypeSection.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+            const extension = mimeType.split('/')[1] || 'jpg';
             
             imageAttachments.push({
-              filename: `supervisor_report_image_${imageAttachments.length + 1}.${mimeType.split('/')[1]}`,
-              content: base64,
-              content_id: `supervisor_img_${imageAttachments.length + 1}`,
+              filename: `supervisor_image_${i + 1}.${extension}`,
+              content: base64Data,
+              content_id: `supervisor_img_${i + 1}`,
               disposition: 'inline'
             });
+            console.log(`✅ Successfully processed supervisor data URL image ${i + 1} (${mimeType})`);
+          } else {
+            // Handle regular URLs (fetch and convert)
+            console.log(`Fetching supervisor external image ${i + 1}:`, imgUrl);
+            const response = await fetch(imgUrl);
+            if (response.ok) {
+              const arrayBuffer = await response.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+              
+              // Determine MIME type from URL or use default
+              let mimeType = 'image/jpeg';
+              if (imgUrl.includes('.png')) mimeType = 'image/png';
+              else if (imgUrl.includes('.gif')) mimeType = 'image/gif';
+              else if (imgUrl.includes('.webp')) mimeType = 'image/webp';
+              
+              imageAttachments.push({
+                filename: `supervisor_image_${i + 1}.${mimeType.split('/')[1]}`,
+                content: base64,
+                content_id: `supervisor_img_${i + 1}`,
+                disposition: 'inline'
+              });
+              console.log(`✅ Successfully processed supervisor external image ${i + 1} (${mimeType})`);
+            } else {
+              console.error(`Failed to fetch supervisor external image ${i + 1}:`, response.status, response.statusText);
+            }
           }
         } catch (error) {
-          console.error('Error processing image:', imageUrl, error);
+          console.error(`Error processing supervisor image ${i + 1}:`, error);
         }
       }
+      console.log('📸 Final supervisor image attachments count:', imageAttachments.length);
+    } else {
+      console.log('No images to process for this supervisor report');
     }
 
     // Create HTML email content
@@ -349,7 +391,7 @@ const handler = async (req: Request): Promise<Response> => {
               This supervisor report was submitted through the OVIT Security system.<br>
               Site: ${siteName} | Supervisor: ${report.supervisorName}
             </p>
-            <a href="mailto:${Array.from(recipients).join(',')}?subject=Re: Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}" 
+            <a href="mailto:${recipientArray.join(',')}?subject=Re: Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}" 
                style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 5px;">
               📧 Reply to All
             </a>
@@ -360,7 +402,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send emails sequentially to avoid rate limiting
     const emailResults: Array<{ success: boolean; email: string; error?: any; response?: any }> = [];
-    const recipientArray = Array.from(recipients);
     
     for (let i = 0; i < recipientArray.length; i++) {
       const email = recipientArray[i];
