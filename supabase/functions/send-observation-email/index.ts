@@ -60,6 +60,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Processing observation notification for observation:', observationId);
 
+    // Get site name if siteId is provided
+    let siteName = '';
+    if (siteId) {
+      const { data: siteData } = await supabase
+        .from('guardian_sites')
+        .select('name')
+        .eq('id', siteId)
+        .single();
+      siteName = siteData?.name || '';
+      console.log('Site name found:', siteName);
+    }
+
     // Get notification recipients - ONLY use site-specific recipients
     let recipients: any[] = [];
 
@@ -266,6 +278,11 @@ const handler = async (req: Request): Promise<Response> => {
                 <div>
                   <strong>Reported by:</strong> ${guardName}
                 </div>
+                ${siteName ? `
+                <div>
+                  <strong>Site:</strong> ${siteName}
+                </div>
+                ` : ''}
                 <div>
                   <strong>Observation Time:</strong> ${new Date(timestamp).toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
                 </div>

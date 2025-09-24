@@ -72,6 +72,18 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Received teamId:', teamId);
     console.log('Received severity:', severity);
 
+    // Get site name if siteId is provided
+    let siteName = '';
+    if (siteId) {
+      const { data: siteData } = await supabase
+        .from('guardian_sites')
+        .select('name')
+        .eq('id', siteId)
+        .single();
+      siteName = siteData?.name || '';
+      console.log('Site name found:', siteName);
+    }
+
     // Get notification recipients based on site and severity
     let recipients: any[] = [];
 
@@ -298,6 +310,11 @@ const handler = async (req: Request): Promise<Response> => {
                 <div>
                   <strong>Reported by:</strong> ${guardName}
                 </div>
+                ${siteName ? `
+                <div>
+                  <strong>Site:</strong> ${siteName}
+                </div>
+                ` : ''}
                 <div>
                   <strong>Report Time:</strong> ${new Date().toLocaleString('el-GR')}
                 </div>
