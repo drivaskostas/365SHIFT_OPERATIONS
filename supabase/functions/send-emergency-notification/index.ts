@@ -398,10 +398,14 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div style="background: #e3f2fd; padding: 15px; border-radius: 0 0 8px 8px; text-align: center;">
-              <p style="margin: 0; font-size: 14px;">
+              <p style="margin: 0 0 15px 0; font-size: 14px;">
                 This is an automated notification from Sentinel Guard Emergency Reporting System.
                 <br>Please respond appropriately based on your emergency protocols.
               </p>
+              <a href="mailto:${recipients.map(r => r.email).join(',')}?subject=Re: 🚨 EMERGENCY: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}" 
+                 style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 5px;">
+                📧 Reply to All
+              </a>
             </div>
           </div>
         </body>

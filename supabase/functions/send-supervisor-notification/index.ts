@@ -345,10 +345,14 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           
           <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center;">
-            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+            <p style="margin: 0 0 15px 0; color: #9ca3af; font-size: 12px;">
               This supervisor report was submitted through the OVIT Security system.<br>
               Site: ${siteName} | Supervisor: ${report.supervisorName}
             </p>
+            <a href="mailto:${Array.from(recipients).join(',')}?subject=Re: Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}" 
+               style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 5px;">
+              📧 Reply to All
+            </a>
           </div>
         </div>
       </div>
