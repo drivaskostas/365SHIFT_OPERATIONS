@@ -201,7 +201,16 @@ const handler = async (req: Request): Promise<Response> => {
             const response = await fetch(imgUrl);
             if (response.ok) {
               const arrayBuffer = await response.arrayBuffer();
-              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+              
+              // Convert ArrayBuffer to base64 safely to avoid call stack overflow
+              const bytes = new Uint8Array(arrayBuffer);
+              let binary = '';
+              const chunkSize = 8192;
+              for (let i = 0; i < bytes.length; i += chunkSize) {
+                const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+                binary += String.fromCharCode.apply(null, Array.from(chunk));
+              }
+              const base64 = btoa(binary);
               
               // Determine MIME type from URL or use default
               let mimeType = 'image/jpeg';
