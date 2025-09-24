@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +16,8 @@ interface SupervisorReportRequest {
   location: string;
   incidentTime: string;
   images?: string[];
+  image_url?: string;
+  imageUrl?: string;
   siteId: string;
   teamId: string;
   supervisorId: string;
@@ -100,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
         .in('role', ['admin', 'super_admin']);
 
       if (adminUsers) {
-        adminUsers.forEach(user => {
+        adminUsers.forEach((user: any) => {
           if (user.profiles.email) {
             recipients.add(user.profiles.email);
           }
