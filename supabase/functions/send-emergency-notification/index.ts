@@ -490,6 +490,25 @@ const handler = async (req: Request): Promise<Response> => {
     const successfulEmails = emailResults.filter(result => result.success);
     const failedEmails = emailResults.filter(result => !result.success);
     
+    // Update emergency report with email_id for deliverability tracking
+    const primaryEmailId = successfulEmails.find(result => result.id)?.id;
+    if (primaryEmailId && reportId) {
+      try {
+        const { error: updateError } = await supabase
+          .from('emergency_reports')
+          .update({ email_id: primaryEmailId })
+          .eq('id', reportId);
+        
+        if (updateError) {
+          console.warn('⚠️ Failed to update emergency report with email_id:', updateError);
+        } else {
+          console.log('✅ Updated emergency report with email_id:', primaryEmailId);
+        }
+      } catch (error) {
+        console.warn('⚠️ Error updating emergency report with email_id:', error);
+      }
+    }
+    
     console.log(`📊 Email delivery summary:`);
     console.log(`✅ Successful: ${successfulEmails.length}/${recipients.length}`);
     console.log(`❌ Failed: ${failedEmails.length}/${recipients.length}`);

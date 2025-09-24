@@ -416,7 +416,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send emails sequentially to avoid rate limiting
-    const emailResults: Array<{ success: boolean; email: string; error?: any; response?: any }> = [];
+    const emailResults: Array<{ success: boolean; email: string; error?: any; response?: any; id?: string }> = [];
     
     for (let i = 0; i < recipientArray.length; i++) {
       const email = recipientArray[i];
@@ -459,7 +459,12 @@ const handler = async (req: Request): Promise<Response> => {
           console.error(`❌ Resend API error for ${email}:`, emailResponse.error);
           emailResults.push({ success: false, email, error: emailResponse.error });
         } else {
-          emailResults.push({ success: true, email, response: emailResponse });
+          emailResults.push({ 
+            success: true, 
+            email, 
+            response: emailResponse,
+            id: emailResponse.data?.id 
+          });
         }
       } catch (error: any) {
         console.error(`❌ Failed to send supervisor email to ${email}:`, error);
@@ -476,6 +481,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     const successfulEmails = emailResults.filter(result => result.success);
     const failedEmails = emailResults.filter(result => !result.success);
+    
+    // Update supervisor report with email_id for deliverability tracking
+    const primaryEmailId = successfulEmails.find(result => result.id)?.id;
+    if (primaryEmailId && fullReportData?.id) {
+      try {
+        const { error: updateError } = await supabase
+          .from('supervisor_reports')
+          .update({ email_id: primaryEmailId })
+          .eq('id', fullReportData.id);
+        
+        if (updateError) {
+          console.warn('⚠️ Failed to update supervisor report with email_id:', updateError);
+        } else {
+          console.log('✅ Updated supervisor report with email_id:', primaryEmailId);
+        }
+      } catch (error) {
+        console.warn('⚠️ Error updating supervisor report with email_id:', error);
+      }
+    }
     
     console.log(`📊 Supervisor email delivery summary:`);
     console.log(`✅ Successful: ${successfulEmails.length}/${recipientArray.length}`);

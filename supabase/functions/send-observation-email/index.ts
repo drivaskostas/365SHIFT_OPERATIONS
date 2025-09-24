@@ -374,7 +374,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     // Send emails sequentially to avoid rate limiting
-    const emailResults: Array<{ success: boolean; email: string; error?: any; response?: any }> = [];
+    const emailResults: Array<{ success: boolean; email: string; error?: any; response?: any; id?: string }> = [];
     
     for (let i = 0; i < recipients.length; i++) {
       const recipient = recipients[i];
@@ -417,7 +417,12 @@ const handler = async (req: Request): Promise<Response> => {
           console.error(`❌ Resend API error for ${recipient.email}:`, emailResponse.error);
           emailResults.push({ success: false, email: recipient.email, error: emailResponse.error });
         } else {
-          emailResults.push({ success: true, email: recipient.email, response: emailResponse });
+          emailResults.push({ 
+            success: true, 
+            email: recipient.email, 
+            response: emailResponse,
+            id: emailResponse.data?.id 
+          });
         }
       } catch (error: any) {
         console.error(`❌ Failed to send observation email to ${recipient.email}:`, error);
@@ -439,6 +444,25 @@ const handler = async (req: Request): Promise<Response> => {
     
     const successfulEmails = emailResults.filter(result => result.success);
     const failedEmails = emailResults.filter(result => !result.success);
+    
+    // Update patrol observation with email_id for deliverability tracking
+    const primaryEmailId = successfulEmails.find(result => result.id)?.id;
+    if (primaryEmailId && observationId) {
+      try {
+        const { error: updateError } = await supabase
+          .from('patrol_observations')
+          .update({ email_id: primaryEmailId })
+          .eq('id', observationId);
+        
+        if (updateError) {
+          console.warn('⚠️ Failed to update patrol observation with email_id:', updateError);
+        } else {
+          console.log('✅ Updated patrol observation with email_id:', primaryEmailId);
+        }
+      } catch (error) {
+        console.warn('⚠️ Error updating patrol observation with email_id:', error);
+      }
+    }
     
     console.log(`📊 Observation email delivery summary:`);
     console.log(`✅ Successful: ${successfulEmails.length}/${recipients.length}`);
