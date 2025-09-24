@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
+// Use untyped client until schema is updated
+const supabaseUrl = 'https://igcqqrcdtqpecopvuuva.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnY3FxcmNkdHFwZWNvcHZ1dXZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0OTI5MzAsImV4cCI6MjA1NjA2ODkzMH0.w5Ac9bpsfXpkAa4FJi2pDlMzpM6j1pEe3bL36fpzuQE';
+const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
 interface DeliverabilityEvent {
   id: string;
   email_id: string;
@@ -27,12 +32,6 @@ interface UseEmailDeliverabilityProps {
   referenceType: 'supervisor_report' | 'patrol_observation' | 'emergency_report';
 }
 
-// Create untyped client to avoid type issues during development
-const supabase = createClient(
-  'https://igcqqrcdtqpecopvuuva.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnY3FxcmNkdHFwZWNvcHZ1dXZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0OTI5MzAsImV4cCI6MjA1NjA2ODkzMH0.w5Ac9bpsfXpkAa4FJi2pDlMzpM6j1pEe3bL36fpzuQE'
-);
-
 export const useEmailDeliverability = ({ reportId, referenceType }: UseEmailDeliverabilityProps) => {
   const [data, setData] = useState<DeliverabilityEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +50,7 @@ export const useEmailDeliverability = ({ reportId, referenceType }: UseEmailDeli
     try {
       setLoading(true);
       
-      const { data: deliverabilityData, error: fetchError } = await supabase
+      const { data: deliverabilityData, error: fetchError } = await supabaseClient
         .from('email_deliverability')
         .select('*')
         .eq('reference_type', referenceType)
@@ -119,7 +118,7 @@ export const useEmailDeliverability = ({ reportId, referenceType }: UseEmailDeli
   useEffect(() => {
     if (!reportId || !referenceType) return;
 
-    const channel = supabase
+    const channel = supabaseClient
       .channel('email-deliverability-changes')
       .on(
         'postgres_changes',
@@ -137,7 +136,7 @@ export const useEmailDeliverability = ({ reportId, referenceType }: UseEmailDeli
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabaseClient.removeChannel(channel);
     };
   }, [reportId, referenceType]);
 
