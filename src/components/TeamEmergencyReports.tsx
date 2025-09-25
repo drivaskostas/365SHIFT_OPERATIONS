@@ -55,6 +55,31 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
   useEffect(() => {
     if (profile?.id) {
       fetchEmergencyReports();
+      
+      // Set up real-time subscription for new emergency reports
+      const subscription = supabase
+        .channel('emergency-reports-updates')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'emergency_reports'
+        }, () => {
+          console.log('New emergency report detected, refreshing data...');
+          fetchEmergencyReports();
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'emergency_reports'
+        }, () => {
+          console.log('Emergency report updated, refreshing data...');
+          fetchEmergencyReports();
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [profile?.id]);
 

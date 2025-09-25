@@ -36,6 +36,31 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
   useEffect(() => {
     if (profile?.id) {
       fetchTeamObservations();
+      
+      // Set up real-time subscription for new observations
+      const subscription = supabase
+        .channel('patrol-observations-updates')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'patrol_observations'
+        }, () => {
+          console.log('New observation detected, refreshing data...');
+          fetchTeamObservations();
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'patrol_observations'
+        }, () => {
+          console.log('Observation updated, refreshing data...');
+          fetchTeamObservations();
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [profile?.id]);
 
