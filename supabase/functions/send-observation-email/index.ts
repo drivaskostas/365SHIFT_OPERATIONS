@@ -289,7 +289,7 @@ const handler = async (req: Request): Promise<Response> => {
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
           <div style="max-width: 700px; margin: 0 auto; padding: 20px;">
-            <div style="background: ${severityColors[severity as keyof typeof severityColors]}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="background: ${severityColors[severity as keyof typeof severityColors]}; color: white; padding: 20px; border-radius: 16px 16px 0 0;">
               <h1 style="margin: 0; font-size: 24px;">👁️ PATROL OBSERVATION</h1>
               <p style="margin: 5px 0 0 0; font-size: 18px;">Severity: ${severityLabels[severity as keyof typeof severityLabels]}</p>
             </div>
@@ -328,7 +328,7 @@ const handler = async (req: Request): Promise<Response> => {
               
               <div style="margin: 20px 0;">
                 <strong>Description:</strong>
-                <div style="background: white; padding: 15px; border-left: 4px solid ${severityColors[severity as keyof typeof severityColors]}; margin: 10px 0; border-radius: 4px;">
+                <div style="background: white; padding: 15px; border-left: 4px solid ${severityColors[severity as keyof typeof severityColors]}; margin: 10px 0; border-radius: 8px;">
                   ${description}
                 </div>
               </div>
@@ -336,7 +336,7 @@ const handler = async (req: Request): Promise<Response> => {
               ${notes ? `
                 <div style="margin: 20px 0;">
                   <strong>Additional Notes:</strong>
-                  <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 10px 0; border-radius: 4px;">
+                  <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 10px 0; border-radius: 8px;">
                     ${notes}
                   </div>
                 </div>
@@ -355,7 +355,7 @@ const handler = async (req: Request): Promise<Response> => {
               ` : ''}
 
               ${fullObservationData?.follow_up_required ? `
-                <div style="margin: 15px 0; background: #fef3c7; padding: 10px; border-radius: 4px;">
+                <div style="margin: 15px 0; background: #fef3c7; padding: 10px; border-radius: 8px;">
                   <strong>⚠️ Follow-up Required</strong>
                 </div>
               ` : ''}
@@ -366,7 +366,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0;">
                     ${imageAttachments.map((attachment, index) => `
                       <div style="text-align: center;">
-                        <img src="cid:${attachment.content_id}" alt="Evidence Photo ${index + 1}" style="max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #ddd;" />
+                        <img src="cid:${attachment.content_id}" alt="Evidence Photo ${index + 1}" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #ddd;" />
                         <p style="margin: 5px 0; font-size: 12px; color: #666;">Photo ${index + 1}</p>
                       </div>
                     `).join('')}
@@ -375,16 +375,16 @@ const handler = async (req: Request): Promise<Response> => {
               ` : ''}
             </div>
             
-            <div style="background: #e3f2fd; padding: 15px; border-radius: 0 0 8px 8px; text-align: center;">
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="margin: 0 0 15px 0; font-size: 14px;">
                 This is an automated notification from Sentinel Guard Patrol Observation System.
                 <br>Please review and respond as needed according to your protocols.
               </p>
               <table cellpadding="0" cellspacing="0" style="margin: 15px auto;">
                 <tr>
-                  <td style="background-color: #007bff; border-radius: 6px; text-align: center;">
+                  <td style="background-color: #007bff; border-radius: 12px; text-align: center;">
                     <a href="mailto:${recipients.map(r => r.email).join(',')}?subject=Re: 👁️ PATROL OBSERVATION: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}" 
-                       style="display: inline-block; padding: 12px 24px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 6px;">
+                       style="display: inline-block; padding: 12px 24px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 12px;">
                       📧 Reply to All
                     </a>
                   </td>

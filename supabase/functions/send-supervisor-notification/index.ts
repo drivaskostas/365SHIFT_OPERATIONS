@@ -250,7 +250,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; background: #f8fafc; padding: 20px;">
-        <div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #1f2937; margin: 0; font-size: 24px;">OVIT Security</h1>
             <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 14px;">Supervisor Report Notification</p>
@@ -258,14 +258,14 @@ const handler = async (req: Request): Promise<Response> => {
           
           <div style="border-left: 4px solid ${severityColor}; padding-left: 20px; margin-bottom: 30px;">
             <div style="display: flex; align-items: center; margin-bottom: 15px;">
-              <span style="background: ${severityColor}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase;">
+              <span style="background: ${severityColor}; color: white; padding: 6px 12px; border-radius: 24px; font-size: 12px; font-weight: 600; text-transform: uppercase;">
                 ${report.severity}
               </span>
             </div>
             
             <h2 style="color: #374151; margin: 0 0 15px 0; font-size: 20px;">${report.title}</h2>
             
-            <div style="background: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+            <div style="background: #f9fafb; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
               <p style="margin: 0 0 8px 0; color: #374151; font-weight: 600;">Report Details:</p>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Site:</strong> ${siteName}</p>
@@ -306,63 +306,63 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             ${parsedDescription?.behavioral_observation ? `
-              <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; border-left: 3px solid #0ea5e9; margin-bottom: 15px;">
+              <div style="background: #f0f9ff; padding: 15px; border-radius: 12px; border-left: 3px solid #0ea5e9; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #0c4a6e; font-weight: 600;">Behavioral Observations:</p>
                 <p style="margin: 0; color: #0369a1; line-height: 1.5;">${parsedDescription.behavioral_observation}</p>
               </div>
             ` : ''}
             
             ${parsedDescription?.safety_concerns ? `
-              <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 3px solid #f59e0b; margin-bottom: 15px;">
+              <div style="background: #fef3c7; padding: 15px; border-radius: 12px; border-left: 3px solid #f59e0b; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #92400e; font-weight: 600;">Safety Concerns:</p>
                 <p style="margin: 0; color: #b45309; line-height: 1.5;">${parsedDescription.safety_concerns}</p>
               </div>
             ` : ''}
 
             ${parsedDescription?.performance_feedback ? `
-              <div style="background: #e0f2fe; padding: 15px; border-radius: 6px; border-left: 3px solid #0288d1; margin-bottom: 15px;">
+              <div style="background: #e0f2fe; padding: 15px; border-radius: 12px; border-left: 3px solid #0288d1; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #01579b; font-weight: 600;">Performance Feedback:</p>
                 <p style="margin: 0; color: #0277bd; line-height: 1.5;">${parsedDescription.performance_feedback}</p>
               </div>
             ` : ''}
 
             ${parsedDescription?.client_feedback ? `
-              <div style="background: #f3e5f5; padding: 15px; border-radius: 6px; border-left: 3px solid #9c27b0; margin-bottom: 15px;">
+              <div style="background: #f3e5f5; padding: 15px; border-radius: 12px; border-left: 3px solid #9c27b0; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #4a148c; font-weight: 600;">Client Feedback:</p>
                 <p style="margin: 0; color: #7b1fa2; line-height: 1.5;">${parsedDescription.client_feedback}</p>
               </div>
             ` : ''}
 
             ${parsedDescription?.recommendations ? `
-              <div style="background: #e8f5e8; padding: 15px; border-radius: 6px; border-left: 3px solid #4caf50; margin-bottom: 15px;">
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 12px; border-left: 3px solid #4caf50; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #1b5e20; font-weight: 600;">Recommendations:</p>
                 <p style="margin: 0; color: #2e7d32; line-height: 1.5;">${parsedDescription.recommendations}</p>
               </div>
             ` : ''}
 
             ${parsedDescription?.other_findings ? `
-              <div style="background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 3px solid #f87171; margin-bottom: 15px;">
+              <div style="background: #fef2f2; padding: 15px; border-radius: 12px; border-left: 3px solid #f87171; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #991b1b; font-weight: 600;">Other Findings:</p>
                 <p style="margin: 0; color: #dc2626; line-height: 1.5;">${parsedDescription.other_findings}</p>
               </div>
             ` : ''}
 
             ${parsedDescription?.corrective_measures ? `
-              <div style="background: #fffbeb; padding: 15px; border-radius: 6px; border-left: 3px solid #fbbf24; margin-bottom: 15px;">
+              <div style="background: #fffbeb; padding: 15px; border-radius: 12px; border-left: 3px solid #fbbf24; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #92400e; font-weight: 600;">Corrective Measures:</p>
                 <p style="margin: 0; color: #d97706; line-height: 1.5;">${parsedDescription.corrective_measures}</p>
               </div>
             ` : ''}
 
             ${parsedDescription?.additional_notes ? `
-              <div style="background: #f8fafc; padding: 15px; border-radius: 6px; border-left: 3px solid #64748b; margin-bottom: 15px;">
+              <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border-left: 3px solid #64748b; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #334155; font-weight: 600;">Additional Notes:</p>
                 <p style="margin: 0; color: #475569; line-height: 1.5;">${parsedDescription.additional_notes}</p>
               </div>
             ` : ''}
 
             ${fullReportData?.overall_rating ? `
-              <div style="background: #fff3e0; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+              <div style="background: #fff3e0; padding: 15px; border-radius: 12px; margin-bottom: 15px;">
                 <p style="margin: 0 0 8px 0; color: #e65100; font-weight: 600;">Overall Rating:</p>
                 <p style="margin: 0; color: #f57c00; font-size: 18px; font-weight: bold;">${fullReportData.overall_rating}/5 ⭐</p>
               </div>
@@ -372,7 +372,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="margin: 20px 0;">
                 <p style="margin: 0 0 10px 0; color: #374151; font-weight: 600;">Additional Notes:</p>
                 ${report.notes.map((note: any, index: number) => `
-                  <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 4px; border-left: 3px solid #6c757d;">
+                  <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 8px; border-left: 3px solid #6c757d;">
                     <small style="color: #6c757d;">Note ${index + 1}:</small><br>
                     ${typeof note === 'string' ? note : note.text || JSON.stringify(note)}
                   </div>
@@ -386,7 +386,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0;">
                   ${imageAttachments.map((attachment, index) => `
                     <div style="text-align: center;">
-                      <img src="cid:${attachment.content_id}" alt="Report Evidence ${index + 1}" style="max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #ddd;" />
+                      <img src="cid:${attachment.content_id}" alt="Report Evidence ${index + 1}" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #ddd;" />
                       <p style="margin: 5px 0; font-size: 12px; color: #666;">Evidence Photo ${index + 1}</p>
                     </div>
                   `).join('')}
@@ -402,9 +402,9 @@ const handler = async (req: Request): Promise<Response> => {
             </p>
             <table cellpadding="0" cellspacing="0" style="margin: 15px auto;">
               <tr>
-                <td style="background-color: #007bff; border-radius: 6px; text-align: center;">
+                <td style="background-color: #007bff; border-radius: 12px; text-align: center;">
                   <a href="mailto:${recipientArray.join(',')}?subject=Re: Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}" 
-                     style="display: inline-block; padding: 12px 24px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 6px;">
+                     style="display: inline-block; padding: 12px 24px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 12px;">
                     📧 Reply to All
                   </a>
                 </td>
