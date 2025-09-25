@@ -82,56 +82,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('📊 Processing event:', eventType, 'as status:', status);
 
-    // Find the reference type and reference_id by checking which table has this email_id
-    let referenceType = '';
-    let referenceId = '';
-
-    console.log('🔍 Looking for email_id:', email_id);
-
-    // Check supervisor_reports
-    const { data: supervisorReport } = await supabase
-      .from('supervisor_reports')
-      .select('id')
-      .eq('email_id', email_id)
-      .maybeSingle();
-
-    if (supervisorReport) {
-      referenceType = 'supervisor_report';
-      referenceId = supervisorReport.id;
-      console.log('✅ Found in supervisor_reports:', referenceId);
-    } else {
-      console.log('❌ Not found in supervisor_reports');
-      
-      // Check patrol_observations
-      const { data: patrolObservation } = await supabase
-        .from('patrol_observations') 
-        .select('id')
-        .eq('email_id', email_id)
-        .maybeSingle();
-
-      if (patrolObservation) {
-        referenceType = 'patrol_observation';
-        referenceId = patrolObservation.id;
-        console.log('✅ Found in patrol_observations:', referenceId);
-      } else {
-        console.log('❌ Not found in patrol_observations');
-        
-        // Check emergency_reports
-        const { data: emergencyReport } = await supabase
-          .from('emergency_reports')
-          .select('id')
-          .eq('email_id', email_id)
-          .maybeSingle();
-
-        if (emergencyReport) {
-          referenceType = 'emergency_report';
-          referenceId = emergencyReport.id;
-          console.log('✅ Found in emergency_reports:', referenceId);
-        } else {
-          console.log('❌ Not found in emergency_reports');
-        }
-      }
-    }
+    // The email_id from Resend is their internal message ID, not our UUID
+    // We need to store it as the resend_message_id and find reference through other means
+    console.log('🔍 Received Resend message ID:', email_id);
+    
+    // For now, we'll store this with unknown reference since we can't easily link
+    // the Resend message ID back to our records without additional correlation
+    let referenceType = 'unknown';
+    let referenceId = null;
+    
+    console.log('📝 Storing webhook event with Resend message ID');
 
     console.log('📝 Inserting deliverability record:', {
       email_id,
