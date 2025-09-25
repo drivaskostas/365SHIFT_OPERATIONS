@@ -1,1 +1,4 @@
 project_id = "igcqqrcdtqpecopvuuva"
+
+[functions.resend-webhook-handler]
+verify_jwt = false

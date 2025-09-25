@@ -41,6 +41,12 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Skip signature verification for now - just process the webhook
     console.log('⚠️ Signature verification temporarily disabled for debugging');
+    
+    // Validate payload format
+    if (!payload || payload.trim() === '') {
+      console.error('❌ Empty payload received');
+      throw new Error('Empty payload received');
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

@@ -4,7 +4,7 @@ const testWebhookCall = async () => {
     type: "email.delivered",
     created_at: new Date().toISOString(),
     data: {
-      email_id: "5841c9d5-97bb-4eb4-8081-42a59bdd60c5", // Using your real email ID
+      email_id: "msg_33B34dQMY4zu9qwzLd9DOBKDNuR", // Using recent Resend message ID
       from: "test@ovitsec.com",
       to: ["drivas@ovitsec.com"],
       subject: "Test webhook",
