@@ -509,6 +509,35 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
     
+    // Insert correlation records for all successful emails
+    if (successfulEmails.length > 0 && reportId) {
+      try {
+        const correlationRecords = successfulEmails
+          .filter(result => result.id)
+          .map(result => ({
+            resend_message_id: result.id,
+            reference_id: reportId,
+            reference_type: 'emergency_report',
+            recipient_email: result.email,
+            sent_at: new Date().toISOString()
+          }));
+
+        if (correlationRecords.length > 0) {
+          const { error: correlationError } = await supabase
+            .from('email_correlation')
+            .insert(correlationRecords);
+          
+          if (correlationError) {
+            console.warn('⚠️ Failed to insert email correlation records:', correlationError);
+          } else {
+            console.log('✅ Inserted email correlation records:', correlationRecords.length);
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Error inserting email correlation records:', error);
+      }
+    }
+    
     console.log(`📊 Email delivery summary:`);
     console.log(`✅ Successful: ${successfulEmails.length}/${recipients.length}`);
     console.log(`❌ Failed: ${failedEmails.length}/${recipients.length}`);
