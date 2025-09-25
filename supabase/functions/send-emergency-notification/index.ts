@@ -443,7 +443,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         const emailData: any = {
           from: "OVIT Emergency <emergency@notifications.ovitguardly.com>",
-          to: [recipient.email],
+          to: recipient.email,
           subject: `🚨 EMERGENCY: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}`,
           html: emailHtml,
         };
