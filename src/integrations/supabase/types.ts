@@ -3449,6 +3449,7 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           severity: string | null
+          site_id: string | null
           status: string
           team_id: string | null
           timestamp: string
@@ -3470,6 +3471,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
+          site_id?: string | null
           status?: string
           team_id?: string | null
           timestamp?: string
@@ -3491,6 +3493,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
+          site_id?: string | null
           status?: string
           team_id?: string | null
           timestamp?: string
@@ -3503,6 +3506,13 @@ export type Database = {
             columns: ["patrol_id"]
             isOneToOne: false
             referencedRelation: "patrol_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patrol_observations_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "guardian_sites"
             referencedColumns: ["id"]
           },
           {

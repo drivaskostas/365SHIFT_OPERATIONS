@@ -187,6 +187,7 @@ export class ObservationService {
       guard_id: guardId,
       patrol_id: patrolId,
       team_id: resolvedTeamId,
+      site_id: siteId, // Include the site_id in the database insert
       title,
       description,
       severity,

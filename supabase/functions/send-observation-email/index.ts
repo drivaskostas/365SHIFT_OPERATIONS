@@ -130,16 +130,39 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // If we have a specific siteId, we should ONLY use site-specific recipients
-    // Do NOT fall back to team or admin recipients if siteId is provided
-    if (siteId && recipients.length === 0 && !testMode) {
-      console.log('No recipients found for specific site:', siteId);
-      console.log('This is expected behavior - only site-specific recipients should receive notifications');
+    // Fallback logic: If no site-specific recipients and we have a teamId, try team-based recipients  
+    if (recipients.length === 0 && teamId && !testMode) {
+      console.log('No site-specific recipients found, checking for team-based recipients...');
+      
+      // Get admin recipients as fallback
+      const { data: adminRecipients, error: adminError } = await supabase
+        .from('notification_settings')
+        .select('email, name')
+        .eq('team_id', teamId)
+        .eq('active', true);
+
+      if (adminError) {
+        console.error('Error fetching admin recipients:', adminError);
+      }
+
+      if (adminRecipients && adminRecipients.length > 0) {
+        recipients = adminRecipients.filter(recipient => {
+          return recipient.email && recipient.email.trim() !== '';
+        });
+        console.log('Team-based recipients found:', recipients.map(r => r.email));
+      }
+    }
+
+    // Final fallback: if still no recipients, log but continue (don't block observation creation)
+    if (recipients.length === 0 && !testMode) {
+      console.log('No recipients found for observation notification');
+      console.log('Observation created successfully but no notification recipients configured');
       
       return new Response(
         JSON.stringify({ 
-          message: 'No recipients configured for this site',
+          message: 'Observation created but no notification recipients configured',
           siteId: siteId,
+          teamId: teamId,
           observationId: observationId
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
