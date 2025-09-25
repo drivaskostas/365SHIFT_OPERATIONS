@@ -445,7 +445,27 @@ const handler = async (req: Request): Promise<Response> => {
     const successfulEmails = emailResults.filter(result => result.success);
     const failedEmails = emailResults.filter(result => !result.success);
     
-    // Update patrol observation with email_id for deliverability tracking
+    // Store correlations for deliverability tracking
+    for (const emailResult of successfulEmails) {
+      if (emailResult.id && observationId) {
+        try {
+          await supabase
+            .from('email_correlation')
+            .insert({
+              resend_message_id: emailResult.id,
+              reference_type: 'patrol_observation',
+              reference_id: observationId,
+              recipient_email: emailResult.email,
+              sent_at: new Date().toISOString()
+            });
+          console.log(`✅ Stored email correlation for ${emailResult.email}: ${emailResult.id}`);
+        } catch (error) {
+          console.error(`❌ Failed to store email correlation for ${emailResult.email}:`, error);
+        }
+      }
+    }
+
+    // Update patrol observation with primary email_id for backward compatibility
     const primaryEmailId = successfulEmails.find(result => result.id)?.id;
     if (primaryEmailId && observationId) {
       try {

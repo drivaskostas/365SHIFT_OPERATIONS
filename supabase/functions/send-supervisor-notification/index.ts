@@ -482,7 +482,27 @@ const handler = async (req: Request): Promise<Response> => {
     const successfulEmails = emailResults.filter(result => result.success);
     const failedEmails = emailResults.filter(result => !result.success);
     
-    // Update supervisor report with email_id for deliverability tracking
+    // Store correlations for deliverability tracking
+    for (const emailResult of successfulEmails) {
+      if (emailResult.id && fullReportData?.id) {
+        try {
+          await supabase
+            .from('email_correlation')
+            .insert({
+              resend_message_id: emailResult.id,
+              reference_type: 'supervisor_report',
+              reference_id: fullReportData.id,
+              recipient_email: emailResult.email,
+              sent_at: new Date().toISOString()
+            });
+          console.log(`✅ Stored email correlation for ${emailResult.email}: ${emailResult.id}`);
+        } catch (error) {
+          console.error(`❌ Failed to store email correlation for ${emailResult.email}:`, error);
+        }
+      }
+    }
+
+    // Update supervisor report with primary email_id for backward compatibility
     const primaryEmailId = successfulEmails.find(result => result.id)?.id;
     if (primaryEmailId && fullReportData?.id) {
       try {

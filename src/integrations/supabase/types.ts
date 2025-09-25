@@ -1095,6 +1095,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_correlation: {
+        Row: {
+          created_at: string
+          id: string
+          recipient_email: string
+          reference_id: string
+          reference_type: string
+          resend_message_id: string
+          sent_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipient_email: string
+          reference_id: string
+          reference_type: string
+          resend_message_id: string
+          sent_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipient_email?: string
+          reference_id?: string
+          reference_type?: string
+          resend_message_id?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
       email_deliverability: {
         Row: {
           created_at: string | null

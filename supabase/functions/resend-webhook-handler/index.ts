@@ -89,15 +89,28 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('📊 Processing event:', eventType, 'as status:', status);
 
     // The email_id from Resend is their internal message ID, not our UUID
-    // We need to store it as the resend_message_id and find reference through other means
+    // Look up the correlation to link back to our reports
     console.log('🔍 Received Resend message ID:', email_id);
     
-    // For now, we'll store this with unknown reference since we can't easily link
-    // the Resend message ID back to our records without additional correlation
+    // Look up correlation data
+    const { data: correlationData, error: correlationError } = await supabase
+      .from('email_correlation')
+      .select('reference_type, reference_id')
+      .eq('resend_message_id', email_id)
+      .single();
+    
     let referenceType = 'unknown';
     let referenceId = null;
     
-    console.log('📝 Storing webhook event with Resend message ID');
+    if (correlationError) {
+      console.log('⚠️ No correlation found for Resend message ID:', email_id, correlationError.message);
+    } else if (correlationData) {
+      referenceType = correlationData.reference_type;
+      referenceId = correlationData.reference_id;
+      console.log('✅ Found correlation:', { referenceType, referenceId });
+    }
+    
+    console.log('📝 Storing webhook event with reference:', { referenceType, referenceId });
 
     console.log('📝 Inserting deliverability record:', {
       email_id,
