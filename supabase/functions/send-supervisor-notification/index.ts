@@ -439,7 +439,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const emailData: any = {
-          from: "OVIT Observations <observations@notifications.ovitguardly.com>",
+          from: "OVIT Supervisor <supervisor@notifications.ovitguardly.com>",
           to: email,
           subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}`,
           html: htmlContent
