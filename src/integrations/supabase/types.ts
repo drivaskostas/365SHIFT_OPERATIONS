@@ -704,10 +704,12 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
+          floor_plan_url: string | null
           id: string
           is_required: boolean | null
           name: string
           order_index: number | null
+          qr_positions: Json | null
           site_id: string
           updated_at: string | null
         }
@@ -717,10 +719,12 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          floor_plan_url?: string | null
           id?: string
           is_required?: boolean | null
           name: string
           order_index?: number | null
+          qr_positions?: Json | null
           site_id: string
           updated_at?: string | null
         }
@@ -730,10 +734,12 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          floor_plan_url?: string | null
           id?: string
           is_required?: boolean | null
           name?: string
           order_index?: number | null
+          qr_positions?: Json | null
           site_id?: string
           updated_at?: string | null
         }
@@ -1884,6 +1890,71 @@ export type Database = {
         }
         Relationships: []
       }
+      guard_status_audit: {
+        Row: {
+          changed_by: string | null
+          changed_by_name: string | null
+          created_at: string | null
+          guard_id: string
+          guard_name: string
+          id: string
+          new_status: string
+          previous_status: string
+          reason: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string | null
+          guard_id: string
+          guard_name: string
+          id?: string
+          new_status: string
+          previous_status: string
+          reason?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string | null
+          guard_id?: string
+          guard_name?: string
+          id?: string
+          new_status?: string
+          previous_status?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guard_status_audit_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_status_audit_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "guard_status_audit_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guard_status_audit_guard_id_fkey"
+            columns: ["guard_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_metrics"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
       guard_upcoming_shifts: {
         Row: {
           acknowledged: boolean | null
@@ -1997,7 +2068,10 @@ export type Database = {
           is_required: boolean | null
           location: string
           name: string
+          sequence_order: number | null
           site_id: string
+          x_position: number | null
+          y_position: number | null
         }
         Insert: {
           active?: boolean
@@ -2010,7 +2084,10 @@ export type Database = {
           is_required?: boolean | null
           location: string
           name: string
+          sequence_order?: number | null
           site_id: string
+          x_position?: number | null
+          y_position?: number | null
         }
         Update: {
           active?: boolean
@@ -2023,7 +2100,10 @@ export type Database = {
           is_required?: boolean | null
           location?: string
           name?: string
+          sequence_order?: number | null
           site_id?: string
+          x_position?: number | null
+          y_position?: number | null
         }
         Relationships: [
           {
@@ -2137,11 +2217,13 @@ export type Database = {
           created_at: string
           created_by: string
           description: string | null
+          floor_plan_url: string | null
           geofence_radius: number | null
           id: string
           latitude: number | null
           longitude: number | null
           name: string
+          qr_positions: Json | null
           supervisor_id: string | null
           team_id: string
         }
@@ -2151,11 +2233,13 @@ export type Database = {
           created_at?: string
           created_by: string
           description?: string | null
+          floor_plan_url?: string | null
           geofence_radius?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           name: string
+          qr_positions?: Json | null
           supervisor_id?: string | null
           team_id: string
         }
@@ -2165,11 +2249,13 @@ export type Database = {
           created_at?: string
           created_by?: string
           description?: string | null
+          floor_plan_url?: string | null
           geofence_radius?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           name?: string
+          qr_positions?: Json | null
           supervisor_id?: string | null
           team_id?: string
         }
@@ -2685,6 +2771,7 @@ export type Database = {
           created_at: string | null
           end_date: string
           id: string
+          rejection_reason: string | null
           start_date: string
           status: string
           team_id: string | null
@@ -2697,6 +2784,7 @@ export type Database = {
           created_at?: string | null
           end_date: string
           id?: string
+          rejection_reason?: string | null
           start_date: string
           status?: string
           team_id?: string | null
@@ -2709,6 +2797,7 @@ export type Database = {
           created_at?: string | null
           end_date?: string
           id?: string
+          rejection_reason?: string | null
           start_date?: string
           status?: string
           team_id?: string | null
@@ -3319,6 +3408,57 @@ export type Database = {
           },
         ]
       }
+      patrol_checkpoint_sequences: {
+        Row: {
+          actual_sequence: number[] | null
+          created_at: string | null
+          expected_sequence: number[] | null
+          id: string
+          out_of_order_visits: number[] | null
+          patrol_id: string | null
+          site_id: string | null
+          skipped_checkpoints: number[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual_sequence?: number[] | null
+          created_at?: string | null
+          expected_sequence?: number[] | null
+          id?: string
+          out_of_order_visits?: number[] | null
+          patrol_id?: string | null
+          site_id?: string | null
+          skipped_checkpoints?: number[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual_sequence?: number[] | null
+          created_at?: string | null
+          expected_sequence?: number[] | null
+          id?: string
+          out_of_order_visits?: number[] | null
+          patrol_id?: string | null
+          site_id?: string | null
+          skipped_checkpoints?: number[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patrol_checkpoint_sequences_patrol_id_fkey"
+            columns: ["patrol_id"]
+            isOneToOne: false
+            referencedRelation: "patrol_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patrol_checkpoint_sequences_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "guardian_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patrol_checkpoint_visits: {
         Row: {
           checkpoint_id: string
@@ -3822,6 +3962,7 @@ export type Database = {
           date_of_birth: string | null
           email: string | null
           emergency_contact: string | null
+          father_name: string | null
           first_name: string | null
           full_name: string | null
           gender: string | null
@@ -3829,6 +3970,7 @@ export type Database = {
           id: string
           last_name: string | null
           license_expiry_date: string | null
+          license_number: string | null
           mobile_phone: string | null
           Role: Database["public"]["Enums"]["app_role"] | null
           status: string | null
@@ -3844,6 +3986,7 @@ export type Database = {
           date_of_birth?: string | null
           email?: string | null
           emergency_contact?: string | null
+          father_name?: string | null
           first_name?: string | null
           full_name?: string | null
           gender?: string | null
@@ -3851,6 +3994,7 @@ export type Database = {
           id: string
           last_name?: string | null
           license_expiry_date?: string | null
+          license_number?: string | null
           mobile_phone?: string | null
           Role?: Database["public"]["Enums"]["app_role"] | null
           status?: string | null
@@ -3866,6 +4010,7 @@ export type Database = {
           date_of_birth?: string | null
           email?: string | null
           emergency_contact?: string | null
+          father_name?: string | null
           first_name?: string | null
           full_name?: string | null
           gender?: string | null
@@ -3873,6 +4018,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           license_expiry_date?: string | null
+          license_number?: string | null
           mobile_phone?: string | null
           Role?: Database["public"]["Enums"]["app_role"] | null
           status?: string | null
@@ -7158,6 +7304,14 @@ export type Database = {
       urlencode: {
         Args: { data: Json } | { string: string } | { string: string }
         Returns: string
+      }
+      validate_checkpoint_sequence: {
+        Args: {
+          p_checkpoint_id: string
+          p_patrol_id: string
+          p_visit_order: number
+        }
+        Returns: Json
       }
       validate_workflow_consistency: {
         Args: { candidate_uuid: string }
