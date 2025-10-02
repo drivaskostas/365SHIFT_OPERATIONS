@@ -256,6 +256,7 @@ export class EnhancedEmergencyService {
           description: report.description,
           severity: report.severity,
           locationDescription: report.location || reportData.location_description,
+          involvedPersons: report.involved_persons,
           guardName: guardName,
           timestamp: report.created_at,
           teamId: report.team_id,
