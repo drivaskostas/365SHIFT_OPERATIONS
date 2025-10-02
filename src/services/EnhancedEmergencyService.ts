@@ -89,9 +89,8 @@ export class EnhancedEmergencyService {
         .from('guardian_sites')
         .select('id, name')
         .eq('team_id', resolvedTeamId)
-        .eq('active', true)
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (site) {
         siteId = site.id;
