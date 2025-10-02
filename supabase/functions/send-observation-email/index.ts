@@ -189,14 +189,16 @@ const handler = async (req: Request): Promise<Response> => {
       critical: '#dc2626',
       high: '#ea580c',
       medium: '#d97706',
-      low: '#65a30d'
+      low: '#65a30d',
+      technical_issue: '#7c3aed'
     };
 
     const severityLabels = {
       critical: 'CRITICAL',
       high: 'HIGH',
       medium: 'MEDIUM',
-      low: 'LOW'
+      low: 'LOW',
+      technical_issue: 'Technical Issue/Malfunction'
     };
 
     // Get complete observation data from database if available
