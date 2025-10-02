@@ -323,7 +323,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                     <SelectItem value="high">{t('emergency.severity.high')}</SelectItem>
                     <SelectItem value="medium">{t('emergency.severity.medium')}</SelectItem>
                     <SelectItem value="low">{t('emergency.severity.low')}</SelectItem>
-                    <SelectItem value="technical_issue">Technical Issue/Malfunction</SelectItem>
+                    <SelectItem value="technical_issue">{t('emergency.severity.technical_issue')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

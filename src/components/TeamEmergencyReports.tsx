@@ -172,10 +172,7 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
   };
 
   const getSeverityText = (severity: string) => {
-    if (severity === 'technical_issue') {
-      return 'Technical Issue/Malfunction';
-    }
-    return severity.charAt(0).toUpperCase() + severity.slice(1);
+    return t(`emergency.severity.${severity}`) || severity.charAt(0).toUpperCase() + severity.slice(1);
   };
 
   const getStatusColor = (status: string) => {

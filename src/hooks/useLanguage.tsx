@@ -90,6 +90,7 @@ const translations = {
     'severity.medium': 'Medium - Requires attention',
     'severity.high': 'High - Urgent action needed',
     'severity.critical': 'Critical - Immediate response',
+    'severity.technical_issue': 'Technical Issue/Malfunction',
     
     // Emergency report
     'emergency.title': 'EMERGENCY REPORT',
@@ -114,6 +115,7 @@ const translations = {
     'emergency.severity.high': 'High - Urgent security threat',
     'emergency.severity.medium': 'Medium - Security concern',
     'emergency.severity.low': 'Low - Minor incident',
+    'emergency.severity.technical_issue': 'Technical Issue/Malfunction',
     
     // Location and time
     'location.auto_captured': 'Auto-captured location',
@@ -224,6 +226,7 @@ const translations = {
     'severity.medium': 'Μέση - Απαιτεί προσοχή',
     'severity.high': 'Υψηλή - Απαιτείται επείγουσα δράση',
     'severity.critical': 'Κρίσιμη - Άμεση απόκριση',
+    'severity.technical_issue': 'Βλάβη/Δυσλειτουργία',
     
     // Emergency report
     'emergency.title': 'ΕΚΤΑΚΤΗ ΑΝΑΦΟΡΑ',
@@ -248,6 +251,7 @@ const translations = {
     'emergency.severity.high': 'Υψηλή - Επείγουσα απειλή ασφαλείας',
     'emergency.severity.medium': 'Μέση - Θέμα ασφαλείας',
     'emergency.severity.low': 'Χαμηλή - Μικρό περιστατικό',
+    'emergency.severity.technical_issue': 'Βλάβη/Δυσλειτουργία',
     
     // Location and time
     'location.auto_captured': 'Αυτόματη καταγραφή τοποθεσίας',

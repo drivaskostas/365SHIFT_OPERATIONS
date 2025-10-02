@@ -366,7 +366,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
                     <SelectItem value="medium">{t('severity.medium')}</SelectItem>
                     <SelectItem value="high">{t('severity.high')}</SelectItem>
                     <SelectItem value="critical">{t('severity.critical')}</SelectItem>
-                    <SelectItem value="technical_issue">Technical Issue/Malfunction</SelectItem>
+                    <SelectItem value="technical_issue">{t('severity.technical_issue')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

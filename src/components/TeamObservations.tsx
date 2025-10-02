@@ -119,9 +119,6 @@ const TeamObservations = ({ onBack }: TeamObservationsProps) => {
   };
 
   const getSeverityText = (severity: string) => {
-    if (severity === 'technical_issue') {
-      return 'Technical Issue/Malfunction';
-    }
     return t(`severity.${severity}`) || severity;
   };
 
