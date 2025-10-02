@@ -262,7 +262,6 @@ export class EnhancedEmergencyService {
           siteId: finalSiteId,
           guardId: report.guard_id,
           imageUrl: report.image_url,
-          images: reportData.images || [],
           testMode: false
         }
       });
