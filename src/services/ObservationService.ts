@@ -146,12 +146,12 @@ export class ObservationService {
     const { data: currentSchedule } = await supabase
       .from('team_schedules')
       .select('team_id')
-      .contains('assigned_guards', [guardId])
+      .filter('assigned_guards', 'cs', `{${guardId}}`)
       .lte('start_date', now)
       .gte('end_date', now)
       .order('start_date', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (currentSchedule?.team_id) {
       resolvedTeamId = currentSchedule.team_id;
