@@ -138,36 +138,52 @@ export class ObservationService {
 
     console.log('📍 Final location for observation:', finalLocation);
 
-    // Get site from current scheduled shift (guard can only login if has active shift)
+    // Get site and team from patrol session or team membership
     let resolvedTeamId = teamId;
     let siteId = null;
 
-    const now = new Date().toISOString();
-    const { data: currentSchedule } = await supabase
-      .from('team_schedules')
-      .select('team_id')
-      .filter('assigned_guards', 'cs', `{${guardId}}`)
-      .lte('start_date', now)
-      .gte('end_date', now)
-      .order('start_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (currentSchedule?.team_id) {
-      resolvedTeamId = currentSchedule.team_id;
+    // First try to get team_id and site_id from the active patrol session if available
+    if (patrolId) {
+      const { data: patrol } = await supabase
+        .from('patrol_sessions')
+        .select('team_id, site_id')
+        .eq('id', patrolId)
+        .maybeSingle();
       
-      // Get the site for this team
+      if (patrol) {
+        resolvedTeamId = patrol.team_id;
+        siteId = patrol.site_id;
+        console.log('Found team and site from patrol session:', { siteId, teamId: resolvedTeamId });
+      }
+    }
+
+    // If no patrol session, try to get from team membership and find an active site
+    if (!resolvedTeamId) {
+      const { data: teamMembership } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', guardId)
+        .limit(1)
+        .maybeSingle();
+      
+      if (teamMembership) {
+        resolvedTeamId = teamMembership.team_id;
+      }
+    }
+
+    // If we have a teamId but no siteId, get the active site for this team
+    if (resolvedTeamId && !siteId) {
       const { data: site } = await supabase
         .from('guardian_sites')
         .select('id, name')
         .eq('team_id', resolvedTeamId)
         .eq('active', true)
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (site) {
         siteId = site.id;
-        console.log('Found current shift site:', { siteId, teamId: resolvedTeamId, siteName: site.name });
+        console.log('Found active site for team:', { siteId, teamId: resolvedTeamId, siteName: site.name });
       }
     }
 
