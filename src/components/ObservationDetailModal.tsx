@@ -8,7 +8,7 @@ interface PatrolObservation {
   id: string;
   title: string;
   description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: 'low' | 'medium' | 'high' | 'critical' | 'technical_issue';
   status: string;
   timestamp: string;
   guard_name: string;
@@ -39,6 +39,8 @@ const ObservationDetailModal = ({ observation, isOpen, onClose }: ObservationDet
         return 'text-yellow-600 bg-yellow-100';
       case 'low':
         return 'text-green-600 bg-green-100';
+      case 'technical_issue':
+        return 'text-blue-600 bg-blue-100';
       default:
         return 'text-gray-600 bg-gray-100';
     }

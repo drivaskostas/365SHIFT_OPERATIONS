@@ -65,7 +65,7 @@ export class EmergencyService {
     teamId: string | undefined,
     title: string,
     description: string,
-    severity: 'low' | 'medium' | 'high' | 'critical',
+    severity: 'low' | 'medium' | 'high' | 'critical' | 'technical_issue',
     imageUrl?: string,
     location?: { latitude: number; longitude: number }
   ): Promise<EmergencyReport> {

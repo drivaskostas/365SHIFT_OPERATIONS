@@ -105,7 +105,7 @@ export class ObservationService {
     teamId: string | undefined,
     title: string,
     description: string,
-    severity: 'low' | 'medium' | 'high' | 'critical',
+    severity: 'low' | 'medium' | 'high' | 'critical' | 'technical_issue',
     images?: string[],
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolObservation> {

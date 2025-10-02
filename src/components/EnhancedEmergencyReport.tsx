@@ -28,7 +28,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
   const [emergencyType, setEmergencyType] = useState<EmergencyType>('other');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('critical');
+  const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical' | 'technical_issue'>('critical');
   const [locationDescription, setLocationDescription] = useState('');
   const [involvedPersons, setInvolvedPersons] = useState('');
   const [incidentDate, setIncidentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -323,6 +323,7 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
                     <SelectItem value="high">{t('emergency.severity.high')}</SelectItem>
                     <SelectItem value="medium">{t('emergency.severity.medium')}</SelectItem>
                     <SelectItem value="low">{t('emergency.severity.low')}</SelectItem>
+                    <SelectItem value="technical_issue">Technical Issue/Malfunction</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -289,7 +289,7 @@ export interface EmergencyReportData {
   emergency_type: EmergencyType;
   title: string;
   description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: 'low' | 'medium' | 'high' | 'critical' | 'technical_issue';
   location_description: string;
   involved_persons_details?: string;
   images?: string[];

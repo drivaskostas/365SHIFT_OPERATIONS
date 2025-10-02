@@ -23,7 +23,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
   const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
+  const [severity, setSeverity] = useState<'low' | 'medium' | 'high' | 'critical' | 'technical_issue'>('medium');
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activePatrol, setActivePatrol] = useState<PatrolSession | null>(null);
@@ -366,6 +366,7 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
                     <SelectItem value="medium">{t('severity.medium')}</SelectItem>
                     <SelectItem value="high">{t('severity.high')}</SelectItem>
                     <SelectItem value="critical">{t('severity.critical')}</SelectItem>
+                    <SelectItem value="technical_issue">Technical Issue/Malfunction</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
