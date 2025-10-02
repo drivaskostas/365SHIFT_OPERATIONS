@@ -144,6 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null)
       setLoading(false)
       
+      // Clear all shift-related data from localStorage
+      localStorage.removeItem('guardShiftInfo')
+      localStorage.removeItem('persistentPatrolData')
+      localStorage.removeItem('currentPatrolId')
+      
       console.log('User signed out successfully')
     } catch (error) {
       console.error('Sign out error:', error)
@@ -152,6 +157,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null)
       setSession(null)
       setLoading(false)
+      
+      // Clear all shift-related data even on error
+      localStorage.removeItem('guardShiftInfo')
+      localStorage.removeItem('persistentPatrolData')
+      localStorage.removeItem('currentPatrolId')
     } finally {
       setSigningOut(false)
     }
