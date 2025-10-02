@@ -164,9 +164,18 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
         return 'text-yellow-600 bg-yellow-100';
       case 'low':
         return 'text-blue-600 bg-blue-100';
+      case 'technical_issue':
+        return 'text-purple-600 bg-purple-100';
       default:
         return 'text-gray-600 bg-gray-100';
     }
+  };
+
+  const getSeverityText = (severity: string) => {
+    if (severity === 'technical_issue') {
+      return 'Technical Issue/Malfunction';
+    }
+    return severity.charAt(0).toUpperCase() + severity.slice(1);
   };
 
   const getStatusColor = (status: string) => {
@@ -288,7 +297,7 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
               <span className="break-words line-clamp-2 min-w-0">{selectedReport.title}</span>
               <div className="flex flex-wrap gap-2 flex-shrink-0">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getSeverityColor(selectedReport.severity)}`}>
-                  {selectedReport.severity.toUpperCase()}
+                  {getSeverityText(selectedReport.severity)}
                 </span>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(selectedReport.status)}`}>
                   {selectedReport.status.toUpperCase()}
@@ -500,7 +509,7 @@ const TeamEmergencyReports = ({ onBack }: TeamEmergencyReportsProps) => {
                   </div>
                   <div className="flex flex-col gap-1 flex-shrink-0">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getSeverityColor(report.severity)}`}>
-                      {report.severity.toUpperCase()}
+                      {getSeverityText(report.severity)}
                     </span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(report.status)}`}>
                       {report.status.toUpperCase()}
