@@ -2,7 +2,57 @@ import { supabase } from '@/lib/supabase'
 import type { EmergencyReport } from '@/types/database'
 import type { EmergencyReportData, EmergencyReportHistory } from '@/types/emergency'
 
+// Helper function to convert base64 to blob
+function base64ToBlob(base64: string): Blob {
+  const parts = base64.split(';base64,');
+  const contentType = parts[0].split(':')[1];
+  const raw = window.atob(parts[1]);
+  const rawLength = raw.length;
+  const uInt8Array = new Uint8Array(rawLength);
+
+  for (let i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+
+  return new Blob([uInt8Array], { type: contentType });
+}
+
 export class EnhancedEmergencyService {
+  private static async uploadImageToStorage(base64Image: string, guardId: string): Promise<string> {
+    try {
+      // Convert base64 to blob
+      const blob = base64ToBlob(base64Image);
+      
+      // Generate unique filename
+      const timestamp = new Date().getTime();
+      const filename = `emergency-${guardId}-${timestamp}.jpg`;
+      const filePath = `emergency-reports/${filename}`;
+
+      // Upload to storage
+      const { data, error } = await supabase.storage
+        .from('reports')
+        .upload(filePath, blob, {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Storage upload error:', error);
+        throw error;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('reports')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  }
+
   static async getCurrentLocation(): Promise<{ latitude: number; longitude: number } | null> {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -98,6 +148,18 @@ export class EnhancedEmergencyService {
       }
     }
 
+    // Upload images to storage if any
+    let uploadedImageUrl: string | null = null;
+    if (reportData.images && reportData.images.length > 0) {
+      try {
+        uploadedImageUrl = await this.uploadImageToStorage(reportData.images[0], guardId);
+        console.log('Image uploaded successfully:', uploadedImageUrl);
+      } catch (uploadError) {
+        console.error('Failed to upload image:', uploadError);
+        // Continue without image if upload fails
+      }
+    }
+
     // Fetch guard's name
     const { data: guardProfile } = await supabase
       .from('profiles')
@@ -122,7 +184,7 @@ export class EnhancedEmergencyService {
         status: 'pending',
         location: reportData.location_description,
         involved_persons: reportData.involved_persons_details,
-        image_url: reportData.images && reportData.images.length > 0 ? reportData.images[0] : null,
+        image_url: uploadedImageUrl,
         latitude: currentLocation?.latitude,
         longitude: currentLocation?.longitude,
         incident_time: new Date().toISOString(),
