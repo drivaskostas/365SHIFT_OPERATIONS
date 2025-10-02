@@ -149,7 +149,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('persistentPatrolData')
       localStorage.removeItem('currentPatrolId')
       
-      console.log('User signed out successfully')
+      // Clear all Supabase auth session data from localStorage
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+      
+      console.log('User signed out successfully, cleared all auth data')
     } catch (error) {
       console.error('Sign out error:', error)
       // For any remaining errors, just clear state and don't re-throw
@@ -162,6 +172,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('guardShiftInfo')
       localStorage.removeItem('persistentPatrolData')
       localStorage.removeItem('currentPatrolId')
+      
+      // Clear all Supabase auth session data from localStorage
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
     } finally {
       setSigningOut(false)
     }
