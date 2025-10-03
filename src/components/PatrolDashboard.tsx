@@ -1037,10 +1037,13 @@ const PatrolDashboard = ({
                   Patrol Status {!isOnline && '(Offline Mode)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
-                  {currentActivePatrol ? `Patrol started at ${new Date(currentActivePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : 'No active shift assigned'}
+                  {currentActivePatrol ? `Patrol started at ${new Date(currentActivePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : currentShift ? `Active shift: ${currentShift.title}` : 'No active shift assigned'}
                 </p>
                 {guardShiftInfo && !currentActivePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
                     📍 Current shift: {guardShiftInfo.teamName} - {guardShiftInfo.siteName}
+                  </p>}
+                {!guardShiftInfo && currentShift && !currentActivePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
+                    📍 Current shift: {currentShift.title} at {currentShift.location}
                   </p>}
                 {isTracking && <p className="text-xs text-green-600 mt-1">
                     📍 Location updates every minute
