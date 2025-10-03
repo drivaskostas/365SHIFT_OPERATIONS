@@ -921,10 +921,22 @@ const PatrolDashboard = ({
                   <MapPin className="h-4 w-4 text-accent" />
                   <span className="text-accent font-mono text-sm truncate">{currentActivePatrol ? 'PATROL.ACTIVE' : 'STANDBY'}</span>
                 </div>
-                {activeShiftInfo && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
-                    <Shield className="h-4 w-4 text-green-400" />
-                    <span className="text-green-400 font-mono text-sm truncate">SITE: {activeShiftInfo.siteName?.toUpperCase()}</span>
-                  </div>}
+                {activeShiftInfo && (
+                  <>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 col-span-2">
+                      <Calendar className="h-4 w-4 text-blue-400" />
+                      <span className="text-blue-400 font-mono text-sm truncate">
+                        SHIFT: {(activeShiftInfo.shift?.title || activeShiftInfo.teamName)?.toUpperCase() || 'NOT ASSIGNED'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
+                      <Shield className="h-4 w-4 text-green-400" />
+                      <span className="text-green-400 font-mono text-sm truncate">
+                        SITE: {activeShiftInfo.siteName?.toUpperCase() || activeShiftInfo.shift?.location?.toUpperCase() || 'NOT ASSIGNED'}
+                      </span>
+                    </div>
+                  </>
+                )}
                 {isTracking && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                     <span className="text-green-400 font-mono text-sm">GPS.TRACKING.ACTIVE</span>
