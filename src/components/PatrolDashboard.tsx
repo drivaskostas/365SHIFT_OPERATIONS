@@ -932,7 +932,7 @@ const PatrolDashboard = ({
                     <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
                       <Shield className="h-4 w-4 text-green-400" />
                       <span className="text-green-400 font-mono text-sm truncate">
-                        SITE: {activeShiftInfo.siteName?.toUpperCase() || activeShiftInfo.shift?.location?.toUpperCase() || 'NOT ASSIGNED'}
+                        SITE: {activeShiftInfo.teamName?.toUpperCase() || activeShiftInfo.shift?.location?.toUpperCase() || 'NOT ASSIGNED'}
                       </span>
                     </div>
                   </>
