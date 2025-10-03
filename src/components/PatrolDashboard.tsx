@@ -107,6 +107,16 @@ const PatrolDashboard = ({
   const [currentShift, setCurrentShift] = useState<any>(null);
   const [currentMission, setCurrentMission] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Computed value: prefer current database shift over stale localStorage
+  const activeShiftInfo = currentShift ? {
+    siteId: currentShift.site_id,
+    teamId: currentShift.team_id,
+    siteName: currentShift.site_name || currentShift.location,
+    teamName: currentShift.team_name,
+    shift: currentShift
+  } : guardShiftInfo;
+  
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -116,8 +126,7 @@ const PatrolDashboard = ({
       fetchDashboardStats();
       fetchRecentActivities();
       checkActivePatrol();
-      loadGuardShiftInfo();
-      fetchCurrentShift();
+      fetchCurrentShift(); // Fetch current shift first
       fetchCurrentMission();
       checkLocationPermission();
       fetchUserRoles();
@@ -125,12 +134,12 @@ const PatrolDashboard = ({
     }
   }, [profile?.id, restoreOfflinePatrols]);
 
-  // Re-fetch mission when guardShiftInfo changes
+  // Re-fetch mission when activeShiftInfo changes
   useEffect(() => {
-    if (profile?.id && guardShiftInfo) {
+    if (profile?.id && activeShiftInfo) {
       fetchCurrentMission();
     }
-  }, [guardShiftInfo, profile?.id]);
+  }, [activeShiftInfo, profile?.id]);
   
   // Add a useEffect to sync states and refresh data periodically  
   useEffect(() => {
@@ -222,7 +231,13 @@ const PatrolDashboard = ({
     try {
       const { data: shifts, error } = await supabase
         .from('team_schedules')
-        .select('*')
+        .select(`
+          *,
+          teams:team_id (
+            id,
+            name
+          )
+        `)
         .contains('assigned_guards', [profile.id])
         .lte('start_date', new Date().toISOString())
         .gte('end_date', new Date().toISOString())
@@ -232,7 +247,24 @@ const PatrolDashboard = ({
       if (error) throw error;
       
       if (shifts && shifts.length > 0) {
-        setCurrentShift(shifts[0]);
+        const shift = shifts[0];
+        
+        // Get the site for this team
+        const { data: site } = await supabase
+          .from('guardian_sites')
+          .select('*')
+          .eq('team_id', shift.team_id)
+          .eq('active', true)
+          .single();
+        
+        setCurrentShift({
+          ...shift,
+          team_name: shift.teams?.name,
+          site_id: site?.id,
+          site_name: site?.name
+        });
+      } else {
+        setCurrentShift(null);
       }
     } catch (error) {
       console.error('Error fetching current shift:', error);
@@ -858,12 +890,12 @@ const PatrolDashboard = ({
           </h1>
           
           {/* Shift Title Display */}
-          {(currentShift?.title || guardShiftInfo?.shiftTitle) && (
+          {(currentShift?.title || activeShiftInfo?.shift?.title) && (
             <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4 text-blue-400" />
                 <span className="text-blue-400 font-mono text-sm font-semibold">
-                  SHIFT: {(currentShift?.title || guardShiftInfo?.shiftTitle)?.toUpperCase()}
+                  SHIFT: {(currentShift?.title || activeShiftInfo?.shift?.title)?.toUpperCase()}
                 </span>
               </div>
             </div>
@@ -889,9 +921,9 @@ const PatrolDashboard = ({
                   <MapPin className="h-4 w-4 text-accent" />
                   <span className="text-accent font-mono text-sm truncate">{currentActivePatrol ? 'PATROL.ACTIVE' : 'STANDBY'}</span>
                 </div>
-                {guardShiftInfo && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
+                {activeShiftInfo && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
                     <Shield className="h-4 w-4 text-green-400" />
-                    <span className="text-green-400 font-mono text-sm truncate">SITE: {guardShiftInfo.siteName?.toUpperCase()}</span>
+                    <span className="text-green-400 font-mono text-sm truncate">SITE: {activeShiftInfo.siteName?.toUpperCase()}</span>
                   </div>}
                 {isTracking && <div className="flex items-center space-x-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 col-span-2">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -1037,13 +1069,10 @@ const PatrolDashboard = ({
                   Patrol Status {!isOnline && '(Offline Mode)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
-                  {currentActivePatrol ? `Patrol started at ${new Date(currentActivePatrol.start_time).toLocaleTimeString()}` : guardShiftInfo ? `Ready to patrol at ${guardShiftInfo.siteName}` : currentShift ? `Active shift: ${currentShift.title}` : 'No active shift assigned'}
+                  {currentActivePatrol ? `Patrol started at ${new Date(currentActivePatrol.start_time).toLocaleTimeString()}` : activeShiftInfo ? `Ready to patrol at ${activeShiftInfo.siteName}` : 'No active shift assigned'}
                 </p>
-                {guardShiftInfo && !currentActivePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
-                    📍 Current shift: {guardShiftInfo.teamName} - {guardShiftInfo.siteName}
-                  </p>}
-                {!guardShiftInfo && currentShift && !currentActivePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
-                    📍 Current shift: {currentShift.title} at {currentShift.location}
+                {activeShiftInfo && !currentActivePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
+                    📍 Current shift: {activeShiftInfo.shift?.title || activeShiftInfo.teamName} - {activeShiftInfo.siteName}
                   </p>}
                 {isTracking && <p className="text-xs text-green-600 mt-1">
                     📍 Location updates every minute
@@ -1056,7 +1085,7 @@ const PatrolDashboard = ({
                 <Button 
                   onClick={currentActivePatrol ? handleEndPatrol : handleStartPatrol} 
                   className={currentActivePatrol ? 'bg-red-500 hover:bg-red-600 w-full lg:w-auto' : 'bg-green-500 hover:bg-green-600 w-full lg:w-auto'} 
-                  disabled={!currentActivePatrol && !guardShiftInfo}
+                  disabled={!currentActivePatrol && !activeShiftInfo}
                   size="lg"
                 >
                   {currentActivePatrol ? <>
