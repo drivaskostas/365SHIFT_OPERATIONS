@@ -889,18 +889,6 @@ const PatrolDashboard = ({
             OPERATIVE {profile?.last_name?.toUpperCase()}
           </h1>
           
-          {/* Shift Title Display */}
-          {(currentShift?.title || activeShiftInfo?.shift?.title) && (
-            <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-blue-400" />
-                <span className="text-blue-400 font-mono text-sm font-semibold">
-                  SHIFT: {(currentShift?.title || activeShiftInfo?.shift?.title)?.toUpperCase()}
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Tabs for Overview and Mission */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
