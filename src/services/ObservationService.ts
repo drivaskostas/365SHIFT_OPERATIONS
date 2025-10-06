@@ -234,11 +234,22 @@ export class ObservationService {
     // Send observation notification using existing edge function
     try {
       console.log('🔔 Attempting to send observation notification...');
-      await this.sendObservationNotification(data, guardName, finalLocation, siteId, images);
+      console.log('🔔 Notification params:', { 
+        observationId: data.id, 
+        guardName, 
+        siteId, 
+        teamId: data.team_id,
+        hasImages: images && images.length > 0
+      });
+      
+      const notificationResult = await this.sendObservationNotification(data, guardName, finalLocation, siteId, images);
+      console.log('✅ Observation notification result:', notificationResult);
       console.log('✅ Observation notification sent successfully');
     } catch (notificationError) {
       console.error('❌ Failed to send observation notification:', notificationError);
-      console.error('Error details:', JSON.stringify(notificationError, null, 2));
+      console.error('❌ Error message:', notificationError?.message);
+      console.error('❌ Error details:', JSON.stringify(notificationError, null, 2));
+      console.error('❌ Error stack:', notificationError?.stack);
     }
 
     return data
@@ -250,19 +261,21 @@ export class ObservationService {
     location: { latitude: number; longitude: number } | null,
     siteId: string | null,
     images?: string[]
-  ): Promise<void> {
+  ): Promise<any> {
     try {
       // Call the existing observation notification edge function
-      console.log('Calling observation notification with params:', {
+      console.log('📧 Calling send-observation-email edge function...');
+      console.log('📧 Params:', {
         observationId: observation.id,
         title: observation.title,
         severity: observation.severity,
         teamId: observation.team_id,
         siteId: siteId,
-        guardName: guardName
+        guardName: guardName,
+        imagesCount: images?.length || 0
       });
       
-      await supabase.functions.invoke('send-observation-email', {
+      const { data, error } = await supabase.functions.invoke('send-observation-email', {
         body: {
           observationId: observation.id,
           title: observation.title,
@@ -279,9 +292,16 @@ export class ObservationService {
         }
       });
 
-      console.log('Observation notification sent successfully');
+      if (error) {
+        console.error('❌ Edge function returned error:', error);
+        throw error;
+      }
+
+      console.log('✅ Edge function response:', data);
+      console.log('✅ Observation notification sent successfully');
+      return data;
     } catch (error) {
-      console.error('Failed to send observation notification:', error);
+      console.error('❌ Failed to send observation notification:', error);
       throw error;
     }
   }
