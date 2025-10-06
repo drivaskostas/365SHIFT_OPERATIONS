@@ -422,7 +422,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const emailData: any = {
-          from: "OVIT Observations <observations@notifications.ovitguardly.com>",
+          from: "OVIT Observations <observations@notifications.shiftask.app>",
           to: recipient.email,
           subject: `👁️ PATROL OBSERVATION: ${severityLabels[severity as keyof typeof severityLabels]} - ${title}`,
           html: emailHtml,
