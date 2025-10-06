@@ -232,9 +232,12 @@ export class ObservationService {
 
     // Send observation notification using existing edge function
     try {
+      console.log('🔔 Attempting to send observation notification...');
       await this.sendObservationNotification(data, guardName, finalLocation, siteId, images);
+      console.log('✅ Observation notification sent successfully');
     } catch (notificationError) {
-      console.warn('Failed to send observation notification:', notificationError);
+      console.error('❌ Failed to send observation notification:', notificationError);
+      console.error('Error details:', JSON.stringify(notificationError, null, 2));
     }
 
     return data

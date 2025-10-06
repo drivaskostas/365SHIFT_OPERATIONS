@@ -313,7 +313,8 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
 
         console.log('Supervisor notification sent successfully');
       } catch (notificationError) {
-        console.error('Failed to send supervisor notification:', notificationError);
+        console.error('❌ Failed to send supervisor notification:', notificationError);
+        console.error('Error details:', JSON.stringify(notificationError, null, 2));
         // Don't throw here - report was saved successfully, notification failure shouldn't block the user
       }
 

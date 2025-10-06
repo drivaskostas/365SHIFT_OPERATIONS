@@ -143,9 +143,12 @@ export class EmergencyService {
 
     // Send emergency notification using existing edge function
     try {
+      console.log('🔔 Attempting to send emergency notification...');
       await this.sendEmergencyNotification(data, guardName, currentLocation, siteId);
+      console.log('✅ Emergency notification sent successfully');
     } catch (notificationError) {
-      console.warn('Failed to send emergency notification:', notificationError);
+      console.error('❌ Failed to send emergency notification:', notificationError);
+      console.error('Error details:', JSON.stringify(notificationError, null, 2));
     }
 
     return data
@@ -157,6 +160,11 @@ export class EmergencyService {
     location: { latitude: number; longitude: number } | null,
     siteId: string | null
   ): Promise<void> {
+    console.log('📧 sendEmergencyNotification called');
+    console.log('Report data:', { id: report.id, title: report.title, severity: report.severity });
+    console.log('Site ID:', siteId);
+    console.log('Guard name:', guardName);
+    
     try {
       // Use the siteId passed from the calling function
       const finalSiteId = siteId;
@@ -171,7 +179,7 @@ export class EmergencyService {
         guardName: guardName
       });
       
-      await supabase.functions.invoke('send-emergency-notification', {
+      const result = await supabase.functions.invoke('send-emergency-notification', {
         body: {
           reportId: report.id,
           emergencyType: 'general_emergency',
@@ -190,9 +198,10 @@ export class EmergencyService {
         }
       });
 
+      console.log('✅ Edge function invocation result:', result);
       console.log('Emergency notification sent successfully');
     } catch (error) {
-      console.error('Failed to send emergency notification:', error);
+      console.error('❌ Error in sendEmergencyNotification:', error);
       throw error;
     }
   }
