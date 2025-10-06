@@ -1,4 +1,13 @@
 project_id = "oyhgsgieeylrzcjfaykd"
 
+[functions.send-emergency-notification]
+verify_jwt = true
+
+[functions.send-observation-email]
+verify_jwt = true
+
+[functions.send-supervisor-notification]
+verify_jwt = true
+
 [functions.resend-webhook-handler]
 verify_jwt = false
