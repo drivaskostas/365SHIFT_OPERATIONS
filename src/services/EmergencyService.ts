@@ -69,6 +69,8 @@ export class EmergencyService {
     imageUrl?: string,
     location?: { latitude: number; longitude: number }
   ): Promise<EmergencyReport> {
+    console.log('🚨🚨🚨 createEmergencyReport called with:', { guardId, title, severity });
+    
     // Always get fresh location if not provided
     console.log('Attempting to get location for emergency report...');
     const currentLocation = location || await this.getCurrentLocation();

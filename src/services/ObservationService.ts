@@ -109,6 +109,7 @@ export class ObservationService {
     images?: string[],
     location?: { latitude: number; longitude: number }
   ): Promise<PatrolObservation> {
+    console.log('📝📝📝 createObservation called with:', { guardId, title, severity });
     console.log('📝 Creating observation with data:', {
       guardId,
       patrolId,
