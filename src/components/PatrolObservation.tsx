@@ -227,12 +227,19 @@ const PatrolObservation = ({ onBack }: PatrolObservationProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !title || !description) return;
+    console.log('📝📝📝 OBSERVATION SUBMIT CLICKED', { user: user?.id, title, description });
+    
+    if (!user || !title || !description) {
+      console.log('❌ Missing required fields:', { user: !!user, title, description });
+      return;
+    }
 
     console.log('📝 Submitting observation with location info:', locationInfo);
+    console.log('✅ Validation passed, calling service...');
 
     setIsSubmitting(true);
     try {
+      console.log('📞 About to call ObservationService.createObservation');
       // Use the coordinates we loaded when the component mounted
       await ObservationService.createObservation(
         user.id,

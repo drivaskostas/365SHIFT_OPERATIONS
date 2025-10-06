@@ -153,10 +153,17 @@ const EmergencyReport = ({ onBack }: EmergencyReportProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !title || !description) return;
+    console.log('🚨🚨🚨 EMERGENCY SUBMIT CLICKED', { user: user?.id, title, description });
+    
+    if (!user || !title || !description) {
+      console.log('❌ Missing required fields:', { user: !!user, title, description });
+      return;
+    }
 
+    console.log('✅ Validation passed, calling service...');
     setIsSubmitting(true);
     try {
+      console.log('📞 About to call EmergencyService.createEmergencyReport');
       // For now, we'll send the first photo to maintain compatibility with the existing service
       // In the future, the service could be updated to handle multiple photos
       await EmergencyService.createEmergencyReport(
