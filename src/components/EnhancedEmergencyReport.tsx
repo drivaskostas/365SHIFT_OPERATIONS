@@ -200,7 +200,10 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
         images: photos
       };
 
+      console.log('🚨 SUBMITTING EMERGENCY REPORT');
       console.log('Report data:', reportData);
+      console.log('User ID:', user.id);
+      console.log('Active Patrol:', activePatrol);
 
       const report = await EnhancedEmergencyService.createEmergencyReport(
         user.id,
@@ -209,7 +212,8 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
         reportData
       );
       
-      console.log('Emergency report created successfully:', report);
+      console.log('✅ Emergency report created successfully:', report);
+      console.log('Report ID:', report.id);
       
       toast({
         title: "Emergency Report Submitted",
@@ -218,7 +222,9 @@ const EnhancedEmergencyReport = ({ onBack }: EnhancedEmergencyReportProps) => {
       
       onBack();
     } catch (error: any) {
-      console.error('Error submitting emergency report:', error);
+      console.error('❌ ERROR SUBMITTING EMERGENCY REPORT:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('Error stack:', error.stack);
       toast({
         title: "Failed to submit emergency report",
         description: error.message || "Unable to submit emergency report. Please try again.",
