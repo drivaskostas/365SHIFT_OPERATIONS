@@ -69,7 +69,8 @@ export class EmergencyService {
     imageUrl?: string,
     location?: { latitude: number; longitude: number }
   ): Promise<EmergencyReport> {
-    console.log('🚨🚨🚨 createEmergencyReport called with:', { guardId, title, severity });
+    console.log('🚨🚨🚨 EMERGENCY SERVICE METHOD CALLED');
+    console.log('Parameters:', { guardId, patrolId, teamId, title, description, severity });
     
     // Always get fresh location if not provided
     console.log('Attempting to get location for emergency report...');
@@ -121,6 +122,8 @@ export class EmergencyService {
                      `${guardProfile.first_name} ${guardProfile.last_name}` : 
                      'Unknown Guard');
 
+    console.log('💾 About to insert emergency report into database...');
+    
     const { data, error } = await supabase
       .from('emergency_reports')
       .insert({
@@ -141,16 +144,23 @@ export class EmergencyService {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Database error creating emergency report:', error);
+      throw error;
+    }
+
+    console.log('✅ Emergency report created in database:', data.id);
 
     // Send emergency notification using existing edge function
     try {
       console.log('🔔 Attempting to send emergency notification...');
+      console.log('📞 Calling supabase.functions.invoke with reportId:', data.id);
       await this.sendEmergencyNotification(data, guardName, currentLocation, siteId);
       console.log('✅ Emergency notification sent successfully');
     } catch (notificationError) {
       console.error('❌ Failed to send emergency notification:', notificationError);
       console.error('Error details:', JSON.stringify(notificationError, null, 2));
+      // Don't throw - report was created successfully
     }
 
     return data
