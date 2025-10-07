@@ -245,6 +245,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
         team_id: selectedSiteData?.team_id,
         guard_id: formData.description.selected_guards?.[0] || null, // Primary guard for compatibility
         title: formData.title,
+        report_type: formData.description.report_type || 'general',
         description: JSON.stringify(formData.description), // Store as JSON
         severity: formData.severity,
         location: formData.location_text,
