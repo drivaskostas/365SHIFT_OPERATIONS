@@ -61,14 +61,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const siteName = siteData?.name || 'Unknown Site';
 
-    // Get notification recipients from site_notification_settings table ONLY
+    // Get notification recipients from site_supervisor_notification_settings table
     const { data: siteNotifications } = await supabase
-      .from('site_notification_settings')
+      .from('site_supervisor_notification_settings')
       .select('email, name, notify_for_severity')
       .eq('site_id', report.siteId)
       .eq('active', true);
 
-    console.log('Site notification settings found:', siteNotifications?.length || 0);
+    console.log('Site supervisor notification settings found:', siteNotifications?.length || 0);
     console.log('Site recipients before filtering:', siteNotifications);
 
     // Collect recipient emails with severity filtering
