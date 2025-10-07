@@ -130,42 +130,19 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Fallback logic: If no site-specific recipients and we have a teamId, try team-based recipients  
-    if (recipients.length === 0 && teamId && !testMode) {
-      console.log('No site-specific recipients found, checking for team-based recipients...');
-      
-      // Get admin recipients as fallback
-      const { data: adminRecipients, error: adminError } = await supabase
-        .from('notification_settings')
-        .select('email, name')
-        .eq('team_id', teamId)
-        .eq('active', true);
-
-      if (adminError) {
-        console.error('Error fetching admin recipients:', adminError);
-      }
-
-      if (adminRecipients && adminRecipients.length > 0) {
-        recipients = adminRecipients.filter(recipient => {
-          return recipient.email && recipient.email.trim() !== '';
-        });
-        console.log('Team-based recipients found:', recipients.map(r => r.email));
-      }
-    }
-
-    // Final fallback: if still no recipients, log but continue (don't block observation creation)
+    // If no site-specific recipients, return without sending
     if (recipients.length === 0 && !testMode) {
-      console.log('No recipients found for observation notification');
-      console.log('Observation created successfully but no notification recipients configured');
-      
+      console.log('⚠️ No recipients configured for site:', siteId);
       return new Response(
         JSON.stringify({ 
-          message: 'Observation created but no notification recipients configured',
+          message: 'No notification recipients configured for this site',
           siteId: siteId,
-          teamId: teamId,
           observationId: observationId
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 

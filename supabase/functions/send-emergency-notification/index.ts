@@ -139,37 +139,19 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('🔍 No siteId provided, skipping site-specific recipients');
     }
 
-    // If no site-specific recipients or no siteId, get admin users
+    // If no site-specific recipients, return without sending
     if (recipients.length === 0) {
-      console.log('🔍 FALLBACK: No site recipients found, fetching admin users');
-      
-      const { data: adminUsers, error: adminError } = await supabase
-        .from('user_roles')
-        .select(`
-          user_id,
-          profiles!inner(email, first_name, last_name, full_name)
-        `)
-        .in('role', ['admin', 'super_admin']);
-
-      console.log('🔍 Admin users found:', adminUsers?.length || 0);
-      if (adminError) console.error('🔍 Error fetching admin users:', adminError);
-
-      if (adminUsers) {
-        console.log('🔍 Raw admin data:', JSON.stringify(adminUsers, null, 2));
-        
-        recipients = adminUsers.map((user: any) => ({
-          email: user.profiles.email,
-          name: user.profiles.full_name || 
-                `${user.profiles.first_name} ${user.profiles.last_name}`.trim() ||
-                user.profiles.email
-        })).filter(recipient => {
-          const hasEmail = recipient.email && recipient.email.trim() !== '';
-          console.log(`🔍 Admin recipient ${recipient.email}: valid = ${hasEmail}`);
-          return hasEmail;
-        });
-        
-        console.log('🔍 Final admin recipients:', recipients.map(r => `${r.name} <${r.email}>`));
-      }
+      console.log('⚠️ No recipients configured for site:', siteId);
+      return new Response(
+        JSON.stringify({ 
+          message: 'No notification recipients configured for this site',
+          siteId: siteId
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     console.log('Found recipients:', recipients.length);
