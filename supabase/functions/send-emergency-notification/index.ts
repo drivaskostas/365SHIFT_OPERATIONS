@@ -223,8 +223,8 @@ const handler = async (req: Request): Promise<Response> => {
       reportImages = reportImages.concat(images);
     }
     
-    // Remove duplicates and limit to 5 images max
-    const uniqueImages = Array.from(new Set(reportImages)).slice(0, 5);
+    // Remove duplicates and include all images
+    const uniqueImages = Array.from(new Set(reportImages));
     console.log('Processing emergency images:', {
       originalCount: reportImages.length,
       uniqueCount: uniqueImages.length,
