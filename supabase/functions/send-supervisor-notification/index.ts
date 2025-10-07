@@ -271,15 +271,15 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Site:</strong> ${siteName}</p>
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Supervisor:</strong> ${report.supervisorName}</p>
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Location:</strong> ${report.location || 'Not specified'}</p>
-                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Date:</strong> ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Date:</strong> ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium'})}</p>
                 ${fullReportData?.incident_time || report.incidentTime ? `
-                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Incident Time:</strong> ${new Date(fullReportData?.incident_time || report.incidentTime).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Incident Time:</strong> ${new Date(fullReportData?.incident_time || report.incidentTime).toLocaleString('el-GR', {timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium'})}</p>
                 ` : ''}
                 ${report.guardName ? `
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Guard:</strong> ${report.guardName}</p>
                 ` : ''}
                 ${report.shiftDate ? `
-                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Shift Date:</strong> ${new Date(report.shiftDate).toLocaleDateString('el-GR', {timeZone: 'Europe/Athens'})}</p>
+                <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Shift Date:</strong> ${new Date(report.shiftDate).toLocaleDateString('el-GR', {timeZone: 'Europe/Athens', dateStyle: 'short'})}</p>
                 ` : ''}
                 ${parsedDescription?.report_type ? `
                 <p style="margin: 0 0 4px 0; color: #6b7280;"><strong>Report Type:</strong> ${parsedDescription.report_type}</p>
@@ -403,7 +403,7 @@ const handler = async (req: Request): Promise<Response> => {
             <table cellpadding="0" cellspacing="0" style="margin: 15px auto;">
               <tr>
                 <td style="background-color: #007bff; border-radius: 12px; text-align: center;">
-                  <a href="mailto:${recipientArray.join(',')}?subject=Re: Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}" 
+                  <a href="mailto:${recipientArray.join(',')}?subject=Re: Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium'})}" 
                      style="display: inline-block; padding: 12px 24px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 12px;">
                     📧 Reply to All
                   </a>
@@ -441,7 +441,7 @@ const handler = async (req: Request): Promise<Response> => {
         const emailData: any = {
           from: "OVIT Supervisor <supervisor@shiftask.app>",
           to: email,
-          subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens'})}`,
+          subject: `Ovit Sentinel Supervisor Report - ${report.severity.toUpperCase()} - ${fullReportData?.created_at ? new Date(fullReportData.created_at).toLocaleString('el-GR', {timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium'}) : new Date(report.timestamp).toLocaleString('el-GR', {timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium'})}`,
           html: htmlContent
         };
 

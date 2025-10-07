@@ -320,11 +320,11 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 ` : ''}
                 <div>
-                  <strong>Report Time:</strong> ${timestamp ? new Date(timestamp).toLocaleString('el-GR', { timeZone: 'Europe/Athens' }) : new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
+                  <strong>Report Time:</strong> ${timestamp ? new Date(timestamp).toLocaleString('el-GR', { timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium' }) : new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium' })}
                 </div>
                 ${incidentTime ? `
                 <div>
-                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
+                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR', { timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium' })}
                 </div>
                 ` : ''}
                 ${status ? `

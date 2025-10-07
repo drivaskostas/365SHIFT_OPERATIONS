@@ -309,11 +309,11 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 ` : ''}
                 <div>
-                  <strong>Observation Time:</strong> ${new Date(timestamp).toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
+                  <strong>Observation Time:</strong> ${new Date(timestamp).toLocaleString('el-GR', { timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium' })}
                 </div>
                 ${incidentTime ? `
                 <div>
-                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR', { timeZone: 'Europe/Athens' })}
+                  <strong>Incident Time:</strong> ${new Date(incidentTime).toLocaleString('el-GR', { timeZone: 'Europe/Athens', dateStyle: 'short', timeStyle: 'medium' })}
                 </div>
                 ` : ''}
                 ${location ? `
