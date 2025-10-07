@@ -61,17 +61,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     const siteName = siteData?.name || 'Unknown Site';
 
-    // Get notification recipients using site_supervisor_notification_settings (correct table for supervisors)
+    // Get notification recipients from site_notification_settings table ONLY
     const { data: siteNotifications } = await supabase
-      .from('site_supervisor_notification_settings')
+      .from('site_notification_settings')
       .select('email, name, notify_for_severity')
       .eq('site_id', report.siteId)
       .eq('active', true);
 
-    console.log('Site supervisor notification settings found:', siteNotifications?.length || 0);
+    console.log('Site notification settings found:', siteNotifications?.length || 0);
     console.log('Site recipients before filtering:', siteNotifications);
 
-    // Collect recipient emails with severity filtering (use correct column name)
+    // Collect recipient emails with severity filtering
     const recipients = new Set<string>();
 
     if (siteNotifications && siteNotifications.length > 0) {
@@ -89,31 +89,17 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // If no site recipients, fallback to admin users (same as emergency reports)
+    // If no recipients configured for this site, log and return without sending
     if (recipients.size === 0) {
-      console.log('No site recipients found, falling back to admins');
-      
-      const { data: adminUsers } = await supabase
-        .from('user_roles')
-        .select(`
-          user_id,
-          profiles!inner(email, first_name, last_name, full_name)
-        `)
-        .in('role', ['admin', 'super_admin']);
-
-      if (adminUsers) {
-        adminUsers.forEach((user: any) => {
-          if (user.profiles.email) {
-            recipients.add(user.profiles.email);
-          }
-        });
-      }
-      
-      // Final fallback
-      if (recipients.size === 0) {
-        recipients.add('drivas@ovitsec.com');
-        console.log('📧 Using final fallback email: drivas@ovitsec.com');
-      }
+      console.log('⚠️ No recipients configured for site:', report.siteId);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'No notification recipients configured for this site',
+          siteId: report.siteId
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log(`📧 Sending emails to ${recipients.size} recipients`);
