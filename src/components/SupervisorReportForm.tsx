@@ -240,6 +240,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
       
       const reportData = {
         supervisor_id: profile.id,
+        supervisor_name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
         site_id: selectedSite,
         team_id: selectedSiteData?.team_id,
         guard_id: formData.description.selected_guards?.[0] || null, // Primary guard for compatibility
@@ -281,7 +282,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
         console.log('Calling supervisor notification with params:', {
           title: reportData.title,
           severity: reportData.severity,
-          supervisorName: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+          supervisorName: reportData.supervisor_name,
           siteId: reportData.site_id,
           teamId: reportData.team_id,
           supervisorId: reportData.supervisor_id
@@ -292,7 +293,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
             title: reportData.title,
             description: reportData.description,
             severity: reportData.severity,
-            supervisorName: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+            supervisorName: reportData.supervisor_name,
             timestamp: (() => {
               // If data.created_at exists, convert to Greek timezone, otherwise use current Greek time
               if (data.created_at) {
