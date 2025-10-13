@@ -131,8 +131,8 @@ export class PatrolService {
         .select('id, site_id')
         .eq('site_id', siteId)
         .eq('team_id', teamId)
-        .gte('end_time', new Date().toISOString())
-        .lte('start_time', new Date(Date.now() + 30 * 60 * 1000).toISOString()) // 30 min grace
+        .gte('end_date', new Date().toISOString())
+        .lte('start_date', new Date(Date.now() + 30 * 60 * 1000).toISOString()) // 30 min grace
         .maybeSingle();
 
       if (shiftError) {
