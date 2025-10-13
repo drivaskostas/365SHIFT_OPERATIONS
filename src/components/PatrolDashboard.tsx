@@ -134,12 +134,12 @@ const PatrolDashboard = ({
     }
   }, [profile?.id, restoreOfflinePatrols]);
 
-  // Re-fetch mission when activeShiftInfo changes
+  // Re-fetch mission when current shift changes
   useEffect(() => {
-    if (profile?.id && activeShiftInfo) {
+    if (profile?.id && currentShift) {
       fetchCurrentMission();
     }
-  }, [activeShiftInfo, profile?.id]);
+  }, [currentShift?.id, profile?.id]);
   
   // Add a useEffect to sync states and refresh data periodically  
   useEffect(() => {
