@@ -130,6 +130,16 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       console.log(`🎯 Remaining checkpoints: ${remaining.length}`);
       setRemainingCheckpoints(remaining);
       
+      // Update progress with actual checkpoint count from filtered results
+      const actualTotalCheckpoints = allCheckpoints?.length || 0;
+      setProgress(prev => ({
+        ...prev,
+        totalCheckpoints: actualTotalCheckpoints,
+        progress: actualTotalCheckpoints > 0 
+          ? Math.round((visitedIds.size / actualTotalCheckpoints) * 100)
+          : 0
+      }));
+      
       // Warning if no checkpoints found
       if (!allCheckpoints || allCheckpoints.length === 0) {
         console.warn('⚠️ No checkpoints found for this patrol!');
