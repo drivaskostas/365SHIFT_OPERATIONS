@@ -207,9 +207,7 @@ export class PatrolService {
           team_id: resolvedTeamId,
           checkpoint_group_id: checkpointGroupId,
           start_time: new Date().toISOString(),
-          status: 'active',
-          latitude: location?.latitude,
-          longitude: location?.longitude
+          status: 'active'
         })
         .select()
         .single()
@@ -268,9 +266,7 @@ export class PatrolService {
         .update({
           end_time: new Date().toISOString(),
           status: 'completed',
-          updated_at: new Date().toISOString(),
-          latitude: location?.latitude,
-          longitude: location?.longitude
+          updated_at: new Date().toISOString()
         })
         .eq('id', patrolId)
         .select()
