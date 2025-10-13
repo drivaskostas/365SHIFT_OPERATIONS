@@ -52,11 +52,9 @@ export class OfflineSyncService {
           .from('guard_locations')
           .insert({
             guard_id: location.guardId,
-            patrol_id: location.patrolId,
             latitude: location.latitude,
             longitude: location.longitude,
-            accuracy: location.accuracy,
-            created_at: location.timestamp
+            timestamp: location.timestamp
           });
 
         if (error) {
