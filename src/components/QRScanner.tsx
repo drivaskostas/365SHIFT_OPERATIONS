@@ -12,9 +12,10 @@ import { supabase } from '@/lib/supabase';
 
 interface QRScannerProps {
   onBack: () => void;
+  onPatrolComplete?: () => Promise<void>;
 }
 
-const QRScanner = ({ onBack }: QRScannerProps) => {
+const QRScanner = ({ onBack, onPatrolComplete }: QRScannerProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [flashlightOn, setFlashlightOn] = useState(false);
@@ -461,7 +462,14 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         
         setTimeout(async () => {
           try {
-            await PatrolService.endPatrol(activePatrol.id);
+            if (onPatrolComplete) {
+              // Use the provided callback which properly handles persistent patrol cleanup
+              await onPatrolComplete();
+            } else {
+              // Fallback to direct service call
+              await PatrolService.endPatrol(activePatrol.id);
+            }
+            
             toast({
               title: "🎉 Patrol Completed!",
               description: `All ${newProgress.totalCheckpoints} checkpoints scanned. Patrol session ended automatically.`,

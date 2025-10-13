@@ -13,6 +13,8 @@ import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { LanguageProvider, useLanguage } from '@/hooks/useLanguage';
 import LanguageToggle from '@/components/LanguageToggle';
 import { Toaster } from '@/components/ui/toaster';
+import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
+import { useToast } from '@/hooks/use-toast';
 
 // Component to initialize location tracking only when user is authenticated
 function LocationTrackingInitializer() {
@@ -38,9 +40,24 @@ function AppContent() {
   const {
     t
   } = useLanguage();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [currentScreen, setCurrentScreen] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(true);
+  
+  // Add persistent patrol hook at app level for proper patrol lifecycle management
+  const { endPersistentPatrol } = usePersistentPatrol(profile?.id);
+  
+  // Handle patrol completion from QR scanner
+  const handlePatrolComplete = async () => {
+    try {
+      await endPersistentPatrol(false); // false = auto-ended (not user initiated)
+      console.log('✅ Patrol auto-ended successfully through persistent patrol system');
+    } catch (error) {
+      console.error('❌ Error auto-ending patrol:', error);
+      throw error; // Re-throw to let QRScanner handle the toast
+    }
+  };
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -80,7 +97,10 @@ function AppContent() {
       case 'dashboard':
         return <PatrolDashboard onNavigate={setCurrentScreen} />;
       case 'scanner':
-        return <QRScanner onBack={() => setCurrentScreen('dashboard')} />;
+        return <QRScanner 
+          onBack={() => setCurrentScreen('dashboard')} 
+          onPatrolComplete={handlePatrolComplete}
+        />;
       case 'observation':
         return <PatrolObservation onBack={() => setCurrentScreen('dashboard')} />;
       case 'emergency':
