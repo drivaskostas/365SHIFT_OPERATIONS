@@ -215,6 +215,20 @@ export class PatrolService {
       if (error) throw error
       patrol = data;
       console.log('✅ Patrol started online:', patrol.id);
+      
+      // Log location to guard_locations table
+      if (location) {
+        await supabase
+          .from('guard_locations')
+          .insert({
+            guard_id: guardId,
+            patrol_id: patrol.id,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            timestamp: new Date().toISOString()
+          });
+        console.log('📍 Location logged for patrol start');
+      }
     } else {
       // Create offline patrol session
       patrol = {
@@ -274,6 +288,21 @@ export class PatrolService {
 
       if (error) throw error
       console.log('✅ Patrol ended online:', data.id);
+      
+      // Log location to guard_locations table
+      if (location) {
+        await supabase
+          .from('guard_locations')
+          .insert({
+            guard_id: data.guard_id,
+            patrol_id: patrolId,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            timestamp: new Date().toISOString()
+          });
+        console.log('📍 Location logged for patrol end');
+      }
+      
       return data;
     } else {
       // Handle offline patrol end
