@@ -668,12 +668,12 @@ const PatrolDashboard = ({
       }
       const teamIds = teamMemberships.map(tm => tm.team_id);
 
-      // Fetch patrol sessions count
+      // Fetch patrol sessions count for this guard
       const {
         count: patrolCount
       } = await supabase.from('patrol_sessions').select('*', {
         count: 'exact'
-      }).in('team_id', teamIds);
+      }).eq('guard_id', profile.id);
 
       // Fetch observations count
       const {
@@ -709,7 +709,7 @@ const PatrolDashboard = ({
       const teamIds = teamMemberships.map(tm => tm.team_id);
       const activities: RecentActivity[] = [];
 
-      // Fetch recent patrol sessions with guard info
+      // Fetch recent patrol sessions for this guard
       const {
         data: recentPatrols
       } = await supabase.from('patrol_sessions').select(`
@@ -719,7 +719,7 @@ const PatrolDashboard = ({
             last_name,
             full_name
           )
-        `).in('team_id', teamIds).order('created_at', {
+        `).eq('guard_id', profile.id).order('created_at', {
         ascending: false
       }).limit(3);
       if (recentPatrols) {

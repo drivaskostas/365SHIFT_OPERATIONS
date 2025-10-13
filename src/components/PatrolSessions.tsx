@@ -76,14 +76,14 @@ const PatrolSessions = ({ onBack }: PatrolSessionsProps) => {
 
       const teamIds = teamMemberships.map(tm => tm.team_id);
 
-      // Fetch patrol sessions from all teams
+      // Fetch patrol sessions for this guard
       const { data: patrolSessions, error } = await supabase
         .from('patrol_sessions')
         .select(`
           *,
           guardian_sites(name)
         `)
-        .in('team_id', teamIds)
+        .eq('guard_id', profile.id)
         .order('start_time', { ascending: false })
         .limit(20);
 
