@@ -123,14 +123,27 @@ export class PatrolService {
 
     if (assignmentError) throw assignmentError
     
-    // If no direct site assignment, check if guard has a valid shift for this site
+    // If no direct site assignment, check if guard has a valid shift for this team's site
     if (!siteGuard && teamId) {
-      // Check if guard has an active shift assignment for this site through their team
+      // First verify the site belongs to this team
+      const { data: site, error: siteError } = await supabase
+        .from('guardian_sites')
+        .select('id, team_id')
+        .eq('id', siteId)
+        .eq('team_id', teamId)
+        .single();
+
+      if (siteError || !site) {
+        console.error('Error checking site-team assignment:', siteError);
+        throw new Error('You are not assigned to this site. Please contact your supervisor.');
+      }
+
+      // Check if guard has an active shift for this team
       const { data: shiftAssignment, error: shiftError } = await supabase
         .from('team_schedules')
-        .select('id, site_id')
-        .eq('site_id', siteId)
+        .select('id, assigned_guards')
         .eq('team_id', teamId)
+        .contains('assigned_guards', [guardId])
         .gte('end_date', new Date().toISOString())
         .lte('start_date', new Date(Date.now() + 30 * 60 * 1000).toISOString()) // 30 min grace
         .maybeSingle();
