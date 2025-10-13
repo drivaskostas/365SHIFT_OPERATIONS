@@ -83,7 +83,11 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     if (!activePatrol) return;
     
     try {
+      console.log('📊 Loading patrol progress for patrol:', activePatrol.id);
+      console.log('📋 Checkpoint group ID:', activePatrol.checkpoint_group_id);
+      
       const progressData = await PatrolService.getPatrolProgress(activePatrol.id);
+      console.log('📈 Progress data:', progressData);
       setProgress(progressData);
       
       // Load checkpoints based on checkpoint group if specified
@@ -95,10 +99,20 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       
       // Filter by checkpoint group if specified in patrol
       if (activePatrol.checkpoint_group_id) {
+        console.log('🎯 Filtering checkpoints by group:', activePatrol.checkpoint_group_id);
         checkpointsQuery = checkpointsQuery.eq('checkpoint_group_id', activePatrol.checkpoint_group_id);
+      } else {
+        console.log('🌐 Loading all checkpoints for site (no group filter)');
       }
       
-      const { data: allCheckpoints } = await checkpointsQuery;
+      const { data: allCheckpoints, error: checkpointsError } = await checkpointsQuery;
+      
+      if (checkpointsError) {
+        console.error('❌ Error loading checkpoints:', checkpointsError);
+        throw checkpointsError;
+      }
+      
+      console.log(`📍 Found ${allCheckpoints?.length || 0} checkpoints for this patrol`);
         
       const { data: visitedVisits } = await supabase
         .from('patrol_checkpoint_visits')
@@ -107,13 +121,32 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         .eq('status', 'completed');
         
       const visitedIds = new Set(visitedVisits?.map(v => v.checkpoint_id) || []);
+      console.log(`✅ Already visited ${visitedIds.size} checkpoints`);
       setVisitedCheckpointIds(visitedIds);
       
       const remaining = allCheckpoints?.filter(cp => !visitedIds.has(cp.id)) || [];
+      console.log(`🎯 Remaining checkpoints: ${remaining.length}`);
       setRemainingCheckpoints(remaining);
+      
+      // Warning if no checkpoints found
+      if (!allCheckpoints || allCheckpoints.length === 0) {
+        console.warn('⚠️ No checkpoints found for this patrol!');
+        toast({
+          title: "No Checkpoints",
+          description: activePatrol.checkpoint_group_id 
+            ? "No checkpoints found in the selected group. Please contact your supervisor."
+            : "No checkpoints found for this site. Please contact your supervisor.",
+          variant: "destructive",
+        });
+      }
       
     } catch (error) {
       console.error('Error loading patrol progress:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load patrol progress. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -405,8 +438,12 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         description: `Successfully recorded visit to ${checkpoint.name}`,
       });
       
-      // Check if patrol is complete (100%)
-      if (newProgress.progress >= 100) {
+      // Check if patrol is complete (all checkpoints in group scanned)
+      const isComplete = newProgress.progress >= 100 && newProgress.totalCheckpoints > 0;
+      console.log(`📊 Progress: ${newProgress.visitedCheckpoints}/${newProgress.totalCheckpoints} (${newProgress.progress}%)`);
+      console.log(`🏁 Is patrol complete? ${isComplete}`);
+      
+      if (isComplete) {
         console.log('🎉 Patrol completed! Auto-ending patrol session...');
         
         setTimeout(async () => {
@@ -414,7 +451,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
             await PatrolService.endPatrol(activePatrol.id);
             toast({
               title: "🎉 Patrol Completed!",
-              description: "All checkpoints scanned. Patrol session ended automatically.",
+              description: `All ${newProgress.totalCheckpoints} checkpoints scanned. Patrol session ended automatically.`,
             });
             onBack(); // Return to dashboard
           } catch (error) {
@@ -428,6 +465,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         }, 3000);
       } else {
         // Reset after showing result for incomplete patrol
+        console.log(`⏳ Patrol incomplete - ${newProgress.totalCheckpoints - newProgress.visitedCheckpoints} checkpoints remaining`);
         setTimeout(() => {
           setScanResult(null);
           setIsProcessing(false);
@@ -602,20 +640,38 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         {/* Progress Section */}
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-3">
-            <CardTitle className="text-white flex items-center gap-2 text-lg">
-              <Target className="h-5 w-5" />
-              Patrol Progress
+            <CardTitle className="text-white flex items-center justify-between text-lg">
+              <span className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Patrol Progress
+              </span>
+              <span className="text-2xl font-bold text-green-400">
+                {progress.progress}%
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between text-sm text-gray-300">
+            <div className="flex justify-between text-sm text-gray-300 mb-2">
               <span>Checkpoints Scanned</span>
-              <span>{progress.visitedCheckpoints} / {progress.totalCheckpoints}</span>
+              <span className="font-semibold text-white">
+                {progress.visitedCheckpoints} / {progress.totalCheckpoints}
+              </span>
             </div>
             <Progress value={progress.progress} className="h-3" />
-            <div className="text-center text-lg font-bold text-white">
-              {progress.progress}% Complete
+            <div className="flex justify-between text-xs text-gray-400 mt-2">
+              <span>Completed</span>
+              <span className="font-medium text-green-400">
+                {progress.totalCheckpoints - progress.visitedCheckpoints} remaining
+              </span>
             </div>
+            
+            {progress.totalCheckpoints === 0 && (
+              <div className="mt-3 p-3 bg-yellow-600/20 border border-yellow-600/50 rounded-lg">
+                <p className="text-xs text-yellow-200">
+                  ⚠️ No checkpoints found for this patrol group. Please contact your supervisor.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -651,7 +707,7 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
               <li>• Wait for automatic scan detection</li>
               <li>• QR must belong to current patrol site</li>
               <li>• Successful scans will vibrate and beep</li>
-              <li>• Patrol ends automatically at 100%</li>
+              <li className="text-green-400 font-medium">• Patrol ends automatically when all checkpoints are scanned</li>
             </ul>
           </CardContent>
         </Card>
