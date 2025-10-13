@@ -113,7 +113,7 @@ export class PatrolService {
   }
 
   static async startPatrol(siteId: string, guardId: string, teamId?: string, checkpointGroupId?: string): Promise<PatrolSession> {
-    // First verify the guard is assigned to this site
+    // First verify the guard is assigned to this site (allow shift-based assignments)
     const { data: siteGuard, error: assignmentError } = await supabase
       .from('site_guards')
       .select('*')
@@ -123,8 +123,27 @@ export class PatrolService {
 
     if (assignmentError) throw assignmentError
     
-    if (!siteGuard) {
-      throw new Error('You are not assigned to this site. Please contact your supervisor.')
+    // If no direct site assignment, check if guard has a valid shift for this site
+    if (!siteGuard && teamId) {
+      // Check if guard has an active shift assignment for this site through their team
+      const { data: shiftAssignment, error: shiftError } = await supabase
+        .from('team_schedules')
+        .select('id, site_id')
+        .eq('site_id', siteId)
+        .eq('team_id', teamId)
+        .gte('end_time', new Date().toISOString())
+        .lte('start_time', new Date(Date.now() + 30 * 60 * 1000).toISOString()) // 30 min grace
+        .maybeSingle();
+
+      if (shiftError) {
+        console.error('Error checking shift assignment:', shiftError);
+      }
+
+      if (!shiftAssignment) {
+        throw new Error('You are not assigned to this site. Please contact your supervisor.');
+      }
+    } else if (!siteGuard && !teamId) {
+      throw new Error('You are not assigned to this site. Please contact your supervisor.');
     }
 
     // Get the guard's team assignment if teamId is not provided
