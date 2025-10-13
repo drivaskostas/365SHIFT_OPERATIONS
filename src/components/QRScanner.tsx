@@ -83,8 +83,10 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
     if (!activePatrol) return;
     
     try {
+      // Retrieve checkpoint group ID from localStorage
+      const checkpointGroupId = localStorage.getItem(`checkpoint_group_${activePatrol.id}`);
       console.log('📊 Loading patrol progress for patrol:', activePatrol.id);
-      console.log('📋 Checkpoint group ID:', activePatrol.checkpoint_group_id);
+      console.log('📋 Checkpoint group ID from localStorage:', checkpointGroupId);
       
       const progressData = await PatrolService.getPatrolProgress(activePatrol.id);
       console.log('📈 Progress data:', progressData);
@@ -97,10 +99,10 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
         .eq('site_id', activePatrol.site_id)
         .eq('active', true);
       
-      // Filter by checkpoint group if specified in patrol
-      if (activePatrol.checkpoint_group_id) {
-        console.log('🎯 Filtering checkpoints by group:', activePatrol.checkpoint_group_id);
-        checkpointsQuery = checkpointsQuery.eq('checkpoint_group_id', activePatrol.checkpoint_group_id);
+      // Filter by checkpoint group if specified
+      if (checkpointGroupId) {
+        console.log('🎯 Filtering checkpoints by group:', checkpointGroupId);
+        checkpointsQuery = checkpointsQuery.eq('checkpoint_group_id', checkpointGroupId);
       } else {
         console.log('🌐 Loading all checkpoints for site (no group filter)');
       }
@@ -131,9 +133,10 @@ const QRScanner = ({ onBack }: QRScannerProps) => {
       // Warning if no checkpoints found
       if (!allCheckpoints || allCheckpoints.length === 0) {
         console.warn('⚠️ No checkpoints found for this patrol!');
+        const checkpointGroupId = localStorage.getItem(`checkpoint_group_${activePatrol.id}`);
         toast({
           title: "No Checkpoints",
-          description: activePatrol.checkpoint_group_id 
+          description: checkpointGroupId 
             ? "No checkpoints found in the selected group. Please contact your supervisor."
             : "No checkpoints found for this site. Please contact your supervisor.",
           variant: "destructive",

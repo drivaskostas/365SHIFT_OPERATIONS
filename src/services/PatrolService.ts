@@ -214,6 +214,12 @@ export class PatrolService {
       patrol = data;
       console.log('✅ Patrol started online:', patrol.id);
       
+      // Store checkpoint group ID in localStorage for QRScanner to access
+      if (checkpointGroupId) {
+        localStorage.setItem(`checkpoint_group_${patrol.id}`, checkpointGroupId);
+        console.log(`💾 Stored checkpoint group ${checkpointGroupId} for patrol ${patrol.id}`);
+      }
+      
       // Log location to guard_locations table
       if (location) {
         await supabase
@@ -247,6 +253,12 @@ export class PatrolService {
         data: patrol,
         timestamp: new Date().toISOString()
       });
+      
+      // Store checkpoint group ID in localStorage for QRScanner to access
+      if (checkpointGroupId) {
+        localStorage.setItem(`checkpoint_group_${patrol.id}`, checkpointGroupId);
+        console.log(`💾 Stored checkpoint group ${checkpointGroupId} for offline patrol ${patrol.id}`);
+      }
 
       console.log('📴 Patrol started offline:', patrol.id);
     }
@@ -285,6 +297,10 @@ export class PatrolService {
       if (error) throw error
       console.log('✅ Patrol ended online:', data.id);
       
+      // Clean up checkpoint group from localStorage
+      localStorage.removeItem(`checkpoint_group_${patrolId}`);
+      console.log(`🗑️ Cleaned up checkpoint group for patrol ${patrolId}`);
+      
       // Log location to guard_locations table
       if (location) {
         await supabase
@@ -321,6 +337,10 @@ export class PatrolService {
       });
 
       console.log('📴 Patrol ended offline:', patrolId);
+      
+      // Clean up checkpoint group from localStorage
+      localStorage.removeItem(`checkpoint_group_${patrolId}`);
+      console.log(`🗑️ Cleaned up checkpoint group for offline patrol ${patrolId}`);
       
       // Return mock completed patrol
       return {
