@@ -229,7 +229,7 @@ export class PatrolService {
             patrol_id: patrol.id,
             latitude: location.latitude,
             longitude: location.longitude,
-            timestamp: new Date().toISOString()
+            created_at: new Date().toISOString()
           });
         console.log('📍 Location logged for patrol start');
       }
@@ -310,7 +310,7 @@ export class PatrolService {
             patrol_id: patrolId,
             latitude: location.latitude,
             longitude: location.longitude,
-            timestamp: new Date().toISOString()
+            created_at: new Date().toISOString()
           });
         console.log('📍 Location logged for patrol end');
       }
