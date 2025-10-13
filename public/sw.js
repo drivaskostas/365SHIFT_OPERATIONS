@@ -2,15 +2,23 @@
 const CACHE_NAME = 'sentinel-guard-v1';
 const urlsToCache = [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/manifest.json'
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+      .then((cache) => {
+        // Try to cache each URL, but don't fail if one fails
+        return Promise.allSettled(
+          urlsToCache.map(url => 
+            cache.add(url).catch(err => console.log('Failed to cache:', url))
+          )
+        );
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
