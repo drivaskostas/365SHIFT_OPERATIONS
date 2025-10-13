@@ -204,7 +204,6 @@ export class PatrolService {
         .insert({
           guard_id: guardId,
           site_id: siteId,
-          team_id: resolvedTeamId,
           checkpoint_group_id: checkpointGroupId,
           start_time: new Date().toISOString(),
           status: 'active'
@@ -235,7 +234,6 @@ export class PatrolService {
         id: `offline_${Date.now()}`,
         guard_id: guardId,
         site_id: siteId,
-        team_id: resolvedTeamId,
         checkpoint_group_id: checkpointGroupId,
         start_time: new Date().toISOString(),
         status: 'active',
