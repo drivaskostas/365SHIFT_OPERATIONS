@@ -113,6 +113,8 @@ export class PatrolService {
   }
 
   static async startPatrol(siteId: string, guardId: string, teamId?: string, checkpointGroupId?: string): Promise<PatrolSession> {
+    console.log('🚀 Starting patrol...', { siteId, guardId, teamId, checkpointGroupId });
+    
     // First verify the guard is assigned to this site (allow shift-based assignments)
     const { data: siteGuard, error: assignmentError } = await supabase
       .from('site_guards')
@@ -121,10 +123,14 @@ export class PatrolService {
       .eq('site_id', siteId)
       .maybeSingle()
 
+    console.log('📋 Site guard assignment check:', { siteGuard, assignmentError });
+    
     if (assignmentError) throw assignmentError
     
     // If no direct site assignment, check if guard has a valid shift for this team's site
     if (!siteGuard && teamId) {
+      console.log('🔍 No direct site assignment, checking shift for team:', teamId);
+      
       // First verify the site belongs to this team
       const { data: site, error: siteError } = await supabase
         .from('guardian_sites')
@@ -133,8 +139,10 @@ export class PatrolService {
         .eq('team_id', teamId)
         .single();
 
+      console.log('🏢 Site-team check:', { site, siteError });
+
       if (siteError || !site) {
-        console.error('Error checking site-team assignment:', siteError);
+        console.error('❌ Error checking site-team assignment:', siteError);
         throw new Error('You are not assigned to this site. Please contact your supervisor.');
       }
 
@@ -148,15 +156,23 @@ export class PatrolService {
         .lte('start_date', new Date(Date.now() + 30 * 60 * 1000).toISOString()) // 30 min grace
         .maybeSingle();
 
+      console.log('📅 Shift assignment check:', { shiftAssignment, shiftError });
+
       if (shiftError) {
-        console.error('Error checking shift assignment:', shiftError);
+        console.error('❌ Error checking shift assignment:', shiftError);
       }
 
       if (!shiftAssignment) {
+        console.error('❌ No shift assignment found');
         throw new Error('You are not assigned to this site. Please contact your supervisor.');
       }
+      
+      console.log('✅ Shift validation passed');
     } else if (!siteGuard && !teamId) {
+      console.error('❌ No site guard and no team ID provided');
       throw new Error('You are not assigned to this site. Please contact your supervisor.');
+    } else {
+      console.log('✅ Direct site assignment found');
     }
 
     // Get the guard's team assignment if teamId is not provided
