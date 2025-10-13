@@ -54,8 +54,7 @@ export class OfflineSyncService {
             guard_id: location.guardId,
             latitude: location.latitude,
             longitude: location.longitude,
-            created_at: location.timestamp,
-            patrol_id: location.patrolId || null
+            created_at: location.timestamp
           });
 
         if (error) {

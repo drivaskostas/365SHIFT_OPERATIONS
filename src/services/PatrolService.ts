@@ -226,7 +226,6 @@ export class PatrolService {
           .from('guard_locations')
           .insert({
             guard_id: guardId,
-            patrol_id: patrol.id,
             latitude: location.latitude,
             longitude: location.longitude,
             created_at: new Date().toISOString()
@@ -307,7 +306,6 @@ export class PatrolService {
           .from('guard_locations')
           .insert({
             guard_id: data.guard_id,
-            patrol_id: patrolId,
             latitude: location.latitude,
             longitude: location.longitude,
             created_at: new Date().toISOString()
