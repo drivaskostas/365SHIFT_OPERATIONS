@@ -53,8 +53,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
   const [sites, setSites] = useState<GuardianSite[]>([]);
   const [guards, setGuards] = useState<TeamMember[]>([]);
   const [selectedSite, setSelectedSite] = useState<string>('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState<string>('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [location, setLocation] = useState<{ latitude?: number; longitude?: number }>({});
 
@@ -172,61 +171,85 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    // Validate file type and size
-    if (!file.type.startsWith('image/')) {
+    // Validate max 5 images
+    if (imageUrls.length + files.length > 5) {
       toast({
         title: language === 'el' ? 'Σφάλμα' : 'Error',
-        description: language === 'el' ? 'Παρακαλώ επιλέξτε εικόνα' : 'Please select an image file',
+        description: language === 'el' ? 'Μπορείτε να ανεβάσετε μέχρι 5 εικόνες' : 'You can upload up to 5 images',
         variant: 'destructive'
       });
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      toast({
-        title: language === 'el' ? 'Σφάλμα' : 'Error',
-        description: language === 'el' ? 'Η εικόνα πρέπει να είναι μικρότερη από 5MB' : 'Image must be smaller than 5MB',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setImageFile(file);
     setIsUploadingImage(true);
+    const uploadedUrls: string[] = [];
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `supervisor-report-${Date.now()}.${fileExt}`;
-      const filePath = `supervisor-reports/${fileName}`;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
 
-      const { error: uploadError } = await supabase.storage
-        .from('reports')
-        .upload(filePath, file);
+        // Validate file type and size
+        if (!file.type.startsWith('image/')) {
+          toast({
+            title: language === 'el' ? 'Σφάλμα' : 'Error',
+            description: language === 'el' ? `${file.name}: Παρακαλώ επιλέξτε εικόνα` : `${file.name}: Please select an image file`,
+            variant: 'destructive'
+          });
+          continue;
+        }
 
-      if (uploadError) throw uploadError;
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          toast({
+            title: language === 'el' ? 'Σφάλμα' : 'Error',
+            description: language === 'el' ? `${file.name}: Η εικόνα πρέπει να είναι μικρότερη από 5MB` : `${file.name}: Image must be smaller than 5MB`,
+            variant: 'destructive'
+          });
+          continue;
+        }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('reports')
-        .getPublicUrl(filePath);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `supervisor-report-${Date.now()}-${i}.${fileExt}`;
+        const filePath = `supervisor-reports/${fileName}`;
 
-      setImageUrl(publicUrl);
+        const { error: uploadError } = await supabase.storage
+          .from('reports')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('reports')
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrl);
+      }
+
+      setImageUrls(prev => [...prev, ...uploadedUrls]);
       toast({
         title: language === 'el' ? 'Επιτυχία' : 'Success',
-        description: language === 'el' ? 'Η εικόνα μεταφορτώθηκε επιτυχώς' : 'Image uploaded successfully'
+        description: language === 'el' 
+          ? `${uploadedUrls.length} εικόνες μεταφορτώθηκαν επιτυχώς` 
+          : `${uploadedUrls.length} image${uploadedUrls.length > 1 ? 's' : ''} uploaded successfully`
       });
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Error uploading images:', error);
       toast({
         title: language === 'el' ? 'Σφάλμα' : 'Error',
-        description: language === 'el' ? 'Αποτυχία μεταφόρτωσης εικόνας' : 'Failed to upload image',
+        description: language === 'el' ? 'Αποτυχία μεταφόρτωσης εικόνων' : 'Failed to upload images',
         variant: 'destructive'
       });
     } finally {
       setIsUploadingImage(false);
+      // Reset file input
+      e.target.value = '';
     }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setImageUrls(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -257,7 +280,8 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
           const greekTime = new Date(formData.incident_time);
           return new Date(greekTime.getTime() + (greekTime.getTimezoneOffset() * 60000)).toISOString();
         })() : null,
-        image_url: imageUrl || null,
+        image_url: imageUrls[0] || null, // Keep first image for backward compatibility
+        images: imageUrls, // Store all images
         notes: JSON.stringify(formData.description.selected_guards?.map(guardId => {
           const guard = guards.find(g => g.profile_id === guardId);
           return {
@@ -306,7 +330,7 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
             location: reportData.location || '',
             incidentTime: reportData.incident_time,
             imageUrl: reportData.image_url,
-            images: (reportData as any).images, // Include images array if present
+            images: imageUrls, // Pass all images to email
             siteId: reportData.site_id,
             teamId: reportData.team_id,
             supervisorId: reportData.supervisor_id
@@ -730,56 +754,77 @@ const SupervisorReportForm = ({ onClose }: SupervisorReportFormProps) => {
               </div>
             </div>
 
-            {/* 5. Φωτογραφία Αποδεικτικού Στοιχείου (Evidence Photo) */}
+            {/* 5. Φωτογραφίες Αποδεικτικού Στοιχείου (Evidence Photos) */}
             <div className="space-y-4 p-6 bg-gray-50/50 rounded-lg border">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">5</div>
-                <h3 className="text-lg font-semibold">{language === 'el' ? 'Φωτογραφία Αποδεικτικού Στοιχείου' : 'Evidence Photo'}</h3>
+                <h3 className="text-lg font-semibold">{language === 'el' ? 'Φωτογραφίες Αποδεικτικού Στοιχείου' : 'Evidence Photos'}</h3>
               </div>
 
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                {!imageUrl ? (
-                  <div>
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={isUploadingImage}
-                      className="hidden"
-                    />
-                    <Label 
-                      htmlFor="image" 
-                      className="cursor-pointer flex flex-col items-center gap-2 p-4"
-                    >
-                      <div className="w-12 h-12 border-2 border-gray-400 rounded border-dashed flex items-center justify-center">
-                        📷
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {isUploadingImage 
-                          ? (language === 'el' ? 'Μεταφόρτωση εικόνας...' : 'Uploading image...') 
-                          : (language === 'el' ? 'Upload Image' : 'Upload Image')
-                        }
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {language === 'el' ? 'No image uploaded\nClick to add an image' : 'No image uploaded\nClick to add an image'}
-                      </div>
-                    </Label>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <img src={imageUrl} alt="Evidence" className="max-w-full max-h-48 object-cover rounded" />
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setImageUrl('')}
-                    >
-                      {language === 'el' ? 'Αφαίρεση' : 'Remove'}
-                    </Button>
-                  </div>
-                )}
-              </div>
+              {/* Image Grid */}
+              {imageUrls.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                  {imageUrls.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={url} 
+                        alt={`Evidence ${index + 1}`} 
+                        className="w-full h-32 object-cover rounded border-2 border-gray-200" 
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleRemoveImage(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload Button */}
+              {imageUrls.length < 5 && (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Input
+                    id="images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    disabled={isUploadingImage}
+                    className="hidden"
+                  />
+                  <Label 
+                    htmlFor="images" 
+                    className="cursor-pointer flex flex-col items-center gap-2 p-4"
+                  >
+                    <div className="w-12 h-12 border-2 border-gray-400 rounded border-dashed flex items-center justify-center">
+                      📷
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {isUploadingImage 
+                        ? (language === 'el' ? 'Μεταφόρτωση εικόνων...' : 'Uploading images...') 
+                        : (language === 'el' ? 'Ανέβασμα Εικόνων' : 'Upload Images')
+                      }
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {language === 'el' 
+                        ? `${imageUrls.length}/5 εικόνες • Κάντε κλικ για να προσθέσετε περισσότερες` 
+                        : `${imageUrls.length}/5 images • Click to add more`
+                      }
+                    </div>
+                  </Label>
+                </div>
+              )}
+
+              {imageUrls.length === 5 && (
+                <div className="text-center text-sm text-gray-600 p-4 bg-gray-100 rounded">
+                  {language === 'el' ? 'Έχετε φτάσει το μέγιστο όριο των 5 εικόνων' : 'Maximum limit of 5 images reached'}
+                </div>
+              )}
             </div>
 
             {/* 6. Προθεσμίες Παρακολουθίας (Follow-up Deadlines) */}
