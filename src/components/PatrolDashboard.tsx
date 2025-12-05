@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square, FileText, Target, Calendar } from 'lucide-react';
+import { Shield, Camera, AlertTriangle, MapPin, Clock, User, TrendingUp, Play, Square, FileText, Target, Calendar, ClipboardList, QrCode, CheckCircle, Circle, ArrowLeft, Eye, PenTool, CheckSquare, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckpointGroupSelector } from '@/components/CheckpointGroupSelector';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,10 +15,13 @@ import PatrolSessions from '@/components/PatrolSessions';
 import TeamEmergencyReports from '@/components/TeamEmergencyReports';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import SupervisorReportForm from '@/components/SupervisorReportForm';
+import TenantFeatureManager from '@/components/TenantFeatureManager';
 import { useToast } from '@/components/ui/use-toast';
 import { useOfflinePatrol } from '@/hooks/useOfflinePatrol';
 import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
 import { useLanguage } from '@/hooks/useLanguage';
+import { TenantFeatureService } from '@/services/TenantFeatureService';
+import { format } from 'date-fns';
 
 interface PatrolDashboardProps {
   onNavigate: (screen: string) => void;
@@ -47,6 +51,22 @@ interface PatrolSession {
   longitude?: number;
   created_at: string;
   updated_at: string;
+}
+
+interface TodayObligation {
+  id: string;
+  title: string;
+  description?: string;
+  frequency: string;
+  category?: string;
+  priority?: string;
+  site_name?: string;
+  requires_photo_proof?: boolean;
+  requires_signature?: boolean;
+  requires_checklist?: boolean;
+  is_completed: boolean;
+  completed_at?: string;
+  completed_by_name?: string;
 }
 const PatrolDashboard = ({
   onNavigate
@@ -83,7 +103,20 @@ const PatrolDashboard = ({
   const [showPatrolSessions, setShowPatrolSessions] = useState(false);
   const [showEmergencyReports, setShowEmergencyReports] = useState(false);
   const [showSupervisorReport, setShowSupervisorReport] = useState(false);
+  const [showTodayTasks, setShowTodayTasks] = useState(false);
+  const [showFeatureManager, setShowFeatureManager] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [todayObligations, setTodayObligations] = useState<TodayObligation[]>([]);
+  const [loadingObligations, setLoadingObligations] = useState(false);
+  const [featureSettings, setFeatureSettings] = useState<{
+    show_scan_button: boolean;
+    show_tasks_button: boolean;
+    show_observations_button: boolean;
+    show_report_button: boolean;
+    show_supervisor_report: boolean;
+    show_todays_tasks: boolean;
+    show_patrol_status: boolean;
+  } | null>(null);
   const [legacyActivePatrol, setLegacyActivePatrol] = useState<PatrolSession | null>(null);
   const [showCheckpointGroupSelector, setShowCheckpointGroupSelector] = useState(false);
   const [pendingPatrolSiteId, setPendingPatrolSiteId] = useState<string | null>(null);
@@ -131,8 +164,34 @@ const PatrolDashboard = ({
       checkLocationPermission();
       fetchUserRoles();
       restoreOfflinePatrols(); // Restore any offline patrol sessions
+      fetchTodayObligations(); // Fetch today's obligations for supervisors
+      fetchFeatureSettings(); // Fetch tenant feature settings
     }
   }, [profile?.id, restoreOfflinePatrols]);
+
+  // Fetch tenant feature settings
+  const fetchFeatureSettings = async () => {
+    try {
+      const settings = await TenantFeatureService.getCurrentUserSettings();
+      console.log('Raw settings from DB:', settings);
+      const effective = TenantFeatureService.getEffectiveSettings(settings);
+      console.log('Effective settings:', effective);
+      console.log('show_patrol_status value:', effective.show_patrol_status);
+      setFeatureSettings(effective);
+    } catch (error) {
+      console.error('Error fetching feature settings:', error);
+      // Use defaults if error
+      setFeatureSettings({
+        show_scan_button: true,
+        show_tasks_button: true,
+        show_observations_button: true,
+        show_report_button: true,
+        show_supervisor_report: true,
+        show_todays_tasks: true,
+        show_patrol_status: true,
+      });
+    }
+  };
 
   // Re-fetch mission when current shift changes
   useEffect(() => {
@@ -211,6 +270,214 @@ const PatrolDashboard = ({
       setUserRoles(roles?.map(r => r.role) || []);
     } catch (error) {
       console.error('Error fetching user roles:', error);
+    }
+  };
+
+  const fetchTodayObligations = async () => {
+    if (!profile?.id) return;
+    
+    try {
+      setLoadingObligations(true);
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const dayOfWeek = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+      
+      console.log('Fetching today obligations for user:', profile.id);
+      console.log('Today:', today, 'Day of week:', dayOfWeek);
+      console.log('Profile Role:', profile?.Role);
+      
+      // Check if user is admin/super_admin - they see ALL obligations
+      const userRole = profile?.Role?.toLowerCase() || '';
+      const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+      console.log('Is Admin:', isAdmin, 'User Role:', userRole);
+      
+      let obligations: any[] = [];
+      let error: any = null;
+      
+      if (isAdmin) {
+        // Admins see ALL active obligations
+        console.log('User is admin - fetching ALL obligations');
+        const { data: obligationsData, error: obligationsError } = await supabase
+          .from('contract_obligations')
+          .select('*')
+          .eq('is_active', true);
+        
+        console.log('Admin obligations query result:', obligationsData, 'Error:', obligationsError);
+        
+        obligations = obligationsData || [];
+        error = obligationsError;
+      } else {
+        // Non-admins see only their team's obligations
+        const { data: teamMemberships, error: teamError } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', profile.id);
+        
+        const userTeamIds = teamMemberships?.map(tm => tm.team_id) || [];
+        console.log('User team IDs:', userTeamIds);
+        
+        if (userTeamIds.length > 0) {
+          // Get service contracts for user's teams
+          const { data: contracts, error: contractError } = await supabase
+            .from('service_contracts')
+            .select('id')
+            .in('team_id', userTeamIds);
+          
+          const contractIds = contracts?.map(c => c.id) || [];
+          console.log('Contract IDs for user teams:', contractIds);
+          
+          if (contractIds.length > 0) {
+            const { data: obligationsData, error: obligationsError } = await supabase
+              .from('contract_obligations')
+              .select(`
+                id,
+                title,
+                description,
+                frequency,
+                specific_days,
+                day_of_month,
+                month_of_year,
+                category,
+                priority,
+                requires_photo_proof,
+                requires_signature,
+                requires_checklist,
+                contract_id,
+                service_contracts (
+                  id,
+                  team_id,
+                  site_id,
+                  guardian_sites (
+                    id,
+                    name
+                  )
+                )
+              `)
+              .in('contract_id', contractIds)
+              .eq('is_active', true);
+            
+            obligations = obligationsData || [];
+            error = obligationsError;
+          }
+        }
+      }
+      
+      console.log('Obligations fetched:', obligations?.length, 'Error:', error);
+      
+      // If table doesn't exist or error, try simpler approach
+      if (error) {
+        console.error('Error fetching obligations:', error);
+        setTodayObligations([]);
+        return;
+      }
+      
+      // If no obligations found
+      if (!obligations || obligations.length === 0) {
+        console.log('No obligations found');
+        setTodayObligations([]);
+        return;
+      }
+      
+      // Filter obligations that should be done today
+      const currentDayOfMonth = new Date().getDate();
+      const currentMonth = new Date().getMonth() + 1; // 1-12
+      
+      const todaysObligations = (obligations || []).filter((obligation: any) => {
+        if (obligation.frequency === 'daily') return true;
+        
+        if (obligation.frequency === 'weekly') {
+          // Check specific_days array for day of week (0-6)
+          return obligation.specific_days?.includes(dayOfWeek);
+        }
+        
+        if (obligation.frequency === 'monthly') {
+          // Check day_of_month or specific_days
+          if (obligation.day_of_month) {
+            return obligation.day_of_month === currentDayOfMonth;
+          }
+          return obligation.specific_days?.includes(currentDayOfMonth);
+        }
+        
+        if (obligation.frequency === 'yearly') {
+          // Check month_of_year and day_of_month
+          if (obligation.month_of_year && obligation.day_of_month) {
+            return obligation.month_of_year === currentMonth && obligation.day_of_month === currentDayOfMonth;
+          }
+          return false;
+        }
+        
+        // If no frequency specified, show it
+        if (!obligation.frequency) return true;
+        return false;
+      });
+      
+      console.log('Today obligations after filter:', todaysObligations.length);
+      
+      // Get completions for today
+      const obligationIds = todaysObligations.map((o: any) => o.id);
+      
+      let completions: any[] = [];
+      if (obligationIds.length > 0) {
+        const { data: completionData, error: completionError } = await supabase
+          .from('obligation_completions')
+          .select(`
+            obligation_id,
+            completed_at,
+            completed_by_name,
+            status
+          `)
+          .in('obligation_id', obligationIds)
+          .eq('scheduled_date', today)
+          .eq('status', 'completed');
+        
+        console.log('Completions:', completionData?.length, 'Error:', completionError);
+        completions = completionData || [];
+      }
+      
+      // Map obligations with completion status
+      const mappedObligations: TodayObligation[] = todaysObligations.map((obligation: any) => {
+        const completion = completions.find((c: any) => c.obligation_id === obligation.id);
+        const siteName = obligation.service_contracts?.guardian_sites?.name || 
+                        (Array.isArray(obligation.service_contracts?.guardian_sites) 
+                          ? obligation.service_contracts.guardian_sites[0]?.name 
+                          : undefined);
+        
+        return {
+          id: obligation.id,
+          title: obligation.title,
+          description: obligation.description,
+          frequency: obligation.frequency,
+          category: obligation.category,
+          priority: obligation.priority,
+          site_name: siteName,
+          requires_photo_proof: obligation.requires_photo_proof,
+          requires_signature: obligation.requires_signature,
+          requires_checklist: obligation.requires_checklist,
+          is_completed: !!completion,
+          completed_at: completion?.completed_at,
+          completed_by_name: completion?.profiles?.full_name || 
+                            (Array.isArray(completion?.profiles) ? completion.profiles[0]?.full_name : undefined)
+        };
+      });
+      
+      // Sort: incomplete first, then by priority, then by title
+      const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      mappedObligations.sort((a, b) => {
+        if (a.is_completed !== b.is_completed) {
+          return a.is_completed ? 1 : -1;
+        }
+        const priorityA = priorityOrder[a.priority || 'medium'] ?? 1;
+        const priorityB = priorityOrder[b.priority || 'medium'] ?? 1;
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+        return a.title.localeCompare(b.title);
+      });
+      
+      setTodayObligations(mappedObligations);
+    } catch (error) {
+      console.error('Error fetching today obligations:', error);
+    } finally {
+      setLoadingObligations(false);
     }
   };
 
@@ -809,32 +1076,226 @@ const PatrolDashboard = ({
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} ${t('dashboard.hour_ago')}`;
     return `${Math.floor(diffInMinutes / 1440)} days ago`;
   };
-  const quickActions = [{
+  // Filter quick actions based on tenant feature settings
+  const allQuickActions = [{
     id: 'scanner',
     title: t('nav.scan'),
     description: t('dashboard.scan_description'),
     icon: Camera,
     color: 'bg-blue-500',
-    action: () => onNavigate('scanner')
+    action: () => onNavigate('scanner'),
+    visible: featureSettings?.show_scan_button ?? true
+  }, {
+    id: 'tasks',
+    title: language === 'el' ? 'Εργασίες' : 'Tasks',
+    description: language === 'el' ? 'Σάρωση QR εργασιών' : 'Scan task QR codes',
+    icon: ClipboardList,
+    color: 'bg-purple-500',
+    action: () => onNavigate('taskScanner'),
+    visible: featureSettings?.show_tasks_button ?? true
   }, {
     id: 'observation',
     title: t('nav.report'),
     description: t('dashboard.report_description'),
     icon: AlertTriangle,
     color: 'bg-yellow-500',
-    action: () => onNavigate('observation')
+    action: () => onNavigate('observation'),
+    visible: featureSettings?.show_observations_button ?? true
   }, {
     id: 'emergency',
     title: t('dashboard.emergency'),
     description: t('dashboard.emergency_description'),
     icon: Shield,
     color: 'bg-red-500',
-    action: () => onNavigate('emergency')
+    action: () => onNavigate('emergency'),
+    visible: featureSettings?.show_report_button ?? true
   }];
-  const isAdminOrManager = userRoles.includes('admin') || userRoles.includes('super_admin') || userRoles.includes('manager');
+  
+  const quickActions = allQuickActions.filter(action => action.visible);
+  // Check both user_roles table and profile.Role for admin/manager access
+  const profileRole = profile?.Role?.toLowerCase() || '';
+  const isAdminOrManager = userRoles.includes('admin') || userRoles.includes('super_admin') || userRoles.includes('manager') || userRoles.includes('supervisor') ||
+    profileRole === 'admin' || profileRole === 'super_admin' || profileRole === 'manager' || profileRole === 'supervisor';
 
   if (showSupervisorReport) {
     return <SupervisorReportForm onClose={() => setShowSupervisorReport(false)} />;
+  }
+
+  if (showFeatureManager) {
+    return <TenantFeatureManager onBack={() => setShowFeatureManager(false)} />;
+  }
+
+  if (showTodayTasks) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" onClick={() => setShowTodayTasks(false)}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <ClipboardList className="h-6 w-6 text-purple-600" />
+                  {language === 'el' ? 'Σημερινές Εργασίες' : "Today's Tasks"}
+                </CardTitle>
+              </div>
+              <Badge variant="outline" className="bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-200 text-lg px-3 py-1">
+                {todayObligations.filter(o => o.is_completed).length}/{todayObligations.length}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2 ml-12">
+              {language === 'el' ? 'Παρακολούθηση και ενημέρωση ημερήσιων εργασιών' : 'Track and update daily obligations'}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loadingObligations ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                <p className="text-sm text-purple-600 mt-3">{language === 'el' ? 'Φόρτωση εργασιών...' : 'Loading tasks...'}</p>
+              </div>
+            ) : todayObligations.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                  {language === 'el' ? 'Όλα έτοιμα!' : 'All done!'}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  {language === 'el' ? 'Δεν υπάρχουν εργασίες προγραμματισμένες για σήμερα' : 'No tasks scheduled for today'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {todayObligations.map((obligation) => (
+                  <Card 
+                    key={obligation.id}
+                    className={`cursor-pointer transition-all hover:shadow-md ${
+                      obligation.is_completed 
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                        : 'bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700 hover:border-purple-400'
+                    }`}
+                    onClick={() => onNavigate('taskScanner')}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                          {obligation.is_completed ? (
+                            <div className="bg-green-100 dark:bg-green-800 p-2 rounded-full">
+                              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            </div>
+                          ) : (
+                            <div className="bg-purple-100 dark:bg-purple-800 p-2 rounded-full">
+                              <Circle className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className={`font-semibold text-base ${
+                              obligation.is_completed ? 'text-green-700 dark:text-green-300 line-through' : 'text-gray-900 dark:text-white'
+                            }`}>
+                              {obligation.title}
+                            </p>
+                            {obligation.description && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
+                                {obligation.description}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                              {/* Category badge */}
+                              {obligation.category && (
+                                <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                  {obligation.category}
+                                </span>
+                              )}
+                              {/* Priority badge */}
+                              {obligation.priority && (
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  obligation.priority === 'high' 
+                                    ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' 
+                                    : obligation.priority === 'medium'
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                                }`}>
+                                  {obligation.priority === 'high' ? '🔴' : obligation.priority === 'medium' ? '🟡' : '🟢'} {obligation.priority}
+                                </span>
+                              )}
+                              {/* Frequency badge */}
+                              <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full capitalize">
+                                {obligation.frequency}
+                              </span>
+                              {/* Site name */}
+                              {obligation.site_name && (
+                                <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {obligation.site_name}
+                                </span>
+                              )}
+                            </div>
+                            {/* Requirements icons */}
+                            <div className="flex items-center gap-2 mt-2">
+                              {obligation.requires_photo_proof && (
+                                <span className="text-xs flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                                  <Camera className="h-3.5 w-3.5" />
+                                  {language === 'el' ? 'Φωτο' : 'Photo'}
+                                </span>
+                              )}
+                              {obligation.requires_signature && (
+                                <span className="text-xs flex items-center gap-1 text-orange-600 dark:text-orange-400">
+                                  <PenTool className="h-3.5 w-3.5" />
+                                  {language === 'el' ? 'Υπογραφή' : 'Sign'}
+                                </span>
+                              )}
+                              {obligation.requires_checklist && (
+                                <span className="text-xs flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                                  <CheckSquare className="h-3.5 w-3.5" />
+                                  {language === 'el' ? 'Λίστα' : 'Checklist'}
+                                </span>
+                              )}
+                            </div>
+                            {obligation.is_completed && obligation.completed_at && (
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                {language === 'el' ? 'Ολοκληρώθηκε στις' : 'Completed at'} {format(new Date(obligation.completed_at), 'HH:mm')}
+                                {obligation.completed_by_name && ` ${language === 'el' ? 'από' : 'by'} ${obligation.completed_by_name}`}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {!obligation.is_completed && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-shrink-0 text-purple-600 border-purple-300 hover:bg-purple-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onNavigate('taskScanner');
+                            }}
+                          >
+                            <QrCode className="h-4 w-4 mr-2" />
+                            {language === 'el' ? 'Σάρωση' : 'Scan'}
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            
+            {/* Refresh button */}
+            <div className="pt-4 border-t">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => fetchTodayObligations()}
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                {language === 'el' ? 'Ανανέωση' : 'Refresh'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (showObservations) {
@@ -1059,48 +1520,50 @@ const PatrolDashboard = ({
           </Card>
         </div>}
 
-      {/* Patrol Control */}
-      <div className="mb-6">
-        <Card className="overflow-hidden">
-          <CardContent className="p-4">
-            <div className="space-y-4 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1 truncate">
-                  Patrol Status {!isOnline && '(Offline Mode)'}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
-                  {currentActivePatrol ? `Patrol started at ${new Date(currentActivePatrol.start_time).toLocaleTimeString()}` : activeShiftInfo ? `Ready to patrol at ${activeShiftInfo.siteName}` : 'No active shift assigned'}
-                </p>
-                {activeShiftInfo && !currentActivePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
-                    📍 Current shift: {activeShiftInfo.shift?.title || activeShiftInfo.teamName} - {activeShiftInfo.siteName}
-                  </p>}
-                {isTracking && <p className="text-xs text-green-600 mt-1">
-                    📍 Location updates every minute
-                  </p>}
-                {!isOnline && <p className="text-xs text-orange-600 mt-1 break-words">
-                    📴 Patrol activities will be saved locally and synced when online
-                  </p>}
+      {/* Patrol Control - Controlled by feature settings */}
+      {(featureSettings?.show_patrol_status ?? true) && (
+        <div className="mb-6">
+          <Card className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="space-y-4 lg:space-y-0 lg:flex lg:items-center lg:justify-between">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1 truncate">
+                    Patrol Status {!isOnline && '(Offline Mode)'}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 break-words">
+                    {currentActivePatrol ? `Patrol started at ${new Date(currentActivePatrol.start_time).toLocaleTimeString()}` : activeShiftInfo ? `Ready to patrol at ${activeShiftInfo.siteName}` : 'No active shift assigned'}
+                  </p>
+                  {activeShiftInfo && !currentActivePatrol && <p className="text-xs text-blue-600 mt-1 break-words">
+                      📍 Current shift: {activeShiftInfo.shift?.title || activeShiftInfo.teamName} - {activeShiftInfo.siteName}
+                    </p>}
+                  {isTracking && <p className="text-xs text-green-600 mt-1">
+                      📍 Location updates every minute
+                    </p>}
+                  {!isOnline && <p className="text-xs text-orange-600 mt-1 break-words">
+                      📴 Patrol activities will be saved locally and synced when online
+                    </p>}
+                </div>
+                <div className="flex justify-center lg:justify-end">
+                  <Button 
+                    onClick={currentActivePatrol ? handleEndPatrol : handleStartPatrol} 
+                    className={currentActivePatrol ? 'bg-red-500 hover:bg-red-600 w-full lg:w-auto' : 'bg-green-500 hover:bg-green-600 w-full lg:w-auto'} 
+                    disabled={!currentActivePatrol && !activeShiftInfo}
+                    size="lg"
+                  >
+                    {currentActivePatrol ? <>
+                        <Square className="h-4 w-4 mr-2" />
+                        End Patrol
+                      </> : <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Patrol
+                      </>}
+                  </Button>
+                </div>
               </div>
-              <div className="flex justify-center lg:justify-end">
-                <Button 
-                  onClick={currentActivePatrol ? handleEndPatrol : handleStartPatrol} 
-                  className={currentActivePatrol ? 'bg-red-500 hover:bg-red-600 w-full lg:w-auto' : 'bg-green-500 hover:bg-green-600 w-full lg:w-auto'} 
-                  disabled={!currentActivePatrol && !activeShiftInfo}
-                  size="lg"
-                >
-                  {currentActivePatrol ? <>
-                      <Square className="h-4 w-4 mr-2" />
-                      End Patrol
-                    </> : <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Start Patrol
-                    </>}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -1123,37 +1586,115 @@ const PatrolDashboard = ({
           </Card>)}
       </div>
 
-      {/* Supervisor Report Button for Admin/Manager */}
+      {/* Supervisor Actions for Admin/Manager */}
       {isAdminOrManager && (
-        <div className="mb-6">
-          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-blue-500 p-2 rounded-full">
-                    <FileText className="h-5 w-5 text-white" />
+        <div className="mb-6 space-y-4">
+          {/* Supervisor Report Card - Controlled by feature settings */}
+          {(featureSettings?.show_supervisor_report ?? true) && (
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-500 p-2 rounded-full">
+                      <FileText className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+                        {language === 'el' ? 'Αναφορά Εποπτείας' : 'Supervisor Report'}
+                      </h3>
+                      <p className="text-sm text-blue-600 dark:text-blue-300">
+                        {language === 'el' ? 'Υποβάλετε αναφορά εποπτείας για έργα και φύλακες' : 'Submit supervisor reports for sites and guards'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-blue-800 dark:text-blue-200">
-                      {language === 'el' ? 'Αναφορά Εποπτείας' : 'Supervisor Report'}
-                    </h3>
-                    <p className="text-sm text-blue-600 dark:text-blue-300">
-                      {language === 'el' ? 'Υποβάλετε αναφορά εποπτείας για έργα και φύλακες' : 'Submit supervisor reports for sites and guards'}
-                    </p>
+                  <Button 
+                    onClick={() => setShowSupervisorReport(true)}
+                    variant="glass"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    {language === 'el' ? 'Νέα Αναφορά' : 'New Report'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Today's Obligations Card - Controlled by feature settings */}
+          {(featureSettings?.show_todays_tasks ?? true) && (
+            <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/20 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowTodayTasks(true)}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-purple-500 p-2 rounded-full">
+                      <ClipboardList className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-purple-800 dark:text-purple-200">
+                        {language === 'el' ? 'Σημερινές Εργασίες' : "Today's Tasks"}
+                      </h3>
+                      <p className="text-sm text-purple-600 dark:text-purple-300">
+                        {language === 'el' ? 'Παρακολούθηση ημερήσιων υποχρεώσεων' : 'Track daily obligations'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-200">
+                      {todayObligations.filter(o => o.is_completed).length}/{todayObligations.length}
+                    </Badge>
+                    <Button 
+                      variant="glass"
+                      size="sm"
+                      className="flex items-center gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTodayTasks(true);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                      {language === 'el' ? 'Προβολή' : 'View'}
+                    </Button>
                   </div>
                 </div>
-                <Button 
-                  onClick={() => setShowSupervisorReport(true)}
-                  variant="glass"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <FileText className="h-4 w-4" />
-                  {language === 'el' ? 'Νέα Αναφορά' : 'New Report'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Feature Manager Card - Only for super_admin */}
+          {profileRole === 'super_admin' && (
+            <Card className="border-gray-200 bg-gray-50 dark:bg-gray-800/50 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowFeatureManager(true)}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gray-600 p-2 rounded-full">
+                      <Settings className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 dark:text-gray-200">
+                        {language === 'el' ? 'Διαχείριση Features' : 'Feature Management'}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {language === 'el' ? 'Ρύθμιση ορατότητας features ανά tenant' : 'Configure feature visibility per tenant'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFeatureManager(true);
+                    }}
+                  >
+                    <Settings className="h-4 w-4" />
+                    {language === 'el' ? 'Ρυθμίσεις' : 'Settings'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

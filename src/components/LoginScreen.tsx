@@ -101,10 +101,9 @@ const LoginScreen = () => {
           </div>
           <div>
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              SENTINEL PATROL
+              365Shift Sidecar
             </CardTitle>
-            <p className="text-muted-foreground mt-2 font-mono text-sm">OVIT.SECURITY.SYS</p>
-            <div className="mt-2 text-xs text-accent font-mono">[ SECURE ACCESS TERMINAL ]</div>
+                        <div className="mt-2 text-xs text-accent font-mono">[ SECURE ACCESS TERMINAL ]</div>
           </div>
         </CardHeader>
         <CardContent>

@@ -17,7 +17,7 @@ const translations = {
     'app.title': 'Sentinel Guard',
     'nav.dashboard': 'Dashboard',
     'nav.scan': 'Scan',
-    'nav.report': 'Patrol Report',
+    'nav.report': 'Observations',
     
     // Dashboard
     'dashboard.welcome': 'Welcome, Security Officer',
@@ -25,7 +25,7 @@ const translations = {
     'dashboard.on_duty': 'On Duty',
     'dashboard.scan_description': 'Scan QR checkpoints',
     'dashboard.report_description': 'Log observations',
-    'dashboard.emergency': 'Emergency Report',
+    'dashboard.emergency': 'Report',
     'dashboard.emergency_description': 'Report emergencies',
     'dashboard.patrol_rounds': 'Patrol Rounds',
     'dashboard.observations': 'Observations',
@@ -153,7 +153,7 @@ const translations = {
     'app.title': 'Sentinel Guard',
     'nav.dashboard': 'Πίνακας Ελέγχου',
     'nav.scan': 'Σάρωση',
-    'nav.report': 'Αναφορά Περιπολίας',
+    'nav.report': 'Παρατηρήσεις',
     
     // Dashboard
     'dashboard.welcome': 'Καλώς ήρθατε, Αξιωματικέ Ασφαλείας',
@@ -161,7 +161,7 @@ const translations = {
     'dashboard.on_duty': 'Σε Υπηρεσία',
     'dashboard.scan_description': 'Σάρωση σημείων ελέγχου QR',
     'dashboard.report_description': 'Καταγραφή παρατηρήσεων',
-    'dashboard.emergency': 'Εκτακτη Αναφορά',
+    'dashboard.emergency': 'Αναφορά',
     'dashboard.emergency_description': 'Αναφορά εκτάκτων αναγκών',
     'dashboard.patrol_rounds': 'Περιπολίες',
     'dashboard.observations': 'Παρατηρήσεις',

@@ -107,3 +107,96 @@ export interface Profile {
   created_at: string
   updated_at: string
 }
+
+// Obligation Types
+export interface ChecklistItem {
+  id: string
+  label: string
+  required: boolean
+}
+
+export interface ContractObligation {
+  id: string
+  contract_id: string
+  title: string
+  description?: string
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  specific_days?: number[] // [1,3,5] for Mon,Wed,Fri
+  requires_checklist: boolean
+  checklist_items?: ChecklistItem[]
+  requires_photo_proof: boolean
+  requires_signature: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  // Joined fields
+  service_contracts?: {
+    id: string
+    site_id: string
+    client_id: string
+    guardian_sites?: {
+      id: string
+      name: string
+    }
+  }
+}
+
+export interface ObligationCompletion {
+  id: string
+  obligation_id: string
+  scheduled_date: string
+  completed_by?: string
+  completed_by_name?: string
+  completed_at?: string
+  status: 'pending' | 'completed' | 'missed' | 'excused'
+  notes?: string
+  checklist_responses?: Record<string, boolean>
+  photo_urls?: string[]
+  signature_url?: string
+  issues_found?: string
+  verified_by?: string
+  verified_at?: string
+  verification_status?: string
+  verification_notes?: string
+  tenant_id?: string
+  created_at: string
+  updated_at: string
+  // Joined fields
+  contract_obligations?: ContractObligation
+  profiles?: Profile
+}
+
+export interface TenantFeatureSettings {
+  id: string
+  tenant_id: string
+  // Tenant Branding
+  tenant_name?: string
+  app_name?: string
+  app_subtitle?: string
+  logo_url?: string
+  theme?: 'default' | 'dark' | 'blue' | 'green' | 'purple' | 'red'
+  primary_color?: string
+  // Quick Actions visibility
+  show_scan_button: boolean
+  show_tasks_button: boolean
+  show_observations_button: boolean
+  show_report_button: boolean
+  // Cards visibility
+  show_supervisor_report: boolean
+  show_todays_tasks: boolean
+  show_patrol_status: boolean
+  // Feature modules
+  show_emergency_reports: boolean
+  show_location_tracking: boolean
+  show_team_observations: boolean
+  show_patrol_sessions: boolean
+  // Obligation requirements visibility
+  show_photo_requirement: boolean
+  show_signature_requirement: boolean
+  show_checklist_requirement: boolean
+  show_notes_field: boolean
+  // Metadata
+  created_at: string
+  updated_at: string
+  created_by?: string
+}

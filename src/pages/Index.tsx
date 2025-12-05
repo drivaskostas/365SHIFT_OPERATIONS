@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import LoginScreen from '@/components/LoginScreen';
 import PatrolDashboard from '@/components/PatrolDashboard';
 import QRScanner from '@/components/QRScanner';
+import ObligationQRScanner from '@/components/ObligationQRScanner';
 import PatrolObservation from '@/components/PatrolObservation';
 import EnhancedEmergencyReport from '@/components/EnhancedEmergencyReport';
 import NotificationBell from '@/components/NotificationBell';
@@ -15,6 +16,8 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { Toaster } from '@/components/ui/toaster';
 import { usePersistentPatrol } from '@/hooks/usePersistentPatrol';
 import { useToast } from '@/hooks/use-toast';
+import { TenantFeatureService } from '@/services/TenantFeatureService';
+import type { TenantFeatureSettings } from '@/types/database';
 
 // Component to initialize location tracking only when user is authenticated
 function LocationTrackingInitializer() {
@@ -44,9 +47,36 @@ function AppContent() {
   const navigate = useNavigate();
   const [currentScreen, setCurrentScreen] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(true);
+  const [branding, setBranding] = useState<{
+    app_name: string;
+    app_subtitle: string;
+    logo_url: string;
+    primary_color: string;
+  }>({ app_name: 'SENTINEL', app_subtitle: 'SECURITY.SYS', logo_url: '', primary_color: '#3B82F6' });
   
   // Add persistent patrol hook at app level for proper patrol lifecycle management
   const { endPersistentPatrol } = usePersistentPatrol(profile?.id);
+
+  // Fetch tenant branding settings
+  useEffect(() => {
+    const fetchBranding = async () => {
+      if (!profile?.id) return;
+      try {
+        const settings = await TenantFeatureService.getCurrentUserSettings();
+        if (settings) {
+          setBranding({
+            app_name: settings.app_name || 'SENTINEL',
+            app_subtitle: settings.app_subtitle || 'SECURITY.SYS',
+            logo_url: settings.logo_url || '',
+            primary_color: settings.primary_color || '#3B82F6',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching branding:', error);
+      }
+    };
+    fetchBranding();
+  }, [profile?.id]);
   
   // Handle patrol completion from QR scanner
   const handlePatrolComplete = async () => {
@@ -84,7 +114,7 @@ function AppContent() {
               <Shield className="h-8 w-8 text-primary absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-lg font-semibold text-foreground">Loading Sentinel Patrol</h2>
+              <h2 className="text-lg font-semibold text-foreground">Loading 365Shift Sidecar</h2>
               <p className="text-sm text-muted-foreground">Initializing security dashboard...</p>
             </div>
           </div>
@@ -100,6 +130,14 @@ function AppContent() {
         return <QRScanner 
           onBack={() => setCurrentScreen('dashboard')} 
           onPatrolComplete={handlePatrolComplete}
+        />;
+      case 'taskScanner':
+        return <ObligationQRScanner 
+          onBack={() => setCurrentScreen('dashboard')}
+          onObligationScanned={(obligation, existingCompletion) => {
+            // Navigate to completion page
+            navigate(`/complete-obligation/${obligation.id}`);
+          }}
         />;
       case 'observation':
         return <PatrolObservation onBack={() => setCurrentScreen('dashboard')} />;
@@ -117,14 +155,20 @@ function AppContent() {
         {/* Header */}
         {user && <header className="sticky top-0 z-50 bg-gradient-to-r from-background/95 via-card/90 to-background/95 backdrop-blur-xl border-b border-border/20 text-foreground p-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between shadow-card">
             <div className="flex items-center space-x-3 animate-fade-in">
-              <div className="p-2 bg-primary/10 rounded-xl backdrop-blur-sm border border-primary/20 shadow-glow">
-                <Shield className="h-6 w-6 text-primary" />
-              </div>
+              {branding.logo_url ? (
+                <div className="p-1 rounded-xl backdrop-blur-sm border border-primary/20 shadow-glow">
+                  <img src={branding.logo_url} alt="Logo" className="h-8 w-8 object-contain" />
+                </div>
+              ) : (
+                <div className="p-2 bg-primary/10 rounded-xl backdrop-blur-sm border border-primary/20 shadow-glow" style={branding.primary_color !== '#3B82F6' ? { backgroundColor: `${branding.primary_color}20` } : undefined}>
+                  <Shield className="h-6 w-6" style={branding.primary_color !== '#3B82F6' ? { color: branding.primary_color } : undefined} />
+                </div>
+              )}
               <div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  SENTINEL
+                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent" style={branding.primary_color !== '#3B82F6' ? { color: branding.primary_color, backgroundImage: 'none' } : undefined}>
+                  {branding.app_name}
                 </h1>
-                <div className="text-xs text-muted-foreground font-mono">SECURITY.SYS</div>
+                <div className="text-xs text-muted-foreground font-mono">{branding.app_subtitle}</div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -143,30 +187,6 @@ function AppContent() {
         <main className="flex-1">
           {renderScreen()}
         </main>
-
-        {/* Bottom Navigation */}
-        {user && currentScreen === 'dashboard' && <nav className="bg-card/80 backdrop-blur-xl border-t border-border/30 p-4 shadow-card pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <div className="flex justify-around max-w-md mx-auto">
-              <Button variant="ghost" className="flex flex-col items-center space-y-2 transition-all hover:scale-110 hover:bg-primary/10 rounded-xl p-3" onClick={() => setCurrentScreen('dashboard')}>
-                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 shadow-glow">
-                  <Shield className="h-5 w-5 text-primary" />
-                </div>
-                <span className="text-xs font-medium text-primary">{t('nav.dashboard')}</span>
-              </Button>
-              <Button variant="ghost" className="flex flex-col items-center space-y-2 transition-all hover:scale-110 hover:bg-accent/10 rounded-xl p-3" onClick={() => setCurrentScreen('scanner')}>
-                <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 shadow-glow">
-                  <Camera className="h-5 w-5 text-accent" />
-                </div>
-                <span className="text-xs font-medium text-accent">{t('nav.scan')}</span>
-              </Button>
-              <Button variant="ghost" className="flex flex-col items-center space-y-2 transition-all hover:scale-110 hover:bg-destructive/10 rounded-xl p-3" onClick={() => setCurrentScreen('observation')}>
-                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 shadow-glow">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                </div>
-                <span className="text-xs font-medium text-destructive">{t('nav.report')}</span>
-              </Button>
-            </div>
-          </nav>}
       </div>
       <Toaster />
     </div>;

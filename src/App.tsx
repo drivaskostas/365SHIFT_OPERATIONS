@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import CompleteObligationPage from "./pages/CompleteObligationPage";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/complete-obligation/:obligationId" element={<CompleteObligationPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

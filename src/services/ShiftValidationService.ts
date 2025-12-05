@@ -2,18 +2,75 @@
 import { supabase } from '@/lib/supabase'
 
 export class ShiftValidationService {
+  // Roles that can bypass shift validation
+  private static readonly BYPASS_SHIFT_ROLES = ['admin', 'super_admin', 'supervisor', 'manager'];
+
   static async validateGuardShiftAccess(guardId: string): Promise<{
     canLogin: boolean
     message?: string
     currentShift?: any
     assignedSite?: any
     assignedTeam?: any
+    bypassedShiftCheck?: boolean
   }> {
     const now = new Date()
     const currentTime = now.toISOString()
     
     try {
-      // Check for active shifts within a 30-minute window before shift start
+      // First, check if user has a role that bypasses shift validation
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('Role')
+        .eq('id', guardId)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      }
+
+      // If user is admin, super_admin, supervisor, or manager - allow access without shift
+      if (profile?.Role && this.BYPASS_SHIFT_ROLES.includes(profile.Role)) {
+        console.log(`User ${guardId} has role ${profile.Role} - bypassing shift validation`);
+        
+        // Try to get a default site/team for the user
+        const { data: userTeams } = await supabase
+          .from('team_members')
+          .select(`
+            team_id,
+            teams:team_id (
+              id,
+              name
+            )
+          `)
+          .eq('user_id', guardId)
+          .limit(1);
+
+        let assignedSite = null;
+        const teamData = userTeams?.[0]?.teams;
+        const assignedTeam = Array.isArray(teamData) ? teamData[0] : teamData;
+
+        if (assignedTeam?.id) {
+          const { data: siteData } = await supabase
+            .from('guardian_sites')
+            .select('*')
+            .eq('team_id', assignedTeam.id)
+            .eq('active', true)
+            .limit(1)
+            .maybeSingle();
+          
+          assignedSite = siteData;
+        }
+
+        return {
+          canLogin: true,
+          message: `Welcome! You have ${profile.Role} access - no shift required.`,
+          assignedSite,
+          assignedTeam,
+          bypassedShiftCheck: true
+        };
+      }
+
+      // For regular guards, check for active shifts within a 30-minute window before shift start
       const { data: activeShifts, error } = await supabase
         .from('team_schedules')
         .select(`
