@@ -360,12 +360,26 @@ const CompleteObligationPage = () => {
         signatureUrl = await uploadSignature();
       }
 
-      await ObligationService.completeObligation(obligation.id, user.id, {
-        notes: notes.trim() || undefined,
-        checklist_responses: obligation.requires_checklist ? checklistResponses : undefined,
-        photo_urls: photoUrls.length > 0 ? photoUrls : undefined,
-        signature_url: signatureUrl || undefined,
-      });
+      const obligationData = obligation as any;
+      await ObligationService.completeObligation(
+        obligation.id, 
+        user.id, 
+        {
+          notes: notes.trim() || undefined,
+          checklist_responses: obligation.requires_checklist ? checklistResponses : undefined,
+          photo_urls: photoUrls.length > 0 ? photoUrls : undefined,
+          signature_url: signatureUrl || undefined,
+        },
+        {
+          title: obligation.title,
+          description: obligation.description,
+          category: obligationData.category,
+          priority: obligationData.priority,
+          contractName: obligationData.service_contracts?.contract_name,
+          clientName: obligationData.service_contracts?.client_name,
+          notificationEmails: obligationData.notification_emails || [],
+        }
+      );
 
       toast({
         title: "Task Completed! ✓",

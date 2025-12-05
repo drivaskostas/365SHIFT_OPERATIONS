@@ -12,6 +12,7 @@ export class ObligationService {
       .from('contract_obligations')
       .select(`
         *,
+        notification_emails,
         service_contracts (
           id,
           team_id,
@@ -154,9 +155,19 @@ export class ObligationService {
       photo_urls?: string[];
       signature_url?: string;
       issues_found?: string;
+    },
+    obligationDetails?: {
+      title?: string;
+      description?: string;
+      category?: string;
+      priority?: string;
+      contractName?: string;
+      clientName?: string;
+      notificationEmails?: string[];
     }
   ): Promise<ObligationCompletion> {
     const today = format(new Date(), 'yyyy-MM-dd');
+    const completedAt = new Date().toISOString();
 
     const { data: completion, error } = await supabase
       .from('obligation_completions')
@@ -164,7 +175,7 @@ export class ObligationService {
         obligation_id: obligationId,
         scheduled_date: today,
         completed_by: userId,
-        completed_at: new Date().toISOString(),
+        completed_at: completedAt,
         status: 'completed',
         notes: data.notes,
         checklist_responses: data.checklist_responses,
@@ -180,6 +191,55 @@ export class ObligationService {
     if (error) {
       console.error('Error completing obligation:', error);
       throw error;
+    }
+
+    // Send email notification if there are notification emails
+    if (obligationDetails?.notificationEmails && obligationDetails.notificationEmails.length > 0) {
+      try {
+        // Get user's full name
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .single();
+
+        const completedByName = profile?.full_name || 'Unknown User';
+
+        console.log('📧 Sending obligation completion email notification...');
+        
+        const { data: emailResponse, error: emailError } = await supabase.functions.invoke(
+          'send-obligation-email',
+          {
+            body: {
+              obligationId,
+              completionId: completion.id,
+              title: obligationDetails.title || 'Obligation',
+              description: obligationDetails.description,
+              category: obligationDetails.category,
+              priority: obligationDetails.priority,
+              contractName: obligationDetails.contractName,
+              clientName: obligationDetails.clientName,
+              completedByName,
+              completedAt,
+              scheduledDate: today,
+              notes: data.notes,
+              checklistResponses: data.checklist_responses,
+              photoUrls: data.photo_urls,
+              signatureUrl: data.signature_url,
+              notificationEmails: obligationDetails.notificationEmails,
+            },
+          }
+        );
+
+        if (emailError) {
+          console.error('❌ Failed to send email notification:', emailError);
+        } else {
+          console.log('✅ Email notification sent:', emailResponse);
+        }
+      } catch (emailErr) {
+        console.error('❌ Error sending email notification:', emailErr);
+        // Don't throw - email failure shouldn't fail the completion
+      }
     }
 
     return completion;
