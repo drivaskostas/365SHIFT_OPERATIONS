@@ -98,24 +98,36 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    // Format photos
+    // Format photos with actual images
     let photosHtml = '';
     if (requestData.photoUrls && requestData.photoUrls.length > 0) {
+      const photoImages = requestData.photoUrls.map((url, index) => `
+        <div style="margin: 5px; display: inline-block;">
+          <a href="${url}" target="_blank">
+            <img src="${url}" alt="Photo ${index + 1}" style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid #e5e7eb;" />
+          </a>
+        </div>
+      `).join('');
+      
       photosHtml = `
         <div style="margin: 20px 0;">
           <h3 style="color: #374151; margin-bottom: 10px;">📸 Photos (${requestData.photoUrls.length})</h3>
-          <p style="color: #6b7280; font-size: 14px;">Photos have been attached to this completion record.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            ${photoImages}
+          </div>
         </div>
       `;
     }
 
-    // Format signature
+    // Format signature with actual image
     let signatureHtml = '';
     if (requestData.signatureUrl) {
       signatureHtml = `
         <div style="margin: 20px 0;">
           <h3 style="color: #374151; margin-bottom: 10px;">✍️ Signature</h3>
-          <p style="color: #6b7280; font-size: 14px;">Digital signature has been captured.</p>
+          <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: inline-block;">
+            <img src="${requestData.signatureUrl}" alt="Signature" style="max-width: 300px; max-height: 150px;" />
+          </div>
         </div>
       `;
     }
