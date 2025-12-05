@@ -345,15 +345,8 @@ const PatrolDashboard = ({
                 service_contracts (
                   id,
                   team_id,
-                  site_id,
-                  teams (
-                    id,
-                    name,
-                    guardian_sites (
-                      id,
-                      name
-                    )
-                  )
+                  contract_name,
+                  client_name
                 )
               `)
               .in('contract_id', contractIds)
@@ -441,14 +434,6 @@ const PatrolDashboard = ({
       const mappedObligations: TodayObligation[] = todaysObligations.map((obligation: any) => {
         const completion = completions.find((c: any) => c.obligation_id === obligation.id);
         
-        // Extract site name from teams -> guardian_sites
-        let siteName = undefined;
-        const teams = obligation.service_contracts?.teams;
-        if (teams?.guardian_sites) {
-          const sites = teams.guardian_sites;
-          siteName = Array.isArray(sites) ? sites[0]?.name : sites?.name;
-        }
-        
         return {
           id: obligation.id,
           title: obligation.title,
@@ -456,7 +441,7 @@ const PatrolDashboard = ({
           frequency: obligation.frequency,
           category: obligation.category,
           priority: obligation.priority,
-          site_name: siteName,
+          site_name: undefined, // Will be fetched separately if needed
           requires_photo_proof: obligation.requires_photo_proof,
           requires_signature: obligation.requires_signature,
           requires_checklist: obligation.requires_checklist,

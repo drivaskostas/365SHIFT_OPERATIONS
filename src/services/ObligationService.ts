@@ -7,23 +7,16 @@ export class ObligationService {
    * Get obligation by ID with contract and site details
    */
   static async getObligationById(obligationId: string): Promise<ContractObligation | null> {
+    // First get the obligation with contract info
     const { data, error } = await supabase
       .from('contract_obligations')
       .select(`
         *,
         service_contracts (
           id,
-          site_id,
-          client_id,
           team_id,
-          teams (
-            id,
-            name,
-            guardian_sites (
-              id,
-              name
-            )
-          )
+          contract_name,
+          client_name
         )
       `)
       .eq('id', obligationId)
@@ -35,12 +28,17 @@ export class ObligationService {
       throw error;
     }
 
-    // Extract site name from teams -> guardian_sites
-    if (data?.service_contracts?.teams?.guardian_sites) {
-      const sites = data.service_contracts.teams.guardian_sites;
-      const siteName = Array.isArray(sites) ? sites[0]?.name : sites?.name;
-      if (siteName) {
-        (data as any).site_name = siteName;
+    // If we have a team_id, fetch the site from guardian_sites
+    if (data?.service_contracts?.team_id) {
+      const { data: siteData } = await supabase
+        .from('guardian_sites')
+        .select('id, name')
+        .eq('team_id', data.service_contracts.team_id)
+        .limit(1)
+        .single();
+      
+      if (siteData) {
+        (data as any).site_name = siteData.name;
       }
     }
 
@@ -57,17 +55,9 @@ export class ObligationService {
         *,
         service_contracts!inner (
           id,
-          site_id,
-          client_id,
           team_id,
-          teams (
-            id,
-            name,
-            guardian_sites (
-              id,
-              name
-            )
-          )
+          contract_name,
+          client_name
         )
       `)
       .eq('service_contracts.team_id', teamId)
