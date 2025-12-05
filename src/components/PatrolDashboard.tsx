@@ -346,9 +346,13 @@ const PatrolDashboard = ({
                   id,
                   team_id,
                   site_id,
-                  guardian_sites (
+                  teams (
                     id,
-                    name
+                    name,
+                    guardian_sites (
+                      id,
+                      name
+                    )
                   )
                 )
               `)
@@ -436,10 +440,14 @@ const PatrolDashboard = ({
       // Map obligations with completion status
       const mappedObligations: TodayObligation[] = todaysObligations.map((obligation: any) => {
         const completion = completions.find((c: any) => c.obligation_id === obligation.id);
-        const siteName = obligation.service_contracts?.guardian_sites?.name || 
-                        (Array.isArray(obligation.service_contracts?.guardian_sites) 
-                          ? obligation.service_contracts.guardian_sites[0]?.name 
-                          : undefined);
+        
+        // Extract site name from teams -> guardian_sites
+        let siteName = undefined;
+        const teams = obligation.service_contracts?.teams;
+        if (teams?.guardian_sites) {
+          const sites = teams.guardian_sites;
+          siteName = Array.isArray(sites) ? sites[0]?.name : sites?.name;
+        }
         
         return {
           id: obligation.id,

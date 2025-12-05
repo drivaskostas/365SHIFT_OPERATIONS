@@ -52,7 +52,7 @@ function AppContent() {
     app_subtitle: string;
     logo_url: string;
     primary_color: string;
-  }>({ app_name: 'SENTINEL', app_subtitle: 'SECURITY.SYS', logo_url: '', primary_color: '#3B82F6' });
+  }>({ app_name: '365Shift', app_subtitle: 'OPERATIONS', logo_url: '', primary_color: '#3B82F6' });
   
   // Add persistent patrol hook at app level for proper patrol lifecycle management
   const { endPersistentPatrol } = usePersistentPatrol(profile?.id);
@@ -65,8 +65,8 @@ function AppContent() {
         const settings = await TenantFeatureService.getCurrentUserSettings();
         if (settings) {
           setBranding({
-            app_name: settings.app_name || 'SENTINEL',
-            app_subtitle: settings.app_subtitle || 'SECURITY.SYS',
+            app_name: settings.app_name || '365Shift',
+            app_subtitle: settings.app_subtitle || 'OPERATIONS',
             logo_url: settings.logo_url || '',
             primary_color: settings.primary_color || '#3B82F6',
           });
@@ -165,10 +165,10 @@ function AppContent() {
                 </div>
               )}
               <div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent" style={branding.primary_color !== '#3B82F6' ? { color: branding.primary_color, backgroundImage: 'none' } : undefined}>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent" style={branding.primary_color !== '#3B82F6' ? { color: branding.primary_color, backgroundImage: 'none' } : undefined}>
                   {branding.app_name}
                 </h1>
-                <div className="text-xs text-muted-foreground font-mono">{branding.app_subtitle}</div>
+                <div className="text-[10px] text-muted-foreground font-mono tracking-wider">{branding.app_subtitle}</div>
               </div>
             </div>
             <div className="flex items-center space-x-2">

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <circle cx="100" cy="100" r="90" fill="#3B82F6"/>
+  
+  <!-- Person figure -->
+  <circle cx="65" cy="55" r="12" fill="white"/>
+  <path d="M45 140 L55 90 L75 90 L85 140 L70 140 L65 110 L60 140 Z" fill="white"/>
+  
+  <!-- Arrow going up -->
+  <path d="M75 85 L95 50 L90 50 L95 40 L100 50 L95 50 L80 80" fill="white" stroke="white" stroke-width="3"/>
+  
+  <!-- Shield with checkmark -->
+  <path d="M115 70 L145 80 L145 110 C145 130 130 145 115 150 C100 145 85 130 85 110 L85 80 Z" fill="white" stroke="white" stroke-width="2"/>
+  <path d="M115 75 L140 84 L140 108 C140 125 127 138 115 142 C103 138 90 125 90 108 L90 84 Z" fill="#3B82F6"/>
+  <polyline points="100 108 112 120 132 95" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Checkmark at bottom -->
+  <polyline points="50 145 70 165 100 125" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

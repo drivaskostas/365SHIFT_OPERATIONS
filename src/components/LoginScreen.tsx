@@ -93,17 +93,17 @@ const LoginScreen = () => {
           <div className="flex justify-center">
             <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 shadow-neon">
               <img 
-                src="/lovable-uploads/2f80a624-0bbb-431f-8440-671c1ad9fde4.png" 
-                alt="Ovit Security Logo" 
-                className="h-16 w-16 object-contain" 
+                src="/logo-512.png" 
+                alt="365Shift Logo" 
+                className="h-16 w-16 object-contain rounded-full" 
               />
             </div>
           </div>
           <div>
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              365Shift Sidecar
+              365Shift
             </CardTitle>
-                        <div className="mt-2 text-xs text-accent font-mono">[ SECURE ACCESS TERMINAL ]</div>
+            <div className="mt-2 text-[10px] text-accent font-mono tracking-wider">OPERATIONS</div>
           </div>
         </CardHeader>
         <CardContent>

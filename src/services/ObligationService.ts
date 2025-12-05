@@ -15,9 +15,14 @@ export class ObligationService {
           id,
           site_id,
           client_id,
-          guardian_sites (
+          team_id,
+          teams (
             id,
-            name
+            name,
+            guardian_sites (
+              id,
+              name
+            )
           )
         )
       `)
@@ -28,6 +33,15 @@ export class ObligationService {
     if (error) {
       console.error('Error fetching obligation:', error);
       throw error;
+    }
+
+    // Extract site name from teams -> guardian_sites
+    if (data?.service_contracts?.teams?.guardian_sites) {
+      const sites = data.service_contracts.teams.guardian_sites;
+      const siteName = Array.isArray(sites) ? sites[0]?.name : sites?.name;
+      if (siteName) {
+        (data as any).site_name = siteName;
+      }
     }
 
     return data;
@@ -46,9 +60,13 @@ export class ObligationService {
           site_id,
           client_id,
           team_id,
-          guardian_sites (
+          teams (
             id,
-            name
+            name,
+            guardian_sites (
+              id,
+              name
+            )
           )
         )
       `)
